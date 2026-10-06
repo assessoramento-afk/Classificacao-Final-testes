@@ -56,10 +56,12 @@
   }
 
   async function carregarPerfil(usuarioId) {
-    var r = await sb.from('perfis')
-      .select('id, nome, email, perfil, empresa_id, aprovado, ativo, foto_path')
-      .eq('id', usuarioId)
-      .maybeSingle();
+    var campos = 'id, nome, email, perfil, empresa_id, aprovado, ativo';
+    var r = await sb.from('perfis').select(campos + ', foto_path').eq('id', usuarioId).maybeSingle();
+    // Se o banco ainda não tem a coluna da foto (script 09 não rodado), carrega sem ela
+    if (r.error && /foto_path/.test(r.error.message || '')) {
+      r = await sb.from('perfis').select(campos).eq('id', usuarioId).maybeSingle();
+    }
     if (r.error) throw r.error;
     return r.data;
   }

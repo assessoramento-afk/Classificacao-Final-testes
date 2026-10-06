@@ -4,7 +4,7 @@
    Os dados (Supabase) NUNCA são guardados aqui: só os arquivos do app.
    A cada versão nova, o nome do cache muda e o antigo é apagado.
    ===================================================================== */
-var VERSAO = 'cf-1.3.1';
+var VERSAO = 'cf-1.3.4';
 var ARQUIVOS = [
   './',
   'index.html',
@@ -17,6 +17,7 @@ var ARQUIVOS = [
   'js/api.js',
   'js/auth.js',
   'js/foto.js',
+  'js/online.js',
   'js/views/telas.js',
   'js/views/minha-conta.js',
   'js/app.js',

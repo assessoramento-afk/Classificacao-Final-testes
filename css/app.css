@@ -9,7 +9,7 @@
 @font-face { font-family: 'Poppins'; src: url('../assets/fonts/poppins-bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 
 /* ---------- Paleta do tema ESCURO (padrão) ---------- */
-:root, [data-tema="escuro"] {
+:root, html[data-tema="escuro"] {
   color-scheme: dark;
   --bg: #141111; --bg-2: #191515; --topo: #171313;
   --cartao: linear-gradient(165deg, #2b2626 0%, #211d1d 100%); --cartao-solido: #241f1f;
@@ -25,7 +25,7 @@
   --pill-ok-tx: #86e0ad; --pill-off-tx: #f8b48c;
 }
 /* ---------- Paleta do tema CLARO ---------- */
-[data-tema="claro"] {
+html[data-tema="claro"] {
   color-scheme: light;
   --bg: #f5f2f1; --bg-2: #ffffff; --topo: #ffffff;
   --cartao: #ffffff; --cartao-solido: #ffffff;
@@ -59,7 +59,7 @@ button, input, select, textarea { font: inherit; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Logos: cada imagem existe nas duas versões; o tema mostra a certa */
-[data-tema="escuro"] .so-claro, [data-tema="claro"] .so-escuro { display: none !important; }
+html[data-tema="escuro"] .so-claro, html[data-tema="claro"] .so-escuro { display: none !important; }
 
 /* ---------- Componentes básicos ---------- */
 .card { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra); }
@@ -105,7 +105,7 @@ button, input, select, textarea { font: inherit; }
 .segmentos { display: flex; gap: 4px; background: var(--entrada); border: 1px solid var(--borda); border-radius: 12px; padding: 4px; }
 .segmentos button { flex: 1; min-height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--texto-3); font-weight: 500; cursor: pointer; font-size: 14px; }
 .segmentos button[aria-pressed="true"], .segmentos button[aria-selected="true"] { background: var(--surface-2); color: var(--texto); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
-[data-tema="claro"] .segmentos button[aria-pressed="true"], [data-tema="claro"] .segmentos button[aria-selected="true"] { background: #fff; }
+html[data-tema="claro"] .segmentos button[aria-pressed="true"], html[data-tema="claro"] .segmentos button[aria-selected="true"] { background: #fff; }
 
 /* ---------- Tela de acesso: faixa superior + cartão com faixa lateral ---------- */
 .acesso { min-height: 100%; display: flex; flex-direction: column; background: var(--bg); }
@@ -190,6 +190,40 @@ button, input, select, textarea { font: inherit; }
 .recorte canvas { width: 100%; height: 100%; display: block; }
 .zoom { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--texto-2); }
 .zoom input { flex: 1; accent-color: var(--laranja); }
+
+/* ---------- Quem está online ---------- */
+.online-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px 0 8px; border-radius: 999px; border: 1px solid var(--borda); background: var(--entrada); color: var(--texto-2); font-size: 12px; font-weight: 700; cursor: pointer; }
+.online-btn:hover { color: var(--texto); }
+.ponto-online { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(63,166,107,.2); flex: none; }
+.pilha { display: flex; }
+.pilha .mini { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--topo); margin-left: -8px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; overflow: hidden; }
+.pilha .mini:first-child { margin-left: 0; }
+.pilha img, .pessoa-online img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.painel-online { position: absolute; right: 0; top: calc(100% + 8px); width: 320px; max-width: calc(100vw - 24px); padding: 10px; z-index: 30; background: var(--cartao-solido); max-height: 70vh; overflow-y: auto; }
+.painel-online h3 { font-size: 12px; margin: 4px 8px 8px; color: var(--texto-3); text-transform: uppercase; letter-spacing: .06em; }
+.pessoa-online { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 10px; }
+.pessoa-online:hover { background: var(--hover); }
+.av-caixa { position: relative; flex: none; }
+.pessoa-online .av { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; overflow: hidden; }
+.av-caixa i { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--cartao-solido); }
+.av-caixa i.ativo { background: var(--ok); }
+.av-caixa i.ausente { background: var(--backup); }
+.pessoa-online b { display: block; font-size: 14px; }
+.pessoa-online .voce { font-weight: 500; color: var(--texto-3); }
+.pessoa-online small { display: block; font-size: 12px; color: var(--texto-3); }
+@media (max-width: 900px) { .online-txt { display: none; } .painel-online { right: -60px; } }
+
+/* ---------- Minha conta: cards centralizados ---------- */
+.conta-grade { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.conta-grade .bloco { align-items: center; text-align: center; padding: 26px 22px; gap: 14px; }
+.conta-grade .bloco h2 { width: 100%; padding-bottom: 12px; border-bottom: 1px solid var(--borda); }
+.conta-grade .foto-bloco { flex-direction: column; justify-content: center; }
+.foto-acoes { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.foto-acoes .botoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.conta-grade .form { width: 100%; text-align: left; }
+.conta-grade .form .btn { align-self: center; }
+.conta-grade .segmentos { width: 100%; }
+.icone-card { width: 104px; height: 104px; border-radius: 50%; background: var(--surface-2); display: inline-flex; align-items: center; justify-content: center; color: var(--texto-3); flex: none; }
 
 /* ---------- Telas de estado ---------- */
 .estado { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 32px 16px; }

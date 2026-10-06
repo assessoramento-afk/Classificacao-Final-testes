@@ -56,7 +56,7 @@
             '<div class="topo-dir">' +
               '<div class="flutuante"><button type="button" class="btn-tema" id="b-tema" aria-haspopup="true" aria-expanded="false"></button>' +
                 '<div class="menu-flutuante card oculto" id="m-tema" role="menu">' +
-                  ['auto', 'escuro', 'claro'].map(function (k) { return '<button type="button" role="menuitemradio" data-tema="' + k + '">' + ui.icone(k === 'auto' ? 'auto' : (k === 'escuro' ? 'lua' : 'sol'), 16) + window.CF.tema.NOMES[k] + '</button>'; }).join('') +
+                  ['auto', 'escuro', 'claro'].map(function (k) { return '<button type="button" role="menuitemradio" data-opcao-tema="' + k + '">' + ui.icone(k === 'auto' ? 'auto' : (k === 'escuro' ? 'lua' : 'sol'), 16) + window.CF.tema.NOMES[k] + '</button>'; }).join('') +
                 '</div></div>' +
               '<span id="conexao"></span>' +
               '<div class="flutuante"><button type="button" class="usuario-btn" id="b-usuario" aria-haspopup="true" aria-expanded="false">' +
@@ -70,6 +70,7 @@
 
     atualizarUsuario();
     atualizarConexao();
+    window.CF.online.iniciar(p);
 
     var lateral = raiz.querySelector('#lateral'), bMenu = raiz.querySelector('#b-menu');
     function fecharMenu() {
@@ -85,8 +86,8 @@
 
     ligarMenu(raiz.querySelector('#b-usuario'), raiz.querySelector('#m-usuario'));
     ligarMenu(raiz.querySelector('#b-tema'), raiz.querySelector('#m-tema'));
-    raiz.querySelectorAll('#m-tema [data-tema]').forEach(function (b) {
-      b.addEventListener('click', function () { window.CF.tema.definir(b.getAttribute('data-tema')); });
+    raiz.querySelectorAll('#m-tema [data-opcao-tema]').forEach(function (b) {
+      b.addEventListener('click', function () { window.CF.tema.definir(b.getAttribute('data-opcao-tema')); });
     });
     atualizarBotaoTema();
     raiz.querySelector('#b-sair').addEventListener('click', sair);
@@ -99,6 +100,7 @@
     var n = raiz.querySelector('#u-nome');
     if (n) n.textContent = p.nome || p.email;
     window.CF.foto.preencherAvatar(raiz.querySelector('#u-avatar'), p);
+    window.CF.online.atualizarMeusDados(p);
   }
 
   // Menus flutuantes (usuário e tema): abrem no clique e fecham ao clicar em outro lugar
@@ -123,16 +125,11 @@
     var e = window.CF.tema.escolha();
     b.innerHTML = ui.icone(e === 'auto' ? 'auto' : (e === 'escuro' ? 'lua' : 'sol'), 15) + '<span>' + esc(window.CF.tema.NOMES[e]) + '</span>';
     b.setAttribute('aria-label', 'Tema: ' + window.CF.tema.NOMES[e]);
-    document.querySelectorAll('#m-tema [data-tema]').forEach(function (x) { x.setAttribute('aria-checked', String(x.getAttribute('data-tema') === e)); });
+    document.querySelectorAll('#m-tema [data-opcao-tema]').forEach(function (x) { x.setAttribute('aria-checked', String(x.getAttribute('data-opcao-tema') === e)); });
   }
   document.addEventListener('cf-tema', function () { atualizarBotaoTema(); });
 
-  function atualizarConexao() {
-    var el = document.getElementById('conexao'); if (!el) return;
-    el.innerHTML = navigator.onLine
-      ? '<span class="pill pill-ok">' + ui.icone('nuvem', 15) + 'Online</span>'
-      : '<span class="pill pill-off">' + ui.icone('nuvemOff', 15) + 'Sem internet</span>';
-  }
+  function atualizarConexao() { window.CF.online.desenhar(); }
   window.addEventListener('online', atualizarConexao);
   window.addEventListener('offline', atualizarConexao);
 
@@ -195,6 +192,7 @@
   }
 
   async function sair() {
+    window.CF.online.parar();
     await sb.auth.signOut();
     estado.sessao = null; estado.perfil = null;
     history.replaceState(null, '', window.location.pathname);
