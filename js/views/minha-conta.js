@@ -13,16 +13,49 @@
     area.innerHTML =
       '<header class="cabecalho"><div><h1>Minha conta</h1><p>' + esc(p.email) + ' · ' + esc(NOMES_PERFIL[p.perfil] || p.perfil) + '</p></div></header>' +
       '<div class="grade">' +
+        '<section class="card bloco"><h2>Foto do perfil</h2>' +
+          '<div class="foto-bloco"><span class="avatar foto-grande" id="m-foto"></span>' +
+          '<div style="display:flex;flex-direction:column;gap:10px;flex:1;min-width:160px">' +
+            '<p>Aparece no topo do sistema e no histórico de alterações.</p>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-pri" id="b-foto">Trocar foto</button>' +
+            '<button type="button" class="btn" id="b-foto-rem">Remover</button></div></div></div></section>' +
         '<section class="card bloco"><h2>Nome</h2>' +
           '<form class="form" id="f-nome" novalidate>' +
             '<label class="campo" for="m-nome"><span>Nome completo <span class="obrig">*</span></span>' +
             '<input class="entrada" id="m-nome" type="text" maxlength="120" autocomplete="name" value="' + esc(p.nome) + '"></label>' +
-            '<button type="submit" class="btn btn-pri">Salvar nome</button>' +
+            '<button type="submit" class="btn btn-pri" style="align-self:flex-start">Salvar nome</button>' +
           '</form></section>' +
+        '<section class="card bloco"><h2>Aparência</h2>' +
+          '<div class="segmentos" role="group" aria-label="Tema">' +
+            ['auto', 'escuro', 'claro'].map(function (k) { return '<button type="button" data-tema="' + k + '">' + esc(window.CF.tema.NOMES[k]) + '</button>'; }).join('') +
+          '</div><span class="dica">Automático segue o tema do seu celular ou computador.</span></section>' +
         '<section class="card bloco"><h2>Senha</h2>' +
           '<p>Para trocar a senha, informe a nova senha duas vezes.</p>' +
-          '<button type="button" class="btn" id="b-senha">Trocar senha</button></section>' +
+          '<button type="button" class="btn" id="b-senha" style="align-self:flex-start">Trocar senha</button></section>' +
       '</div>';
+
+    function mostrarFoto() {
+      window.CF.foto.preencherAvatar(area.querySelector('#m-foto'), p);
+      area.querySelector('#b-foto-rem').classList.toggle('oculto', !p.foto_path);
+      area.querySelector('#b-foto').textContent = p.foto_path ? 'Trocar foto' : 'Colocar foto';
+    }
+    mostrarFoto();
+    area.querySelector('#b-foto').addEventListener('click', async function () {
+      if (await window.CF.foto.trocar(p)) { mostrarFoto(); ctx.atualizarUsuario(); }
+    });
+    area.querySelector('#b-foto-rem').addEventListener('click', async function () {
+      if (await window.CF.foto.remover(p)) { mostrarFoto(); ctx.atualizarUsuario(); }
+    });
+
+    function marcarTema() {
+      var e = window.CF.tema.escolha();
+      area.querySelectorAll('[data-tema]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-tema') === e)); });
+    }
+    area.querySelectorAll('[data-tema]').forEach(function (b) {
+      b.addEventListener('click', function () { window.CF.tema.definir(b.getAttribute('data-tema')); marcarTema(); });
+    });
+    marcarTema();
+    document.addEventListener('cf-tema', function () { if (document.body.contains(area.querySelector('[data-tema]'))) marcarTema(); });
 
     area.querySelector('#f-nome').addEventListener('submit', async function (ev) {
       ev.preventDefault();

@@ -57,7 +57,7 @@
 
   async function carregarPerfil(usuarioId) {
     var r = await sb.from('perfis')
-      .select('id, nome, email, perfil, empresa_id, aprovado, ativo')
+      .select('id, nome, email, perfil, empresa_id, aprovado, ativo, foto_path')
       .eq('id', usuarioId)
       .maybeSingle();
     if (r.error) throw r.error;

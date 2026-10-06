@@ -25,7 +25,7 @@
   }
   function telaMensagem(titulo, texto, comSair) {
     raiz.innerHTML = '<main class="estado"><div class="estado-card card">' +
-      '<img src="assets/img/gol_dark.png" alt="" style="width:72px;height:72px">' +
+      ui.logo('gol', '', '').replace(/<img /g, '<img style="width:72px;height:72px" ') +
       '<h1>' + esc(titulo) + '</h1><p>' + esc(texto) + '</p>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">' +
       '<button type="button" class="btn" id="b-recarregar">Verificar novamente</button>' +
@@ -42,8 +42,8 @@
     raiz.innerHTML =
       '<div class="shell">' +
         '<aside class="lateral" id="lateral" aria-label="Menu">' +
-          '<div class="lateral-marca"><img class="k" src="assets/img/kolping_dark.png" alt="Kolping Estadual São Paulo">' +
-          '<div class="lateral-prog"><img src="assets/img/gol_dark.png" alt="Projeto Gol Jovens Talentos"><div><b>' + esc(C.nomeSistema) + '</b><small>' + esc(C.programa) + '</small></div></div></div>' +
+          '<div class="lateral-marca">' + ui.logo('kolping', 'k', 'Kolping Estadual São Paulo') +
+          '<div class="lateral-prog">' + ui.logo('gol', '', 'Projeto Gol Jovens Talentos') + '<div><b>' + esc(C.nomeSistema) + '</b><small>' + esc(C.programa) + '</small></div></div></div>' +
           '<nav class="menu">' + menu.map(function (m) {
             return '<a href="#/' + m[0] + '" data-rota="' + m[0] + '">' + ui.icone(m[2], 18) + '<span>' + esc(m[1]) + '</span></a>';
           }).join('') + '</nav>' +
@@ -53,10 +53,15 @@
           '<header class="topo">' +
             '<div class="topo-esq"><button type="button" class="btn-menu" id="b-menu" aria-label="Abrir menu" aria-expanded="false">' + ui.icone('menu', 20) + '</button>' +
             '<span class="topo-titulo" id="topo-titulo"></span></div>' +
-            '<div class="topo-dir"><span id="conexao"></span>' +
-              '<div class="usuario"><button type="button" class="usuario-btn" id="b-usuario" aria-haspopup="true" aria-expanded="false">' +
+            '<div class="topo-dir">' +
+              '<div class="flutuante"><button type="button" class="btn-tema" id="b-tema" aria-haspopup="true" aria-expanded="false"></button>' +
+                '<div class="menu-flutuante card oculto" id="m-tema" role="menu">' +
+                  ['auto', 'escuro', 'claro'].map(function (k) { return '<button type="button" role="menuitemradio" data-tema="' + k + '">' + ui.icone(k === 'auto' ? 'auto' : (k === 'escuro' ? 'lua' : 'sol'), 16) + window.CF.tema.NOMES[k] + '</button>'; }).join('') +
+                '</div></div>' +
+              '<span id="conexao"></span>' +
+              '<div class="flutuante"><button type="button" class="usuario-btn" id="b-usuario" aria-haspopup="true" aria-expanded="false">' +
                 '<span class="avatar" id="u-avatar"></span><span class="usuario-txt"><b id="u-nome"></b><small>' + esc(NOMES_PERFIL[p.perfil] || '') + '</small></span></button>' +
-                '<div class="usuario-menu card oculto" id="m-usuario"><a href="#/conta">Minha conta</a><button type="button" id="b-sair">Sair</button></div>' +
+                '<div class="menu-flutuante card oculto" id="m-usuario" role="menu"><a href="#/conta">Minha conta</a><button type="button" id="b-sair">Sair</button></div>' +
               '</div></div>' +
           '</header>' +
           '<main class="conteudo" id="conteudo" tabindex="-1"></main>' +
@@ -78,13 +83,12 @@
     });
     lateral.addEventListener('click', function (e) { if (e.target.closest('a')) fecharMenu(); });
 
-    var bU = raiz.querySelector('#b-usuario'), mU = raiz.querySelector('#m-usuario');
-    bU.addEventListener('click', function (e) {
-      e.stopPropagation();
-      var abrir = mU.classList.contains('oculto');
-      mU.classList.toggle('oculto', !abrir); bU.setAttribute('aria-expanded', String(abrir));
+    ligarMenu(raiz.querySelector('#b-usuario'), raiz.querySelector('#m-usuario'));
+    ligarMenu(raiz.querySelector('#b-tema'), raiz.querySelector('#m-tema'));
+    raiz.querySelectorAll('#m-tema [data-tema]').forEach(function (b) {
+      b.addEventListener('click', function () { window.CF.tema.definir(b.getAttribute('data-tema')); });
     });
-    document.addEventListener('click', function () { mU.classList.add('oculto'); bU.setAttribute('aria-expanded', 'false'); });
+    atualizarBotaoTema();
     raiz.querySelector('#b-sair').addEventListener('click', sair);
 
     navegar();
@@ -92,10 +96,36 @@
 
   function atualizarUsuario() {
     var p = estado.perfil; if (!p) return;
-    var n = raiz.querySelector('#u-nome'), a = raiz.querySelector('#u-avatar');
+    var n = raiz.querySelector('#u-nome');
     if (n) n.textContent = p.nome || p.email;
-    if (a) a.textContent = ui.iniciais(p.nome || p.email);
+    window.CF.foto.preencherAvatar(raiz.querySelector('#u-avatar'), p);
   }
+
+  // Menus flutuantes (usuário e tema): abrem no clique e fecham ao clicar em outro lugar
+  var menusAbertos = [];
+  function ligarMenu(botao, menu) {
+    if (!botao || !menu) return;
+    botao.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var abrir = menu.classList.contains('oculto');
+      fecharMenus();
+      if (abrir) { menu.classList.remove('oculto'); botao.setAttribute('aria-expanded', 'true'); menusAbertos.push([botao, menu]); }
+    });
+  }
+  function fecharMenus() {
+    menusAbertos.forEach(function (m) { m[1].classList.add('oculto'); m[0].setAttribute('aria-expanded', 'false'); });
+    menusAbertos = [];
+  }
+  document.addEventListener('click', fecharMenus);
+
+  function atualizarBotaoTema() {
+    var b = document.getElementById('b-tema'); if (!b) return;
+    var e = window.CF.tema.escolha();
+    b.innerHTML = ui.icone(e === 'auto' ? 'auto' : (e === 'escuro' ? 'lua' : 'sol'), 15) + '<span>' + esc(window.CF.tema.NOMES[e]) + '</span>';
+    b.setAttribute('aria-label', 'Tema: ' + window.CF.tema.NOMES[e]);
+    document.querySelectorAll('#m-tema [data-tema]').forEach(function (x) { x.setAttribute('aria-checked', String(x.getAttribute('data-tema') === e)); });
+  }
+  document.addEventListener('cf-tema', function () { atualizarBotaoTema(); });
 
   function atualizarConexao() {
     var el = document.getElementById('conexao'); if (!el) return;

@@ -6,11 +6,18 @@
   'use strict';
   var C = window.CF_CONFIG, ui = window.CF.ui, api = window.CF.api, sb = window.CF.sb, esc = ui.esc;
 
-  function marca() {
-    return '<div class="acesso-marca">' +
-      '<div class="acesso-logos"><img class="k" src="assets/img/kolping_dark.png" alt="Kolping Estadual São Paulo">' +
+  // Faixa superior (sempre escura) com logos, nome e rosa dos ventos em marca-d'água
+  function faixa() {
+    return '<header class="acesso-faixa">' +
+      '<img class="marca-agua" src="assets/img/gol_dark.png" alt="" aria-hidden="true">' +
+      '<div class="acesso-marca"><div class="logos"><img class="k" src="assets/img/kolping_dark.png" alt="Kolping Estadual São Paulo">' +
       '<span class="div" aria-hidden="true"></span><img class="g" src="assets/img/gol_dark.png" alt="Projeto Gol Jovens Talentos"></div>' +
-      '<div><h1>' + esc(C.nomeSistema) + '</h1><p>' + esc(C.programa) + '</p></div></div>';
+      '<div><h1>' + esc(C.nomeSistema) + '</h1><p>' + esc(C.programa) + '</p></div></div></header>';
+  }
+  function moldura(conteudoCartao) {
+    return '<main class="acesso">' + faixa() +
+      '<div class="acesso-corpo"><section class="acesso-card">' + conteudoCartao + '</section>' +
+      '<p class="acesso-rodape">Kolping Estadual de São Paulo · versão ' + esc(C.versao) + '</p></div></main>';
   }
 
   function aviso(tipo, texto) {
@@ -31,18 +38,13 @@
   /* ---------- Tela principal de acesso ---------- */
   function mostrarAcesso(raiz, aba, mensagem) {
     aba = aba || 'entrar';
-    raiz.innerHTML =
-      '<main class="acesso"><div class="acesso-caixa">' + marca() +
-      '<section class="card acesso-card">' +
-        '<div class="abas" role="tablist" aria-label="Acesso">' +
+    raiz.innerHTML = moldura(
+        '<div class="segmentos" role="tablist" aria-label="Acesso">' +
           '<button type="button" role="tab" data-aba="entrar" aria-selected="' + (aba === 'entrar') + '">Entrar</button>' +
           '<button type="button" role="tab" data-aba="cadastro" aria-selected="' + (aba === 'cadastro') + '">Criar cadastro</button>' +
         '</div>' +
         '<div id="area-msg">' + (mensagem ? aviso(mensagem.tipo, mensagem.texto) : '') + '</div>' +
-        '<div id="area-form"></div>' +
-      '</section>' +
-      '<p class="acesso-rodape">Kolping Estadual de São Paulo · versão ' + esc(C.versao) + '</p>' +
-      '</div></main>';
+        '<div id="area-form"></div>');
 
     raiz.querySelectorAll('[data-aba]').forEach(function (b) {
       b.addEventListener('click', function () { mostrarAcesso(raiz, b.getAttribute('data-aba')); });
@@ -150,16 +152,14 @@
 
   /* ---------- Nova senha (depois de clicar no link do e-mail) ---------- */
   function mostrarNovaSenha(raiz, aoConcluir) {
-    raiz.innerHTML =
-      '<main class="acesso"><div class="acesso-caixa">' + marca() +
-      '<section class="card acesso-card"><h2 style="font-size:19px">Criar nova senha</h2>' +
-      '<div id="area-msg"></div>' +
+    raiz.innerHTML = moldura(
+      '<h2>Criar nova senha</h2><div id="area-msg"></div>' +
       '<form class="form" novalidate>' +
         ui.campoSenha('n-senha', 'Nova senha', 'new-password') +
         '<span class="dica">Pelo menos ' + C.senhaMinima + ' caracteres, com letras e números.</span>' +
         ui.campoSenha('n-senha2', 'Repita a nova senha', 'new-password') +
         '<button type="submit" class="btn btn-pri btn-bloco">Salvar nova senha</button>' +
-      '</form></section></div></main>';
+      '</form>');
     ui.ligarVerSenha(raiz);
     raiz.querySelector('form').addEventListener('submit', async function (ev) {
       ev.preventDefault();

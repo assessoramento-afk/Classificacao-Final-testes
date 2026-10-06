@@ -27,7 +27,10 @@
     nuvem: '<path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z"/><path d="M9 13l2 2 4-4"/>',
     nuvemOff: '<path d="M3 3l18 18"/><path d="M8.5 8.2A5 5 0 0 0 7 18h10M19.5 16.8A4 4 0 0 0 18 10a6 6 0 0 0-8-5.4"/>',
     alerta: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
-    ok: '<path d="M5 12l5 5 9-10"/>'
+    ok: '<circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/>',
+    sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    lua: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    auto: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>'
   };
   function icone(nome, tam, cor) {
     return '<svg width="' + (tam || 18) + '" height="' + (tam || 18) + '" viewBox="0 0 24 24" fill="none" stroke="' + (cor || 'currentColor') +
@@ -144,5 +147,11 @@
     return ((p[0][0] || '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
   }
 
-  window.CF.ui = { esc: esc, icone: icone, toast: toast, janela: janela, confirmar: confirmar, ligarVerSenha: ligarVerSenha, campoSenha: campoSenha, iniciais: iniciais };
+  // Logo nas duas versões; o tema mostra a correta (classes so-escuro / so-claro)
+  function logo(nome, classe, alt) {
+    return '<img class="' + classe + ' so-escuro" src="assets/img/' + nome + '_dark.png" alt="' + esc(alt) + '">' +
+           '<img class="' + classe + ' so-claro" src="assets/img/' + nome + '_light.png" alt="' + esc(alt) + '">';
+  }
+
+  window.CF.ui = { logo: logo, esc: esc, icone: icone, toast: toast, janela: janela, confirmar: confirmar, ligarVerSenha: ligarVerSenha, campoSenha: campoSenha, iniciais: iniciais };
 })();
