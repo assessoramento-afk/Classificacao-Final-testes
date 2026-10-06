@@ -27,16 +27,18 @@
     var p = ctx.perfil;
     var primeiroNome = String(p.nome || '').split(' ')[0] || '';
     var blocos = p.perfil === 'admin'
-      ? [['Cadastros', 'Empresas, avaliadores, áreas e competências.', 'Etapa 1.4'],
-         ['Banco de testes', 'Testes, vínculos com as competências e painel de pendências.', 'Etapa 1.4'],
+      ? [['Cadastros', 'Empresas, avaliadores, áreas e competências.', 'Disponível', '#/cadastros'],
+         ['Banco de testes', 'Testes, vínculos com as competências e painel de pendências.', 'Disponível', '#/banco'],
          ['Configurações', 'Notas de corte, prazo da pré-reserva e texto do agradecimento.', 'Etapa 1.5'],
          ['Processos e agenda', 'Turmas, agenda com pré-reserva, candidatos e crachás.', 'Fase 2']]
       : [['Lançamento de notas', 'Pelo celular ou computador, também sem internet.', 'Fase 3'],
          ['Agenda', 'Consulta das turmas marcadas.', 'Fase 2'],
-         ['Banco de testes', 'Consulta dos testes e critérios de avaliação.', 'Etapa 1.4']];
+         ['Banco de testes', 'Consulta dos testes e critérios de avaliação.', 'Disponível', '#/banco']];
     area.innerHTML = cabecalho('Olá, ' + primeiroNome + '!', 'Bem-vindo(a) ao sistema Classificação Final do Projeto Gol Jovens Talentos.') +
       '<div class="grade">' + blocos.map(function (b) {
-        return '<section class="card bloco"><span class="lbl">' + esc(b[2]) + '</span><h2>' + esc(b[0]) + '</h2><p>' + esc(b[1]) + '</p></section>';
+        var inicio = b[3] ? '<a class="card bloco bloco-link" href="' + b[3] + '">' : '<section class="card bloco">';
+        var fim = b[3] ? '</a>' : '</section>';
+        return inicio + '<span class="lbl">' + esc(b[2]) + '</span><h2>' + esc(b[0]) + '</h2><p>' + esc(b[1]) + '</p>' + fim;
       }).join('') + '</div>';
   };
 
@@ -44,10 +46,6 @@
     ['Montagem do processo com empresa, vaga, testes e turmas', 'Cadastro e importação de candidatos', 'Ranking parcial e final']);
   window.CF.telas.agenda = emConstrucao('Agenda', 'Uma turma por dia, com pré-reserva.', 'Fase 2',
     ['Calendário mensal e semanal', 'Pré-reserva com prazo e aviso de vencimento', 'Bloqueio de feriados e eventos']);
-  window.CF.telas.cadastros = emConstrucao('Cadastros', 'Empresas, avaliadores, áreas e competências.', 'Etapa 1.4',
-    ['Empresas com logotipo', 'Avaliadores e aprovação de novos cadastros', 'Áreas e competências']);
-  window.CF.telas.banco = emConstrucao('Banco de testes', 'Áreas, testes e competências.', 'Etapa 1.4',
-    ['Lista de testes por área', 'Vínculos de cada critério com a competência', 'Painel de pendências']);
   window.CF.telas.config = emConstrucao('Configurações', 'Padrões usados em todo processo novo.', 'Etapa 1.5',
     ['Notas de corte padrão', 'Prazo padrão da pré-reserva', 'Texto do agradecimento']);
   window.CF.telas.portal = emConstrucao('Resultados', 'Processos seletivos liberados para a sua empresa.', 'Fase 5',

@@ -5,7 +5,7 @@
    Nunca coloque aqui a chave secreta (secret / service_role).
    ===================================================================== */
 window.CF_CONFIG = Object.freeze({
-  versao: '1.3.4',
+  versao: '1.4.0',
   supabaseUrl: 'https://nctyfeoifbuloihidabg.supabase.co',
   supabaseKey: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh',
   nomeSistema: 'Classificação Final',

@@ -172,7 +172,7 @@
   /* ---------- Sessão e perfil ---------- */
   async function abrirSistema(forcar) {
     if (estado.emRecuperacao) return;
-    if (!estado.sessao) { estado.perfil = null; auth.mostrarAcesso(raiz, 'entrar'); return; }
+    if (!estado.sessao) { estado.perfil = null; auth.mostrarAcesso(raiz, window.location.hash === '#cadastro' ? 'cadastro' : 'entrar'); return; }
     if (estado.perfil && !forcar) { if (!document.getElementById('conteudo')) montarShell(); return; }
     telaCarregando('Carregando seu acesso…');
     try {

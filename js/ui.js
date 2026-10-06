@@ -27,6 +27,10 @@
     nuvem: '<path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z"/><path d="M9 13l2 2 4-4"/>',
     nuvemOff: '<path d="M3 3l18 18"/><path d="M8.5 8.2A5 5 0 0 0 7 18h10M19.5 16.8A4 4 0 0 0 18 10a6 6 0 0 0-8-5.4"/>',
     alerta: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+    busca: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    mais: '<path d="M12 5v14M5 12h14"/>',
+    link: '<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+    seta: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     ok: '<circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/>',
     pessoa: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
     cadeado: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
@@ -155,5 +159,44 @@
            '<img class="' + classe + ' so-claro" src="assets/img/' + nome + '_light.png" alt="' + esc(alt) + '">';
   }
 
-  window.CF.ui = { logo: logo, esc: esc, icone: icone, toast: toast, janela: janela, confirmar: confirmar, ligarVerSenha: ligarVerSenha, campoSenha: campoSenha, iniciais: iniciais };
+  // Selo pequeno (pill). tipo: 'neu' | 'ok' | 'off' | 'aviso'
+  function pill(texto, tipo) { return '<span class="pill pill-' + (tipo || 'neu') + '">' + esc(texto) + '</span>'; }
+
+  // Texto sem acentos e em minúsculas (para buscas)
+  function normalizar(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+
+  // CNPJ: só números, formatação e verificação dos dígitos
+  function soNumeros(t) { return String(t || '').replace(/\D/g, ''); }
+  function formatarCNPJ(t) {
+    var n = soNumeros(t).slice(0, 14);
+    return n.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  function cnpjValido(t) {
+    var n = soNumeros(t);
+    if (n.length !== 14 || /^(\d)\1+$/.test(n)) return false;
+    function dv(base) {
+      var pesos = base.length === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+      var soma = base.split('').reduce(function (s, d, i) { return s + parseInt(d, 10) * pesos[i]; }, 0);
+      var r = soma % 11; return r < 2 ? 0 : 11 - r;
+    }
+    var d1 = dv(n.slice(0, 12)), d2 = dv(n.slice(0, 12) + d1);
+    return n.slice(12) === String(d1) + String(d2);
+  }
+  function formatarTelefone(t) {
+    var n = soNumeros(t).slice(0, 11);
+    if (n.length <= 10) return n.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+    return n.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+  }
+
+  // Bloqueia o botão enquanto a operação acontece (evita clique duplo)
+  async function executar(botao, textoOcupado, fn) {
+    var original = botao ? botao.textContent : '';
+    if (botao) { botao.disabled = true; botao.textContent = textoOcupado || 'Aguarde…'; }
+    try { return await fn(); }
+    finally { if (botao) { botao.disabled = false; botao.textContent = original; } }
+  }
+
+  window.CF.ui = { pill: pill, normalizar: normalizar, soNumeros: soNumeros, formatarCNPJ: formatarCNPJ, cnpjValido: cnpjValido,
+    formatarTelefone: formatarTelefone, executar: executar, logo: logo, esc: esc, icone: icone, toast: toast, janela: janela, confirmar: confirmar, ligarVerSenha: ligarVerSenha, campoSenha: campoSenha, iniciais: iniciais };
 })();
