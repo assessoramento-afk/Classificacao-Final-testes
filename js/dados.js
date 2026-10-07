@@ -86,6 +86,13 @@
     salvarCriterio: function (c) { return salvar('teste_criterios', c); },
     excluirCriterio: function (id) { return q(sb.from('teste_criterios').delete().eq('id', id)); },
     // Substitui a tabela de conversão de um teste inteira
+    // Teste + competências de uma vez (função salvar_teste no banco)
+    salvarTesteCompleto: function (dadosTeste) { return q(sb.rpc('salvar_teste', { p: dadosTeste })); },
+    criarCompetenciaNoTeste: function (c) {
+      return q(sb.rpc('criar_competencia_no_teste', { p_nome: c.nome, p_qualificacao: c.qualificacao_id, p_descricao: c.descricao || null, p_teste: c.teste_id, p_nome_exibido: c.nome_exibido || null }));
+    },
+    excluirArea: function (areaId, destinoId) { return q(sb.rpc('excluir_area', { p_area: areaId, p_destino: destinoId || null })); },
+    excluirTeste: function (id) { return q(sb.from('testes').delete().eq('id', id)); },
     salvarConversao: async function (testeId, faixas) {
       await q(sb.from('tabelas_conversao').delete().eq('teste_id', testeId));
       if (!faixas.length) return [];

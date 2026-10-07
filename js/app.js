@@ -71,6 +71,7 @@
     atualizarUsuario();
     atualizarConexao();
     window.CF.online.iniciar(p);
+    window.CF.avisos.iniciar(p);
 
     var lateral = raiz.querySelector('#lateral'), bMenu = raiz.querySelector('#b-menu');
     function fecharMenu() {
@@ -193,6 +194,7 @@
 
   async function sair() {
     window.CF.online.parar();
+    window.CF.avisos.parar();
     await sb.auth.signOut();
     estado.sessao = null; estado.perfil = null;
     history.replaceState(null, '', window.location.pathname);

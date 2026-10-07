@@ -283,7 +283,13 @@
       var sel = j.elemento.querySelector('#fp-perfil');
       sel.addEventListener('change', function () { j.elemento.querySelector('#fp-emp-box').classList.toggle('oculto', sel.value !== 'empresa'); });
     }
-    async function recarregar() { lista = await dados.pessoas.listar(); desenhar(); }
+    async function recarregar() {
+      lista = await dados.pessoas.listar(); desenhar();
+      if (window.CF.avisos) {
+        window.CF.avisos.recontar();
+        lista.filter(function (p) { return p.aprovado || !p.ativo; }).forEach(function (p) { var c = document.querySelector('[data-aviso="' + p.id + '"]'); if (c) c.remove(); });
+      }
+    }
     ligarFiltros(alvo, desenhar);
     desenhar();
   }
@@ -304,10 +310,13 @@
         itens.map(function (a) {
           var n = b.testes.filter(function (t) { return t.area_id === a.id && t.ativo; }).length;
           return '<tr><td class="num">' + a.ordem + '</td><td><b>' + esc(a.nome) + '</b></td><td class="num">' + n + '</td><td>' + ui.pill(a.ativa ? 'Ativa' : 'Inativa', 'neu') + '</td>' +
-            '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + a.id + '">Editar</button></div></td></tr>';
+            '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + a.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + a.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-editar]').forEach(function (bt) {
         bt.addEventListener('click', function () { formArea(b.areas.filter(function (a) { return a.id === bt.getAttribute('data-editar'); })[0]); });
+      });
+      box.querySelectorAll('[data-excluir]').forEach(function (bt) {
+        bt.addEventListener('click', function () { excluirArea(b.areas.filter(function (a) { return a.id === bt.getAttribute('data-excluir'); })[0]); });
       });
     }
     function formArea(a) {
@@ -326,6 +335,27 @@
             await dados.banco.salvarArea({ id: a.id, nome: nome, ordem: ordem, ativa: a.id ? fundo.querySelector('#fa-ativa').checked : true });
             ui.toast('Área salva.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); return true;
           } catch (x) { if (/unique|duplicate/i.test(x.message || '')) ui.toast('Já existe uma área com este nome.', 'erro'); else erro(x); return false; }
+        } }]
+      });
+    }
+    function excluirArea(a) {
+      var ts = b.testes.filter(function (t) { return t.area_id === a.id; });
+      if (!ts.length) {
+        ui.confirmar('Excluir a área "' + a.nome + '"?', 'Ela não tem testes. Esta ação não pode ser desfeita.', 'Excluir área', 'Cancelar').then(async function (sim) {
+          if (!sim) return;
+          try { await dados.banco.excluirArea(a.id, null); ui.toast('Área excluída.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); } catch (x) { erro(x); }
+        });
+        return;
+      }
+      ui.janela({
+        titulo: 'Excluir a área "' + a.nome + '"', confirmarDescarte: false,
+        corpo: '<p style="margin:0;color:var(--texto-2)">Esta área tem <b>' + ts.length + ' teste(s)</b>. Como todo teste precisa de uma área, escolha para onde eles vão:</p>' +
+          '<label class="campo" for="ea-dest"><span>Mover os testes para <span class="obrig">*</span></span><select class="entrada" id="ea-dest"><option value="">Escolha a área…</option>' +
+          b.areas.filter(function (x) { return x.ativa && x.id !== a.id; }).map(function (x) { return '<option value="' + x.id + '">' + esc(x.nome) + '</option>'; }).join('') + '</select></label>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Mover e excluir área', principal: true, aoClicar: async function (f) {
+          var dest = f.querySelector('#ea-dest').value;
+          if (!dest) { ui.toast('Escolha a área de destino.', 'erro'); return false; }
+          try { await dados.banco.excluirArea(a.id, dest); ui.toast('Testes movidos e área excluída.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); return true; } catch (x) { erro(x); return false; }
         } }]
       });
     }
@@ -365,10 +395,13 @@
           var n = nTestes(c.id);
           var situ = !c.ativa ? ui.pill('Inativa', 'neu') : (n ? ui.pill('Ativa', 'neu') : ui.pill('Sem vínculo', 'off'));
           return '<tr><td><b>' + esc(c.nome) + '</b></td><td>' + esc(nomeQual(c.qualificacao_id)) + '</td><td class="num">' + n + '</td><td>' + situ + '</td>' +
-            '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + c.id + '">Editar</button></div></td></tr>';
+            '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + c.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + c.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-editar]').forEach(function (bt) {
         bt.addEventListener('click', function () { formCompetencia(b.competencias.filter(function (c) { return c.id === bt.getAttribute('data-editar'); })[0]); });
+      });
+      box.querySelectorAll('[data-excluir]').forEach(function (bt) {
+        bt.addEventListener('click', function () { excluirCompetencia(b.competencias.filter(function (c) { return c.id === bt.getAttribute('data-excluir'); })[0]); });
       });
     }
     function formCompetencia(c) {
@@ -381,26 +414,47 @@
             b.qualificacoes.map(function (q) { return '<option value="' + q.id + '"' + (c.qualificacao_id === q.id ? ' selected' : '') + '>' + esc(q.nome) + '</option>'; }).join('') + '</select></label>' +
           campo('fc-desc', 'Descrição padrão', c.descricao, { largo: true, area: true, ph: 'O que o avaliador deve observar' }) +
           (c.id ? marcar('fc-ativa', 'Competência ativa', c.ativa) : '') +
-          (c.id && !usada ? '<div class="largo"><button type="button" class="btn-link perigo" id="fc-excluir">Excluir esta competência</button></div>' : '') + '</div>',
+          (!c.id ? '<label class="campo largo" for="fc-teste"><span>Em qual teste ela será avaliada? <span class="obrig">*</span></span><select class="entrada" id="fc-teste"><option value="">Escolha o teste…</option>' + opcoesTestes() + '</select></label>' +
+            '<label class="campo largo" for="fc-exib"><span>Nome que o avaliador vê nesse teste</span><input class="entrada" id="fc-exib" maxlength="120" placeholder="Em branco = nome da competência"></label>' +
+            '<p class="dica largo" style="margin:0">Toda competência nova já nasce ligada a um teste.</p>' : '') + '</div>',
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar competência', principal: true, aoClicar: async function (fundo) {
           var nome = fundo.querySelector('#fc-nome').value.trim().replace(/\s+/g, ' ');
           if (!nome) { ui.toast('Informe o nome da competência.', 'erro'); return false; }
           try {
+            if (!c.id) {
+              var teste = fundo.querySelector('#fc-teste').value;
+              if (!teste) { ui.toast('Escolha o teste em que a competência será avaliada.', 'erro'); return false; }
+              await dados.banco.criarCompetenciaNoTeste({ nome: nome, qualificacao_id: fundo.querySelector('#fc-qual').value, descricao: fundo.querySelector('#fc-desc').value.trim() || null,
+                teste_id: teste, nome_exibido: fundo.querySelector('#fc-exib').value.trim() });
+            } else
             await dados.banco.salvarCompetencia({ id: c.id, nome: nome, qualificacao_id: fundo.querySelector('#fc-qual').value,
-              descricao: fundo.querySelector('#fc-desc').value.trim() || null, ativa: c.id ? fundo.querySelector('#fc-ativa').checked : true });
+              descricao: fundo.querySelector('#fc-desc').value.trim() || null, ativa: fundo.querySelector('#fc-ativa').checked });
             ui.toast('Competência salva.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); return true;
           } catch (x) { if (/unique|duplicate/i.test(x.message || '')) ui.toast('Já existe uma competência com este nome.', 'erro'); else erro(x); return false; }
         } }]
       });
-      var ex = document.getElementById('fc-excluir');
-      if (ex) ex.addEventListener('click', async function () {
-        if (!(await ui.confirmar('Excluir a competência?', 'Ela não está ligada a nenhum teste. Esta ação não pode ser desfeita.', 'Excluir', 'Cancelar'))) return;
-        try {
-          await dados.banco.excluirCompetencia(c.id);
-          document.querySelectorAll('.janela-fundo').forEach(function (f) { f.remove(); });
-          ui.toast('Competência excluída.', 'ok'); b = await dados.banco.carregarTudo(); desenhar();
-        } catch (x) { erro(x); }
-      });
+    }
+    function opcoesTestes() {
+      var html = b.areas.filter(function (a) { return a.ativa; }).sort(function (x, y) { return x.ordem - y.ordem; }).map(function (a) {
+        var ts = b.testes.filter(function (t) { return t.area_id === a.id && t.ativo; }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
+        return ts.length ? '<optgroup label="' + esc(a.nome) + '">' + ts.map(function (t) { return '<option value="' + t.id + '">' + esc(t.nome) + '</option>'; }).join('') + '</optgroup>' : '';
+      }).join('');
+      var sem = b.testes.filter(function (t) { return !t.area_id && t.ativo; });
+      return html + (sem.length ? '<optgroup label="Sem área">' + sem.map(function (t) { return '<option value="' + t.id + '">' + esc(t.nome) + '</option>'; }).join('') + '</optgroup>' : '');
+    }
+    // Opção A: competência em uso não pode ser excluída
+    async function excluirCompetencia(c) {
+      var testes = {}; b.criterios.forEach(function (x) { if (x.competencia_id === c.id) testes[x.teste_id] = 1; });
+      var nomes = b.testes.filter(function (t) { return testes[t.id]; }).map(function (t) { return t.nome; }).sort();
+      if (nomes.length) {
+        ui.janela({ titulo: 'Não é possível excluir esta competência', confirmarDescarte: false,
+          corpo: '<p style="margin:0;color:var(--texto-2)"><b>' + esc(c.nome) + '</b> está ligada a <b>' + nomes.length + ' teste(s)</b>. Remova-a desses testes primeiro (no Banco de testes), se quiser mesmo excluí-la:</p>' +
+            '<ul class="lista-pend">' + nomes.slice(0, 12).map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + (nomes.length > 12 ? '<li>… e mais ' + (nomes.length - 12) + '</li>' : '') + '</ul>',
+          botoes: [{ texto: 'Entendi', principal: true, aoClicar: function () { return true; } }] });
+        return;
+      }
+      if (!(await ui.confirmar('Excluir a competência?', '"' + c.nome + '" não está em nenhum teste. Esta ação não pode ser desfeita.', 'Excluir', 'Cancelar'))) return;
+      try { await dados.banco.excluirCompetencia(c.id); ui.toast('Competência excluída.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); } catch (x) { erro(x); }
     }
     ligarFiltros(alvo, desenhar);
     desenhar();
