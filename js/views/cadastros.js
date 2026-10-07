@@ -7,7 +7,7 @@
   'use strict';
   var ui = window.CF.ui, api = window.CF.api, dados = window.CF.dados, esc = ui.esc;
   var NOMES_PERFIL = { admin: 'Administrador', avaliador: 'Avaliador', empresa: 'Empresa' };
-  var ABAS = [['empresas', 'Empresas'], ['avaliadores', 'Avaliadores'], ['areas', 'Áreas'], ['competencias', 'Competências']];
+  var ABAS = [['empresas', 'Empresas', 'empresa'], ['avaliadores', 'Avaliadores', 'aval'], ['areas', 'Áreas', 'area'], ['testes', 'Testes', 'teste'], ['competencias', 'Competências', 'comp']];
 
   function abaAtual() {
     var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);
@@ -42,16 +42,17 @@
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.cadastros = function (area, ctx) {
     var aba = abaAtual();
-    var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', competencias: 'Nova competência' };
+    var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', testes: 'Novo teste', competencias: 'Nova competência' };
+    var corAba = ABAS.filter(function (a) { return a[0] === aba; })[0][2];
     area.innerHTML =
       '<header class="cabecalho"><div><h1>Cadastros</h1><p>Empresas, avaliadores, áreas e competências</p></div>' +
-      '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone(aba === 'avaliadores' ? 'link' : 'mais', 17) + esc(BOTOES[aba]) + '</button></header>' +
+      '<button type="button" class="btn btn-' + corAba + '" id="b-novo">' + ui.icone(aba === 'avaliadores' ? 'link' : 'mais', 17) + esc(BOTOES[aba]) + '</button></header>' +
       '<div class="abas-cad" role="tablist">' + ABAS.map(function (a) {
-        return '<a role="tab" href="#/cadastros/' + a[0] + '" aria-selected="' + (a[0] === aba) + '">' + esc(a[1]) + '<span class="n" id="n-' + a[0] + '"></span></a>';
+        return '<a role="tab" href="#/cadastros/' + a[0] + '" data-cor="' + a[2] + '" aria-selected="' + (a[0] === aba) + '"><i class="ponto-cor cor-' + a[2] + '"></i>' + esc(a[1]) + '<span class="n" id="n-' + a[0] + '"></span></a>';
       }).join('') + '</div>' +
       '<div id="aba"><div class="girando" style="margin:30px auto"></div></div>';
     var alvo = area.querySelector('#aba');
-    var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, competencias: abaCompetencias }[aba];
+    var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, testes: abaTestes, competencias: abaCompetencias }[aba];
     fn(alvo, area.querySelector('#b-novo'), ctx).catch(function (e) {
       erro(e); alvo.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível carregar. ' + esc(api.traduzErro(e)) + '</span></div>';
     });
@@ -88,7 +89,7 @@
       if (!itens.length) { box.innerHTML = vazio(lista.length ? 'Nenhuma empresa encontrada.' : 'Nenhuma empresa cadastrada ainda. Use "Nova empresa".'); return; }
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Empresa</th><th>CNPJ</th><th>Contato</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (e) {
-          var contato = [e.responsavel, e.telefone].filter(Boolean).join(' · ') || '—';
+          var contato = [e.responsavel, e.telefone_responsavel || e.telefone, e.cidade ? e.cidade + (e.uf ? '/' + e.uf : '') : null].filter(Boolean).join(' · ') || '—';
           return '<tr><td><div class="cel-empresa"><span class="logo-mini" data-logo="' + esc(e.logo_path || '') + '">' + (e.logo_path ? '' : 'SEM LOGO') + '</span>' +
             '<div><b>' + esc(e.nome_fantasia) + '</b><small>' + esc(e.razao_social) + '</small></div></div></td>' +
             '<td class="num">' + esc(ui.formatarCNPJ(e.cnpj)) + '</td><td>' + esc(contato) + '</td>' +
@@ -100,38 +101,106 @@
         dados.empresas.urlLogo(c).then(function (url) { if (url) el.innerHTML = '<img src="' + esc(url) + '" alt="">'; });
       });
       box.querySelectorAll('[data-editar]').forEach(function (b) {
-        b.addEventListener('click', function () { formEmpresa(lista.filter(function (e) { return e.id === b.getAttribute('data-editar'); })[0], recarregar); });
+        b.addEventListener('click', function () { formEmpresa(lista.filter(function (e) { return e.id === b.getAttribute('data-editar'); })[0], recarregar, lista); });
       });
     }
     async function recarregar() { lista = await dados.empresas.listar(); contar('empresas', lista.filter(function (e) { return e.ativa; }).length); desenhar(); }
     ligarFiltros(alvo, desenhar);
     desenhar();
-    botaoNovo.addEventListener('click', function () { formEmpresa(null, recarregar); });
+    botaoNovo.addEventListener('click', function () { formEmpresa(null, recarregar, lista); });
   }
 
-  function formEmpresa(e, aoSalvar) {
+  // Consulta os dados públicos da empresa na Receita Federal (BrasilAPI)
+  async function consultarCNPJ(numero) {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctrl) ctrl.abort(); }, 12000);
+    try {
+      var r = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + numero, ctrl ? { signal: ctrl.signal } : {});
+      if (r.status === 404) return { naoEncontrado: true };
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return { dados: await r.json() };
+    } finally { clearTimeout(t); }
+  }
+
+  function formEmpresa(e, aoSalvar, listaAtual) {
     e = e || {};
-    var novoLogo = null;
+    var novo = !e.id, novoLogo = null, liberado = !novo;
     var j = ui.janela({
-      titulo: e.id ? 'Editar empresa' : 'Nova empresa',
-      corpo: '<div class="form-grade">' +
-        campo('f-razao', 'Razão social', e.razao_social, { obrig: true, largo: true, ph: 'Ex.: Empresa Exemplo Ltda.' }) +
-        campo('f-fantasia', 'Nome fantasia', e.nome_fantasia, { obrig: true, ph: 'Como aparece nos relatórios' }) +
-        campo('f-cnpj', 'CNPJ', e.cnpj ? ui.formatarCNPJ(e.cnpj) : '', { obrig: true, ph: '00.000.000/0000-00', modo: 'numeric', max: 18 }) +
-        campo('f-resp', 'Responsável', e.responsavel, { ph: 'Nome' }) +
-        campo('f-tel', 'Telefone', e.telefone, { ph: '(11) 00000-0000', modo: 'tel', max: 15 }) +
-        campo('f-email', 'E-mail de contato', e.email, { largo: true, tipo: 'email', ph: 'contato@empresa.com.br' }) +
-        '<div class="campo largo"><span>Logotipo</span><div class="logo-envio"><span class="logo-mini grande" id="f-logo-previa">' + (e.logo_path ? '' : 'Prévia') + '</span>' +
-          '<span class="dica" style="flex:1;min-width:180px">PNG ou JPG, de preferência com fundo transparente. Aparece nos PDFs, no Excel e no portal.</span>' +
-          '<button type="button" class="btn btn-p" id="f-logo-btn">Escolher arquivo</button></div></div>' +
-        (e.id ? marcar('f-ativa', 'Empresa ativa', e.ativa !== false, 'Empresas inativas não aparecem para novos processos.') : '') +
+      titulo: novo ? 'Nova empresa' : 'Editar empresa',
+      corpo: (novo ? '<p class="dica" style="margin:0;font-size:14px">Comece pelo CNPJ: o sistema busca os dados na Receita Federal e preenche o resto.</p>' : '') +
+        '<div class="cnpj-linha"><label class="campo" for="f-cnpj"><span>CNPJ <span class="obrig">*</span></span>' +
+          '<input class="entrada entrada-cnpj" id="f-cnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00" value="' + esc(e.cnpj ? ui.formatarCNPJ(e.cnpj) : '') + '"></label>' +
+          '<button type="button" class="btn ' + (novo ? 'btn-pri' : '') + '" id="f-buscar">' + (novo ? 'Buscar dados' : 'Buscar de novo') + '</button></div>' +
+        '<div id="f-status"></div>' +
+        '<div id="f-resto" class="form-grade' + (liberado ? '' : ' oculto') + '">' +
+          campo('f-razao', 'Razão social', e.razao_social, { obrig: true, largo: true }) +
+          campo('f-fantasia', 'Nome fantasia', e.nome_fantasia, { obrig: true, ph: 'Como aparece nos relatórios' }) +
+          campo('f-tel', 'Telefone', e.telefone, { ph: '(11) 0000-0000', modo: 'tel', max: 15 }) +
+          campo('f-email', 'E-mail de contato', e.email, { largo: true, tipo: 'email', ph: 'contato@empresa.com.br' }) +
+          campo('f-end', 'Endereço', e.endereco, { largo: true, max: 200, ph: 'Rua, número, complemento - bairro' }) +
+          campo('f-cidade', 'Cidade / UF', e.cidade ? e.cidade + (e.uf ? ' / ' + e.uf : '') : '', { ph: 'Ex.: Carapicuíba / SP', max: 80 }) +
+          campo('f-cep', 'CEP', e.cep ? e.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '', { ph: '00000-000', modo: 'numeric', max: 9 }) +
+          campo('f-resp', 'Responsável', e.responsavel, { ph: 'Nome de quem acompanha o processo' }) +
+          campo('f-telresp', 'Telefone do responsável', e.telefone_responsavel, { ph: '(11) 00000-0000', modo: 'tel', max: 15 }) +
+          '<div class="campo largo"><span>Logotipo</span><div class="logo-envio"><span class="logo-mini grande" id="f-logo-previa">' + (e.logo_path ? '' : 'Prévia') + '</span>' +
+            '<span class="dica" style="flex:1;min-width:180px">PNG ou JPG, de preferência com fundo transparente. Aparece nos PDFs, no Excel e no portal.</span>' +
+            '<button type="button" class="btn btn-p" id="f-logo-btn">Escolher arquivo</button></div></div>' +
+          (e.id ? marcar('f-ativa', 'Empresa ativa', e.ativa !== false, 'Empresas inativas não aparecem para novos processos.') : '') +
         '</div>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar empresa', principal: true, aoClicar: salvar }]
     });
     var el = j.elemento;
-    var cnpj = el.querySelector('#f-cnpj'), tel = el.querySelector('#f-tel');
-    cnpj.addEventListener('input', function () { cnpj.value = ui.formatarCNPJ(cnpj.value); });
-    tel.addEventListener('input', function () { tel.value = ui.formatarTelefone(tel.value); });
+    var cnpj = el.querySelector('#f-cnpj'), status = el.querySelector('#f-status'), resto = el.querySelector('#f-resto');
+    var btSalvar = el.querySelector('.janela-pe .btn-pri');
+    btSalvar.disabled = !liberado;
+    function liberar() { liberado = true; resto.classList.remove('oculto'); btSalvar.disabled = false; }
+    function avisar(tipo, html) { status.innerHTML = html ? '<div class="aviso aviso-' + tipo + '">' + (tipo === 'carregando' ? '<span class="girando mini"></span>' : ui.icone(tipo === 'ok' ? 'ok' : 'alerta', 20)) + '<span>' + html + '</span></div>' : ''; }
+    function definir(id, v) { var x = el.querySelector(id); if (x && v != null && v !== '') { x.value = v; } }
+    ['#f-tel', '#f-telresp'].forEach(function (id) { var x = el.querySelector(id); x.addEventListener('input', function () { x.value = ui.formatarTelefone(x.value); }); });
+    var cep = el.querySelector('#f-cep'); cep.addEventListener('input', function () { cep.value = ui.soNumeros(cep.value).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2'); });
+
+    var ultimaBusca = '';
+    async function buscar() {
+      var n = ui.soNumeros(cnpj.value);
+      if (!ui.cnpjValido(n)) { avisar('erro', 'CNPJ inválido. Confira os números.'); return; }
+      if ((listaAtual || []).some(function (x) { return x.cnpj === n && x.id !== e.id; })) { avisar('erro', 'Já existe uma empresa cadastrada com este CNPJ.'); return; }
+      ultimaBusca = n;
+      avisar('carregando', 'Consultando a Receita Federal…');
+      try {
+        var r = await consultarCNPJ(n);
+        if (ultimaBusca !== n) return;
+        if (r.naoEncontrado) { avisar('erro', 'CNPJ não encontrado na Receita Federal. Confira o número ou <button type="button" class="btn-link" id="f-manual">preencha manualmente</button>.'); ligarManual(); return; }
+        var d = r.dados || {};
+        definir('#f-razao', d.razao_social);
+        definir('#f-fantasia', d.nome_fantasia || d.razao_social);
+        if (d.ddd_telefone_1) definir('#f-tel', ui.formatarTelefone(d.ddd_telefone_1));
+        if (d.email) definir('#f-email', String(d.email).toLowerCase());
+        var end = [[d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(' '), d.numero].filter(Boolean).join(', ') + (d.complemento ? ' ' + d.complemento : '') + (d.bairro ? ' - ' + d.bairro : '');
+        definir('#f-end', end.trim());
+        if (d.municipio) definir('#f-cidade', d.municipio + (d.uf ? ' / ' + d.uf : ''));
+        if (d.cep) definir('#f-cep', ui.soNumeros(d.cep).replace(/^(\d{5})(\d{3})$/, '$1-$2'));
+        situacao = d.descricao_situacao_cadastral || null;
+        liberar();
+        var ativa = !situacao || /ATIVA/i.test(situacao);
+        avisar(ativa ? 'ok' : 'info', 'Dados encontrados na Receita Federal' + (situacao ? ' · empresa <b>' + esc(situacao) + '</b>' : '') + '. ' +
+          (ativa ? 'Confira e complete o que faltar.' : 'Atenção: a empresa não está ativa na Receita.'));
+        el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true }));
+      } catch (x) {
+        console.warn('Consulta de CNPJ:', x);
+        avisar('info', 'Não foi possível consultar a Receita agora. <button type="button" class="btn-link" id="f-manual">Preencher manualmente</button>');
+        ligarManual();
+      }
+    }
+    var situacao = e.situacao_receita || null;
+    function ligarManual() { var m = el.querySelector('#f-manual'); if (m) m.addEventListener('click', function () { liberar(); avisar('', ''); el.querySelector('#f-razao').focus(); }); }
+    var espera = null;
+    cnpj.addEventListener('input', function () {
+      cnpj.value = ui.formatarCNPJ(cnpj.value);
+      clearTimeout(espera);
+      if (novo && ui.soNumeros(cnpj.value).length === 14) espera = setTimeout(buscar, 350);
+    });
+    el.querySelector('#f-buscar').addEventListener('click', buscar);
+    if (novo) cnpj.focus();
     if (e.logo_path) dados.empresas.urlLogo(e.logo_path).then(function (u) { if (u) el.querySelector('#f-logo-previa').innerHTML = '<img src="' + esc(u) + '" alt="">'; });
     el.querySelector('#f-logo-btn').addEventListener('click', function () {
       var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp,image/svg+xml';
@@ -146,18 +215,23 @@
     });
 
     async function salvar(fundo) {
+      if (!liberado) { ui.toast('Busque o CNPJ primeiro.', 'erro'); return false; }
       var v = function (id) { var x = fundo.querySelector(id); return x ? x.value.trim() : ''; };
+      var cid = v('#f-cidade').split('/');
+      var uf = (cid[1] || '').trim().toUpperCase();
       var obj = {
         id: e.id, razao_social: v('#f-razao').replace(/\s+/g, ' '), nome_fantasia: v('#f-fantasia').replace(/\s+/g, ' '),
-        cnpj: ui.soNumeros(v('#f-cnpj')), responsavel: v('#f-resp') || null, telefone: v('#f-tel') || null,
-        email: v('#f-email').toLowerCase() || null
+        cnpj: ui.soNumeros(v('#f-cnpj')), telefone: v('#f-tel') || null, email: v('#f-email').toLowerCase() || null,
+        endereco: v('#f-end') || null, cidade: (cid[0] || '').trim() || null, uf: /^[A-Z]{2}$/.test(uf) ? uf : null,
+        cep: ui.soNumeros(v('#f-cep')) || null, responsavel: v('#f-resp') || null, telefone_responsavel: v('#f-telresp') || null,
+        situacao_receita: situacao
       };
       if (e.id) obj.ativa = fundo.querySelector('#f-ativa').checked;
       if (!obj.razao_social || !obj.nome_fantasia) { ui.toast('Preencha a razão social e o nome fantasia.', 'erro'); return false; }
       if (!ui.cnpjValido(obj.cnpj)) { ui.toast('CNPJ inválido. Confira os números.', 'erro'); return false; }
+      if (obj.cep && obj.cep.length !== 8) { ui.toast('CEP inválido (8 números).', 'erro'); return false; }
       if (obj.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(obj.email)) { ui.toast('E-mail de contato inválido.', 'erro'); return false; }
-      var botao = fundo.querySelector('.janela-pe .btn-pri');
-      return ui.executar(botao, 'Salvando…', async function () {
+      return ui.executar(fundo.querySelector('.janela-pe .btn-pri'), 'Salvando…', async function () {
         try {
           var salva = await dados.empresas.salvar(obj);
           if (novoLogo) {
@@ -362,6 +436,45 @@
     ligarFiltros(alvo, desenhar);
     desenhar();
     botaoNovo.addEventListener('click', function () { formArea(null); });
+  }
+
+  /* ================================================================
+     TESTES (mesmo editor do Banco de testes)
+     ================================================================ */
+  async function abaTestes(alvo, botaoNovo) {
+    var estado = { b: await dados.banco.carregarTudo(), abertas: {}, recarregar: async function () { estado.b = await dados.banco.carregarTudo(); desenhar(); } };
+    var ed = window.CF.bancoEditor(estado);
+    function areaDe(t) { return estado.b.areas.filter(function (a) { return a.id === t.area_id; })[0]; }
+    function comps(t) { return estado.b.criterios.filter(function (c) { return c.teste_id === t.id && c.competencia_id; }).length; }
+    alvo.innerHTML = barraBusca('Buscar teste',
+      '<select class="entrada sel-filtro" data-filtro id="f-area" aria-label="Área"><option value="">Todas as áreas</option>' +
+        estado.b.areas.slice().sort(function (x, y) { return x.ordem - y.ordem; }).map(function (a) { return '<option value="' + a.id + '">' + esc(a.nome) + '</option>'; }).join('') +
+        '<option value="sem">Sem área</option></select>') + '<div id="lista"></div>';
+    function desenhar() {
+      var b = estado.b;
+      contar('testes', b.testes.filter(function (t) { return t.ativo; }).length);
+      var f = filtro(alvo), ar = alvo.querySelector('#f-area').value;
+      var itens = b.testes.filter(function (t) {
+        if (!t.ativo && !f.inativos) return false;
+        if (ar === 'sem' && t.area_id) return false;
+        if (ar && ar !== 'sem' && t.area_id !== ar) return false;
+        return !f.texto || ui.normalizar(t.nome).indexOf(f.texto) >= 0;
+      }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
+      var box = alvo.querySelector('#lista');
+      if (!itens.length) { box.innerHTML = vazio('Nenhum teste encontrado.'); return; }
+      box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Teste</th><th>Área</th><th>Competências</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
+        itens.map(function (t) {
+          var a = areaDe(t), n = comps(t);
+          var situ = !t.ativo ? ui.pill('Inativo', 'neu') : (!n ? ui.pill('Sem vínculo', 'off') : (t.padrao ? ui.pill('Padrão', 'neu') : ui.pill('Ativo', 'neu')));
+          return '<tr><td><b>' + esc(t.nome) + '</b></td><td>' + (a ? '<span class="tag-area">' + esc(a.nome) + '</span>' : ui.pill('sem área', 'off')) + '</td><td class="num">' + n + '</td><td>' + situ + '</td>' +
+            '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + t.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + t.id + '">Excluir</button></div></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      box.querySelectorAll('[data-editar]').forEach(function (bt) { bt.addEventListener('click', function () { ed.formTeste(estado.b.testes.filter(function (t) { return t.id === bt.getAttribute('data-editar'); })[0]); }); });
+      box.querySelectorAll('[data-excluir]').forEach(function (bt) { bt.addEventListener('click', function () { ed.excluirTeste(estado.b.testes.filter(function (t) { return t.id === bt.getAttribute('data-excluir'); })[0]); }); });
+    }
+    ligarFiltros(alvo, desenhar);
+    desenhar();
+    botaoNovo.addEventListener('click', function () { ed.formTeste(null, null); });
   }
 
   /* ================================================================

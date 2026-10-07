@@ -72,6 +72,7 @@
     atualizarConexao();
     window.CF.online.iniciar(p);
     window.CF.avisos.iniciar(p);
+    window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 30 minutos sem uso. Entre novamente.' } : null); });
 
     var lateral = raiz.querySelector('#lateral'), bMenu = raiz.querySelector('#b-menu');
     function fecharMenu() {
@@ -192,13 +193,15 @@
     }
   }
 
-  async function sair() {
+  async function sair(mensagem) {
+    if (mensagem && mensagem.type) mensagem = null; // clique no botão Sair
+    window.CF.inatividade.parar();
     window.CF.online.parar();
     window.CF.avisos.parar();
     await sb.auth.signOut();
     estado.sessao = null; estado.perfil = null;
     history.replaceState(null, '', window.location.pathname);
-    auth.mostrarAcesso(raiz, 'entrar');
+    auth.mostrarAcesso(raiz, 'entrar', mensagem || null);
   }
 
   sb.auth.onAuthStateChange(function (evento, sessao) {
@@ -213,7 +216,7 @@
         });
         return;
       }
-      if (evento === 'SIGNED_OUT') { estado.sessao = null; estado.perfil = null; if (!estado.emRecuperacao) auth.mostrarAcesso(raiz, 'entrar'); return; }
+      if (evento === 'SIGNED_OUT') { estado.sessao = null; estado.perfil = null; window.CF.inatividade.parar(); if (!estado.emRecuperacao && !document.querySelector('.acesso')) auth.mostrarAcesso(raiz, 'entrar'); return; }
       if (evento === 'SIGNED_IN' || evento === 'INITIAL_SESSION') {
         var mudouUsuario = !estado.sessao || !sessao || estado.sessao.user.id !== sessao.user.id;
         estado.sessao = sessao;
