@@ -9,12 +9,6 @@
   var NOMES_PERFIL = { admin: 'Administrador', avaliador: 'Avaliador', empresa: 'Empresa' };
   var ABAS = [['empresas', 'Empresas', 'empresa'], ['avaliadores', 'Avaliadores', 'aval'], ['areas', 'Áreas', 'area'], ['testes', 'Testes', 'teste'], ['competencias', 'Competências', 'comp']];
 
-  function abaAtual() {
-    var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);
-    var a = m ? m[1] : 'empresas';
-    return ABAS.some(function (x) { return x[0] === a; }) ? a : 'empresas';
-  }
-
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
 
   // Campo de formulário (label + entrada)
@@ -39,23 +33,25 @@
   /* ================================================================
      Tela principal
      ================================================================ */
-  window.CF.telas = window.CF.telas || {};
-  window.CF.telas.cadastros = function (area, ctx) {
-    var aba = abaAtual();
-    var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', testes: 'Novo teste', competencias: 'Nova competência' };
-    var corAba = ABAS.filter(function (a) { return a[0] === aba; })[0][2];
-    area.innerHTML =
-      '<header class="cabecalho"><div><h1>Cadastros</h1><p>Empresas, avaliadores, áreas e competências</p></div>' +
-      '<button type="button" class="btn btn-' + corAba + '" id="b-novo">' + ui.icone(aba === 'avaliadores' ? 'link' : 'mais', 17) + esc(BOTOES[aba]) + '</button></header>' +
-      '<div class="abas-cad" role="tablist">' + ABAS.map(function (a) {
-        return '<a role="tab" href="#/cadastros/' + a[0] + '" data-cor="' + a[2] + '" aria-selected="' + (a[0] === aba) + '"><i class="ponto-cor cor-' + a[2] + '"></i>' + esc(a[1]) + '<span class="n" id="n-' + a[0] + '"></span></a>';
-      }).join('') + '</div>' +
-      '<div id="aba"><div class="girando" style="margin:30px auto"></div></div>';
-    var alvo = area.querySelector('#aba');
-    var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, testes: abaTestes, competencias: abaCompetencias }[aba];
-    fn(alvo, area.querySelector('#b-novo'), ctx).catch(function (e) {
-      erro(e); alvo.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível carregar. ' + esc(api.traduzErro(e)) + '</span></div>';
-    });
+  /* Página de um item das Configurações (empresas, avaliadores, áreas, testes, competências).
+     Chamada por views/configuracoes.js. */
+  var TITULOS = { empresas: ['Empresas', 'Empresas parceiras, com CNPJ, contato e logotipo'], avaliadores: ['Avaliadores', 'Quem tem acesso ao sistema e a aprovação de novos cadastros'],
+    areas: ['Áreas', 'Eixos do gráfico de radar'], testes: ['Testes', 'Testes do banco e as competências de cada um'], competencias: ['Competências', 'Competências avaliadas nos testes'] };
+  window.CF.configPaginas = {
+    itens: ABAS,
+    render: function (area, aba, ctx) {
+      var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', testes: 'Novo teste', competencias: 'Nova competência' };
+      var corAba = ABAS.filter(function (a) { return a[0] === aba; })[0][2];
+      area.innerHTML = '<a class="voltar" href="#/config">← Configurações</a>' +
+        '<header class="cabecalho"><div><h1><i class="ponto-cor grande cor-' + corAba + '"></i>' + esc(TITULOS[aba][0]) + '</h1><p>' + esc(TITULOS[aba][1]) + '</p></div>' +
+        '<button type="button" class="btn btn-' + corAba + '" id="b-novo">' + ui.icone(aba === 'avaliadores' ? 'link' : 'mais', 17) + esc(BOTOES[aba]) + '</button></header>' +
+        '<div id="aba"><div class="girando" style="margin:30px auto"></div></div>';
+      var alvo = area.querySelector('#aba');
+      var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, testes: abaTestes, competencias: abaCompetencias }[aba];
+      fn(alvo, area.querySelector('#b-novo'), ctx).catch(function (e) {
+        erro(e); alvo.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível carregar. ' + esc(api.traduzErro(e)) + '</span></div>';
+      });
+    }
   };
 
   // Liga busca + "mostrar inativos" a uma função de desenho

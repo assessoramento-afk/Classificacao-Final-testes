@@ -102,5 +102,11 @@
     }
   };
 
-  window.CF.dados = { empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  /* ---------- Configurações gerais (linha única) ---------- */
+  var config = {
+    carregar: function () { return q(sb.from('configuracoes').select('*').eq('id', 1).single()); },
+    salvar: function (campos) { return q(sb.from('configuracoes').update(campos).eq('id', 1).select().single()); }
+  };
+
+  window.CF.dados = { config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();
