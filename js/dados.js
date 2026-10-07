@@ -108,5 +108,18 @@
     salvar: function (campos) { return q(sb.from('configuracoes').update(campos).eq('id', 1).select().single()); }
   };
 
-  window.CF.dados = { config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  /* ---------- Processos ---------- */
+  var processos = {
+    listar: function () { return q(sb.from('processos').select('*').order('criado_em', { ascending: false })); },
+    obter: function (id) { return q(sb.from('processos').select('*').eq('id', id).single()); },
+    testes: function (id) { return q(sb.from('processo_testes').select('*').eq('processo_id', id).order('ordem')); },
+    salvar: function (p) { return q(sb.rpc('salvar_processo', { p: p })); },
+    excluir: function (id) { return q(sb.from('processos').delete().eq('id', id)); },
+    modelos: async function () {
+      var r = await Promise.all([q(sb.from('modelos_processo').select('*').order('nome')), q(sb.from('modelo_testes').select('*').order('ordem'))]);
+      return r[0].filter(function (m) { return m.ativo !== false; }).map(function (m) { return Object.assign({}, m, { testes: r[1].filter(function (x) { return x.modelo_id === m.id; }).map(function (x) { return x.teste_id; }) }); });
+    }
+  };
+
+  window.CF.dados = { processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();

@@ -87,22 +87,7 @@
         '<p class="dica" style="margin:0">Cada processo copia estes valores quando é criado e pode ajustá-los até a primeira nota ser lançada. Depois disso, ficam travados naquele processo.</p>' +
         '<div class="botoes-fim"><button type="button" class="btn" id="n-padrao">Voltar ao padrão (3,50 e 3,30)</button><button type="button" class="btn btn-pri" id="n-salvar">Salvar</button></div></section>';
     var ap = area.querySelector('#n-ap'), bk = area.querySelector('#n-bk');
-    function pct(v) { return Math.max(0, Math.min(100, (v - 1) / 4 * 100)); }
-    function desenhar() {
-      var a = numero(ap.value), k = numero(bk.value);
-      var ok = a != null && k != null && a >= 1 && a <= 5 && k >= 1 && k <= 5 && k <= a;
-      var box = area.querySelector('#regua');
-      if (!ok) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Use valores entre 1 e 5, com o backup menor ou igual ao aprovado.</span></div>'; return; }
-      var ka = fmt(k), aa = fmt(a), ab = fmt(Math.max(k, a - 0.01));
-      box.innerHTML = '<div class="regua"><div class="trilho"><div class="r" style="width:' + pct(k) + '%"></div><div class="b" style="width:' + (pct(a) - pct(k)) + '%"></div><div class="a" style="flex:1"></div></div>' +
-        '<div class="marca esq" style="left:calc(6px + (100% - 12px) * ' + (pct(k) / 100) + ')"><span>' + ka + '</span><i></i></div>' +
-        '<div class="marca dir" style="left:calc(6px + (100% - 12px) * ' + (pct(a) / 100) + ')"><span>' + aa + '</span><i></i></div>' +
-        '<div class="ticks">' + [1, 2, 3, 4, 5].map(function (v) { return '<span style="left:' + pct(v) + '%">' + v + '</span>'; }).join('') + '</div></div>' +
-        '<div class="faixas">' +
-          '<div class="faixa-c" style="--cf:var(--erro)"><span class="bol"><i></i></span><div><b>Reprovado</b><small>abaixo de ' + ka + '</small></div></div>' +
-          '<div class="faixa-c" style="--cf:var(--backup)"><span class="bol"><i></i></span><div><b>Backup</b><small>' + (a === k ? 'sem faixa de backup' : 'de ' + ka + ' a ' + ab) + '</small></div></div>' +
-          '<div class="faixa-c" style="--cf:var(--ok)"><span class="bol"><i></i></span><div><b>Aprovado</b><small>' + aa + ' ou mais</small></div></div></div>';
-    }
+    function desenhar() { window.CF.desenharRegua(area.querySelector('#regua'), numero(ap.value), numero(bk.value)); }
     ap.addEventListener('input', desenhar); bk.addEventListener('input', desenhar);
     area.querySelector('#n-padrao').addEventListener('click', function () { ap.value = '3,50'; bk.value = '3,30'; desenhar(); });
     area.querySelector('#n-salvar').addEventListener('click', function (ev) {
@@ -116,6 +101,23 @@
     });
     desenhar();
   }
+
+  // Régua das notas de corte (usada aqui e no Novo processo)
+  window.CF.desenharRegua = function (box, a, k) {
+    function pct(v) { return Math.max(0, Math.min(100, (v - 1) / 4 * 100)); }
+    var ok = a != null && k != null && a >= 1 && a <= 5 && k >= 1 && k <= 5 && k <= a;
+    if (!ok) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Use valores entre 1 e 5, com o backup menor ou igual ao aprovado.</span></div>'; return false; }
+    var ka = fmt(k), aa = fmt(a), ab = fmt(Math.max(k, a - 0.01));
+    box.innerHTML = '<div class="regua"><div class="trilho"><div class="r" style="width:' + pct(k) + '%"></div><div class="b" style="width:' + (pct(a) - pct(k)) + '%"></div><div class="a" style="flex:1"></div></div>' +
+      '<div class="marca esq" style="left:calc(6px + (100% - 12px) * ' + (pct(k) / 100) + ')"><span>' + ka + '</span><i></i></div>' +
+      '<div class="marca dir" style="left:calc(6px + (100% - 12px) * ' + (pct(a) / 100) + ')"><span>' + aa + '</span><i></i></div>' +
+      '<div class="ticks">' + [1, 2, 3, 4, 5].map(function (v) { return '<span style="left:' + pct(v) + '%">' + v + '</span>'; }).join('') + '</div></div>' +
+      '<div class="faixas">' +
+        '<div class="faixa-c" style="--cf:var(--erro)"><span class="bol"><i></i></span><div><b>Reprovado</b><small>abaixo de ' + ka + '</small></div></div>' +
+        '<div class="faixa-c" style="--cf:var(--backup)"><span class="bol"><i></i></span><div><b>Backup</b><small>' + (a === k ? 'sem faixa de backup' : 'de ' + ka + ' a ' + ab) + '</small></div></div>' +
+        '<div class="faixa-c" style="--cf:var(--ok)"><span class="bol"><i></i></span><div><b>Aprovado</b><small>' + aa + ' ou mais</small></div></div></div>';
+    return true;
+  };
 
   /* ---------- Pré-reserva ---------- */
   async function paginaPreReserva(area) {

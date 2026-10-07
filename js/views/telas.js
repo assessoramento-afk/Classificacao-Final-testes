@@ -30,7 +30,7 @@
       ? [['Configurações', 'Empresas, avaliadores, banco de testes e padrões dos processos.', 'Disponível', '#/config'],
          ['Banco de testes', 'Áreas, testes e competências em cards.', 'Disponível', '#/banco'],
          ['Cadastros', 'Jovens e turmas dos processos seletivos.', 'Fase 2'],
-         ['Processos e agenda', 'Processos, agenda com pré-reserva e crachás.', 'Fase 2']]
+         ['Processos', 'Processos seletivos de cada empresa.', 'Disponível', '#/processos']]
       : [['Lançamento de notas', 'Pelo celular ou computador, também sem internet.', 'Fase 3'],
          ['Agenda', 'Consulta das turmas marcadas.', 'Fase 2'],
          ['Banco de testes', 'Consulta dos testes e critérios de avaliação.', 'Disponível', '#/banco']];
@@ -42,8 +42,6 @@
       }).join('') + '</div>';
   };
 
-  window.CF.telas.processos = emConstrucao('Processos', 'Processos seletivos, turmas e candidatos.', 'Fase 2',
-    ['Montagem do processo com empresa, vaga, testes e turmas', 'Cadastro e importação de candidatos', 'Ranking parcial e final']);
   window.CF.telas.agenda = emConstrucao('Agenda', 'Uma turma por dia, com pré-reserva.', 'Fase 2',
     ['Calendário mensal e semanal', 'Pré-reserva com prazo e aviso de vencimento', 'Bloqueio de feriados e eventos']);
   // Cadastros: jovens e turmas (Fase 2). Endereços antigos de cadastros vão para Configurações.
