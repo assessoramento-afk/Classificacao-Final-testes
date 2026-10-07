@@ -42,8 +42,6 @@
       }).join('') + '</div>';
   };
 
-  window.CF.telas.agenda = emConstrucao('Agenda', 'Uma turma por dia, com pré-reserva.', 'Fase 2',
-    ['Calendário mensal e semanal', 'Pré-reserva com prazo e aviso de vencimento', 'Bloqueio de feriados e eventos']);
   // Cadastros: jovens e turmas (Fase 2). Endereços antigos de cadastros vão para Configurações.
   window.CF.telas.cadastros = function (area) {
     var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);

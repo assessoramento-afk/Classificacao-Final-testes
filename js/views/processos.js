@@ -24,6 +24,15 @@
     if (p.data_inicio && p.data_fim && p.data_inicio !== p.data_fim) return dataBR(p.data_inicio) + '–' + dataBR(p.data_fim);
     return dataBR(p.data_inicio || p.data_fim);
   }
+  function turmasDe(ag, pid) { return ag ? ag.turmas.filter(function (t) { return t.processo_id === pid; }) : []; }
+  function diasDaTurma(ag, tid) { return ag ? ag.dias.filter(function (d) { return d.turma_id === tid; }).map(function (d) { return d.data; }).sort() : []; }
+  // Período a partir das turmas; sem turmas, usa a previsão do processo
+  function periodoReal(ag, p) {
+    var dias = []; turmasDe(ag, p.id).forEach(function (t) { dias = dias.concat(diasDaTurma(ag, t.id)); });
+    if (!dias.length) return periodo(p);
+    dias.sort(); var a = dias[0], b = dias[dias.length - 1];
+    return a === b ? dataBR(a) : dataBR(a) + '–' + dataBR(b);
+  }
   function selo(s) { var x = SITUACOES[s] || SITUACOES.montagem; return '<span class="st" style="--sc:' + x[1] + '"><i></i>' + esc(x[0]) + '</span>'; }
   function logoHTML(emp, classe) { return '<span class="logo-mini ' + (classe || '') + '" data-logo="' + esc((emp && emp.logo_path) || '') + '">' + (emp && emp.logo_path ? '' : 'SEM LOGO') + '</span>'; }
   function carregarLogos(raiz) {
@@ -52,8 +61,8 @@
       (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + 'Novo processo</button>' : '') + '</header>' +
       '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-p" placeholder="Buscar por empresa, vaga ou processo"></label></div>' +
       '<div class="filtros" id="filtros" role="group" aria-label="Situação"></div><div id="procs"><div class="girando" style="margin:30px auto"></div></div>';
-    var procs = [], empresas = [];
-    try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar()]); procs = r[0]; empresas = r[1]; }
+    var procs = [], empresas = [], ag = null;
+    try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar(), dados.agenda.carregarTudo().catch(function () { return null; })]); procs = r[0]; empresas = r[1]; ag = r[2]; }
     catch (e) { erro(e); area.querySelector('#procs').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
     if (admin) area.querySelector('#b-novo').addEventListener('click', function () { assistente(null, 1, ctx); });
     area.querySelector('#busca-p').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
@@ -80,7 +89,7 @@
         return '<a class="card proc" href="#/processos/' + p.id + '" style="--sc:' + cor + '">' +
           '<div class="proc-cab">' + logoHTML(e) + '<div class="proc-tit"><h3>' + esc(e.nome_fantasia || 'Empresa') + '</h3><small>' + esc(p.vaga) + ' · ' + esc(p.identificacao) + '</small>' +
           '<div>' + selo(p.situacao) + '</div></div></div>' +
-          '<div class="nums"><div><b>0</b><span>turmas</span></div><div><b>0</b><span>jovens</span></div><div><b>' + esc(periodo(p)) + '</b><span>período</span></div></div></a>';
+          '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>0</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div></a>';
       }).join('') + '</div>';
       carregarLogos(box);
     }
@@ -93,13 +102,17 @@
   async function painel(area, ctx, id) {
     var admin = ctx.perfil.perfil === 'admin';
     area.innerHTML = '<a class="voltar" href="#/processos">← Processos</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
-    var p, testesProc, empresas, b;
+    var p, testesProc, empresas, b, ag;
     try {
-      var r = await Promise.all([dados.processos.obter(id), dados.processos.testes(id), dados.empresas.listar(), dados.banco.carregarTudo()]);
-      p = r[0]; testesProc = r[1]; empresas = r[2]; b = r[3];
+      var r = await Promise.all([dados.processos.obter(id), dados.processos.testes(id), dados.empresas.listar(), dados.banco.carregarTudo(), dados.agenda.carregarTudo()]);
+      p = r[0]; testesProc = r[1]; empresas = r[2]; b = r[3]; ag = r[4];
     } catch (e) { erro(e); area.querySelector('#painel').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Processo não encontrado.</span></div>'; return; }
     var e = porId(empresas, p.empresa_id) || {};
     var montagem = p.situacao === 'montagem';
+    var turmas = turmasDe(ag, p.id).sort(function (x, y) { return (diasDaTurma(ag, x.id)[0] || '').localeCompare(diasDaTurma(ag, y.id)[0] || ''); });
+    var podeTurma = admin && (p.situacao === 'montagem' || p.situacao === 'andamento');
+    var vagasTot = turmas.reduce(function (s2, t) { return s2 + t.vagas; }, 0);
+    var falta = [turmas.length ? null : 'turma', 'jovens'].filter(Boolean);
     var etapas = [['montagem', 'Montagem', 'dados, testes, turmas e jovens'], ['andamento', 'Em andamento', 'lançamento das notas'], ['revisao', 'Revisão', 'conferência e fechamento'], ['liberado', 'Liberado', 'resultado para a empresa']];
     var idxAtual = etapas.map(function (x) { return x[0]; }).indexOf(p.situacao);
     var porArea = {};
@@ -107,9 +120,9 @@
     var resumoAreas = Object.keys(porArea).map(function (k) { return k + ' ' + porArea[k]; }).join(' · ');
     area.querySelector('#painel').innerHTML =
       '<header class="cabecalho"><div class="painel-tit">' + logoHTML(e, 'grande') + '<div><h1>' + esc(e.nome_fantasia || '') + ' · ' + esc(p.vaga) + '</h1>' +
-        '<p>' + esc(p.identificacao) + ' · período ' + esc(periodo(p)) + '</p></div></div>' +
+        '<p>' + esc(p.identificacao) + ' · período ' + esc(periodoReal(ag, p)) + '</p></div></div>' +
         '<div class="painel-acoes">' + selo(p.situacao) +
-        (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><button type="button" class="btn btn-pri" id="p-iniciar" disabled title="Disponível depois das etapas Turmas e Jovens">Iniciar processo</button>' : '') + '</div></header>' +
+        (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><div class="iniciar-box"><button type="button" class="btn btn-pri btn-iniciar" id="p-iniciar" disabled>Iniciar processo</button><small>Falta: ' + esc(falta.join(' e ')) + '</small></div>' : '') + '</div></header>' +
       '<div class="etapas" role="list">' + etapas.map(function (x, i) {
         return '<div role="listitem" class="' + (i < idxAtual ? 'feita' : (i === idxAtual ? 'atual' : '')) + '"' + (i === idxAtual ? ' aria-current="step"' : '') + '><b>' + (i + 1) + ' · ' + esc(x[1]) + '</b>' + esc(x[2]) + '</div>';
       }).join('') + '</div>' +
@@ -119,21 +132,84 @@
         '<section class="card bloco card-cor" style="--cor:var(--c-padrao)"><span class="lbl">Notas de corte</span><h2>' + fmtNota(p.corte_aprovado) + ' · ' + fmtNota(p.corte_backup) + '</h2>' +
           '<p>Aprovado a partir de ' + fmtNota(p.corte_aprovado) + ' · Backup a partir de ' + fmtNota(p.corte_backup) + '. ' + (montagem ? 'Podem mudar até a primeira nota.' : 'Travadas neste processo.') + '</p>' +
           (admin && montagem ? '<div class="bloco-botoes"><button type="button" class="btn btn-p" id="p-aj-notas">Ajustar</button></div>' : '') + '</section>' +
-        '<section class="card bloco card-cor em-espera" style="--cor:var(--c-area)"><span class="lbl">Turmas · Etapa 2.2</span><h2>Nenhuma turma</h2><p>As datas são escolhidas na agenda (uma turma por dia).</p><div class="bloco-botoes"><button type="button" class="btn btn-p" disabled>+ Turma</button></div></section>' +
+        '<section class="card bloco card-cor" style="--cor:var(--c-area)"><span class="lbl">Turmas</span><h2>' + (turmas.length ? turmas.length + ' turma' + (turmas.length > 1 ? 's' : '') + ' · até ' + vagasTot + ' vagas' : 'Nenhuma turma') + '</h2>' +
+          '<p>' + (turmas.length ? esc(turmas.map(function (t) { return t.nome + ': ' + diasDaTurma(ag, t.id).map(window.CF.datas.curta).join(' e '); }).join(' · ')) : 'Uma turma por dia, com 1 ou 2 dias.') + '</p>' +
+          '<div class="bloco-botoes">' + (podeTurma ? '<button type="button" class="btn btn-p" id="p-nova-turma">+ Turma</button>' : '') + '</div></section>' +
         '<section class="card bloco card-cor em-espera" style="--cor:var(--c-aval)"><span class="lbl">Jovens · Etapa 2.3</span><h2>Nenhum jovem</h2><p>Cadastro e importação da lista de candidatos.</p><div class="bloco-botoes"><button type="button" class="btn btn-p" disabled>+ Jovens</button></div></section>' +
       '</div>' +
-      (montagem ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Para <b>iniciar</b>: pelo menos 1 turma, 1 jovem e 1 teste. Ao iniciar, a configuração de testes fica guardada e a lista de jovens de cada turma vai para os avaliadores. (Turmas e jovens chegam nas próximas etapas.)</span></div>' : '') +
+      (turmas.length ? '<section class="card bloco card-cor" style="--cor:var(--c-area)"><span class="lbl">Turmas do processo</span><div class="turmas-lista">' + turmas.map(function (t) {
+        var dias = diasDaTurma(ag, t.id);
+        return '<div class="tlinha"><div class="tl-txt"><b>' + esc(t.nome) + '</b><small>' + esc(window.CF.datas.listaDias(dias)) + ' · ' + dias.length + ' dia' + (dias.length > 1 ? 's' : '') + (t.horario ? ' · ' + esc(t.horario) : '') + ' · ' + t.vagas + ' vagas</small></div>' +
+          (podeTurma ? '<div class="acoes"><button type="button" class="btn btn-p" data-ed-turma="' + t.id + '">Editar</button>' + (montagem ? '<button type="button" class="btn btn-p btn-perigo" data-ex-turma="' + t.id + '">Excluir</button>' : '') + '</div>' : '') + '</div>';
+      }).join('') + '</div><span class="dica">As datas ficam travadas na agenda. Remarcar uma turma libera os dias antigos e trava os novos.</span></section>' : '') +
+      (montagem ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Para <b>iniciar</b>: pelo menos 1 turma, 1 jovem e 1 teste. Ao iniciar, a configuração de testes fica guardada e a lista de jovens de cada turma vai para os avaliadores. (Jovens chegam na próxima etapa.)</span></div>' : '') +
       (p.observacoes ? '<section class="card bloco"><span class="lbl">Observações</span><p style="white-space:pre-wrap">' + esc(p.observacoes) + '</p></section>' : '') +
       (admin && montagem ? '<div><button type="button" class="btn-link perigo" id="p-excluir">Excluir este processo</button></div>' : '');
     carregarLogos(area);
     var q = function (s) { return area.querySelector(s); };
     q('#p-ver-testes').addEventListener('click', function () { verTestes(p, testesProc, b); });
+    var recarregarPainel = function () { window.dispatchEvent(new HashChangeEvent('hashchange')); };
+    if (q('#p-nova-turma')) q('#p-nova-turma').addEventListener('click', function () { formTurma(p, null, ag, empresas, recarregarPainel); });
+    area.querySelectorAll('[data-ed-turma]').forEach(function (bt) { bt.addEventListener('click', function () { formTurma(p, porId(ag.turmas, bt.getAttribute('data-ed-turma')), ag, empresas, recarregarPainel); }); });
+    area.querySelectorAll('[data-ex-turma]').forEach(function (bt) {
+      bt.addEventListener('click', async function () {
+        var t = porId(ag.turmas, bt.getAttribute('data-ex-turma'));
+        if (!(await ui.confirmar('Excluir a ' + t.nome + '?', 'Os dias dela ficam livres na agenda.', 'Excluir turma', 'Cancelar'))) return;
+        try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); recarregarPainel(); } catch (x) { erro(x); }
+      });
+    });
     if (q('#p-editar')) q('#p-editar').addEventListener('click', function () { assistente(p, 1, ctx, testesProc); });
     if (q('#p-aj-testes')) q('#p-aj-testes').addEventListener('click', function () { assistente(p, 2, ctx, testesProc); });
     if (q('#p-aj-notas')) q('#p-aj-notas').addEventListener('click', function () { assistente(p, 3, ctx, testesProc); });
     if (q('#p-excluir')) q('#p-excluir').addEventListener('click', async function () {
       if (!(await ui.confirmar('Excluir este processo?', 'Ele ainda está em montagem. Os dados do processo e a lista de testes escolhidos serão apagados.', 'Excluir processo', 'Cancelar'))) return;
       try { await dados.processos.excluir(p.id); ui.toast('Processo excluído.', 'ok'); window.location.hash = '#/processos'; } catch (x) { erro(x); }
+    });
+  }
+
+  /* ---------- Turma: criar ou remarcar ---------- */
+  function formTurma(p, t, ag, empresas, aoSalvar) {
+    var D = window.CF.datas, novo = !t;
+    var dias = t ? diasDaTurma(ag, t.id) : [];
+    var usados = turmasDe(ag, p.id).map(function (x) { return x.nome; });
+    var sugestao = 'Turma A';
+    for (var i = 0; i < 26; i++) { var n = 'Turma ' + String.fromCharCode(65 + i); if (usados.indexOf(n) < 0) { sugestao = n; break; } }
+    var qtd = dias.length === 2 ? 2 : 1;
+    var e = porId(empresas, p.empresa_id) || {};
+    var j = ui.janela({
+      titulo: (novo ? 'Nova turma' : 'Editar ' + t.nome) + ' · ' + (e.nome_fantasia || ''),
+      corpo: '<div class="form-grade"><label class="campo" for="tu-nome"><span>Nome <span class="obrig">*</span></span><input class="entrada" id="tu-nome" maxlength="40" value="' + esc(t ? t.nome : sugestao) + '"></label>' +
+        '<div class="campo"><span>Quantos dias?</span><div class="segmentos" role="group" aria-label="Quantos dias"><button type="button" data-qtd="1" aria-pressed="' + (qtd === 1) + '">1 dia</button><button type="button" data-qtd="2" aria-pressed="' + (qtd === 2) + '">2 dias</button></div></div></div>' +
+        '<div id="tu-cal" class="cal-escolha"></div><div id="tu-esc"></div>' +
+        '<div class="form-grade"><label class="campo" for="tu-hor"><span>Horário</span><input class="entrada" id="tu-hor" maxlength="60" value="' + esc(t ? t.horario || '' : '08:00 às 17:00') + '"></label>' +
+        '<label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
+        '<p class="dica" style="margin:0">Os dias riscados já estão ocupados por outra turma, pré-reserva ou bloqueio. Fins de semana podem ser escolhidos.</p>',
+      botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Criar turma' : 'Salvar turma', principal: true, aoClicar: async function (f) {
+        var nome = f.querySelector('#tu-nome').value.trim().replace(/\s+/g, ' '), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#tu-vagas').value, 10);
+        if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
+        if (usados.some(function (u) { return u === nome && (!t || t.nome !== nome); })) { ui.toast('Já existe uma turma com este nome neste processo.', 'erro'); return false; }
+        if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os 2 dias da turma.', 'erro'); return false; }
+        if (isNaN(vagas) || vagas < 1 || vagas > 60) { ui.toast('Vagas entre 1 e 60.', 'erro'); return false; }
+        try {
+          await dados.agenda.salvarTurma({ id: t ? t.id : null, processo_id: p.id, nome: nome, horario: f.querySelector('#tu-hor').value, vagas: vagas, datas: escolhidos });
+          ui.toast(novo ? 'Turma criada: ' + D.listaDias(escolhidos) + '.' : 'Turma atualizada.', 'ok');
+          if (window.CF.agendaUtil) window.CF.agendaUtil.atualizarBadge();
+          aoSalvar(); return true;
+        } catch (x) { erro(x); return false; }
+      } }]
+    });
+    var esc2 = j.elemento.querySelector('#tu-esc');
+    function mostrar(l) {
+      esc2.innerHTML = l.length ? '<div class="aviso aviso-ok">' + ui.icone('ok', 18) + '<span>Escolhido' + (l.length > 1 ? 's' : '') + ': <b>' + esc(D.listaDias(l)) + '</b></span></div>' : '';
+    }
+    var cal = window.CF.calendario.escolher(j.elemento.querySelector('#tu-cal'), { max: qtd, selecionados: dias, ocupados: window.CF.agendaUtil.ocupados(ag, t ? t.id : null), aoMudar: mostrar });
+    mostrar(dias);
+    j.elemento.querySelectorAll('[data-qtd]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        qtd = +b.getAttribute('data-qtd');
+        j.elemento.querySelectorAll('[data-qtd]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        cal.definirMax(qtd);
+      });
     });
   }
 

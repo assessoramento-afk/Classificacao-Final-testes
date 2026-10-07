@@ -72,6 +72,7 @@
     atualizarConexao();
     window.CF.online.iniciar(p);
     window.CF.avisos.iniciar(p);
+    if (p.perfil === 'admin' && window.CF.agendaUtil) setTimeout(window.CF.agendaUtil.atualizarBadge, 600);
     window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 30 minutos sem uso. Entre novamente.' } : null); });
 
     var lateral = raiz.querySelector('#lateral'), bMenu = raiz.querySelector('#b-menu');

@@ -121,5 +121,24 @@
     }
   };
 
-  window.CF.dados = { processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  /* ---------- Agenda e turmas ---------- */
+  var agenda = {
+    carregarTudo: async function () {
+      var r = await Promise.all([
+        q(sb.from('agenda_dias').select('*').order('data')), q(sb.from('turmas').select('*').order('nome')),
+        q(sb.from('pre_reservas').select('*')), q(sb.from('bloqueios').select('*')),
+        q(sb.from('processos').select('*')), q(sb.rpc('empresas_nomes')), q(sb.from('configuracoes').select('*').eq('id', 1).single())
+      ]);
+      return { dias: r[0], turmas: r[1], pre: r[2], bloqueios: r[3], processos: r[4], empresas: r[5], config: r[6] };
+    },
+    salvarTurma: function (t) { return q(sb.rpc('salvar_turma', { p: t })); },
+    excluirTurma: function (id) { return q(sb.rpc('excluir_turma', { p_id: id })); },
+    salvarPreReserva: function (p) { return q(sb.rpc('salvar_pre_reserva', { p: p })); },
+    decidirPreReserva: function (id, acao, novaData) { return q(sb.rpc('decidir_pre_reserva', { p_id: id, p_acao: acao, p_nova_data: novaData || null })); },
+    confirmarPreReserva: function (id, processoId, nome, horario, vagas) { return q(sb.rpc('confirmar_pre_reserva', { p_id: id, p_processo: processoId, p_nome: nome, p_horario: horario || null, p_vagas: vagas })); },
+    salvarBloqueio: function (b) { return q(sb.rpc('salvar_bloqueio', { p: b })); },
+    excluirBloqueio: function (id) { return q(sb.from('bloqueios').delete().eq('id', id)); }
+  };
+
+  window.CF.dados = { agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();
