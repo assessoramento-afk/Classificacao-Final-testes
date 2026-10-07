@@ -92,7 +92,7 @@
       var cls = 'dia' + (dow === 0 || dow === 6 ? ' fds' : '') + (s === D.hoje() ? ' hoje' : '') + (s < D.hoje() ? ' passado' : '') + (extraCls || '');
       return '<button type="button" class="' + cls + '" data-dia="' + s + '" aria-label="' + esc(D.longa(s) + (x ? ': ' + x.titulo + ' · ' + x.sub : ': livre')) + '">' +
         '<span class="num">' + D.data(s).getDate() + '</span>' +
-        (x ? '<span class="ev ev-' + x.tipo + '"><b>' + esc(x.titulo) + '</b>' + esc(x.sub || '') + '</span>' : (dow === 0 || dow === 6 || s < D.hoje() ? '' : '<span class="livre">livre</span>')) + '</button>';
+        (x ? '<span class="ev ev-' + x.tipo + '"><b>' + esc(x.titulo) + '</b><span class="ev-sub">' + esc(x.sub || '') + '</span></span>' : '') + '</button>';
     }
 
     function desenhar() {
@@ -232,12 +232,12 @@
       } else {
         var procs = a.processos.filter(function (p) { return p.empresa_id === r.empresa_id && (p.situacao === 'montagem' || p.situacao === 'andamento'); });
         if (!procs.length) { ui.janela({ titulo: 'Confirmar pré-reserva', confirmarDescarte: false, corpo: '<p style="margin:0">Para confirmar, a empresa ' + esc(nomeEmpresa(a, r.empresa_id)) + ' precisa ter um processo em montagem. Crie o processo em <a href="#/processos">Processos</a> e volte aqui.</p>' }); return; }
-        var proximoNome = function (pid) { var n = a.turmas.filter(function (t) { return t.processo_id === pid; }).length; return 'Turma ' + String.fromCharCode(65 + n); };
+        var proximoNome = function (pid) { var n = a.turmas.filter(function (t) { return t.processo_id === pid; }).length; return 'TURMA ' + String.fromCharCode(65 + n); };
         var j = ui.janela({ titulo: 'Confirmar e criar turma', confirmarDescarte: false,
           corpo: '<label class="campo" for="cf-proc"><span>Processo</span><select class="entrada" id="cf-proc">' + procs.map(function (p) { return '<option value="' + p.id + '">' + esc(p.vaga + ' · ' + p.identificacao) + '</option>'; }).join('') + '</select></label>' +
             '<div class="form-grade"><label class="campo" for="cf-nome"><span>Nome da turma</span><input class="entrada" id="cf-nome" value="' + esc(proximoNome(procs[0].id)) + '"></label>' +
             '<label class="campo" for="cf-vagas"><span>Vagas</span><input class="entrada" id="cf-vagas" type="number" min="1" max="60" value="20"></label>' +
-            '<label class="campo largo" for="cf-hor"><span>Horário</span><input class="entrada" id="cf-hor" value="08:00 às 17:00"></label></div>',
+            '<label class="campo largo" for="cf-hor"><span>Horário</span><input class="entrada" id="cf-hor" value="08:00 ÀS 17:00"></label></div>',
           botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Criar turma', principal: true, aoClicar: async function (f) {
             var nome = f.querySelector('#cf-nome').value.trim(); if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
             try { await dados.agenda.confirmarPreReserva(r.id, f.querySelector('#cf-proc').value, nome, f.querySelector('#cf-hor').value, parseInt(f.querySelector('#cf-vagas').value, 10) || 20); ui.toast('Turma criada nos dias da pré-reserva.', 'ok'); await carregar(); return true; }
@@ -252,7 +252,7 @@
       var j = ui.janela({
         titulo: 'Bloquear dias',
         corpo: '<div class="form-grade"><label class="campo" for="bq-tipo"><span>Tipo</span><select class="entrada" id="bq-tipo"><option value="feriado">Feriado</option><option value="evento">Evento da Kolping</option><option value="outro">Outro</option></select></label>' +
-          '<label class="campo" for="bq-mot"><span>Motivo <span class="obrig">*</span></span><input class="entrada" id="bq-mot" maxlength="120" placeholder="Ex.: Finados"></label></div>' +
+          '<label class="campo" for="bq-mot"><span>Motivo <span class="obrig">*</span></span><input class="entrada" id="bq-mot" maxlength="120" placeholder="EX.: FINADOS"></label></div>' +
           '<div class="campo"><span>Dias <span class="obrig">*</span></span><div id="bq-cal" class="cal-escolha"></div><small class="dica" id="bq-esc"></small></div>',
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Bloquear', principal: true, aoClicar: async function (f) {
           var dias = cal.valor(), mot = f.querySelector('#bq-mot').value.trim();

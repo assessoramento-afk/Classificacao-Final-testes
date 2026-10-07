@@ -151,7 +151,7 @@
     btSalvar.disabled = !liberado;
     function liberar() { liberado = true; resto.classList.remove('oculto'); btSalvar.disabled = false; }
     function avisar(tipo, html) { status.innerHTML = html ? '<div class="aviso aviso-' + tipo + '">' + (tipo === 'carregando' ? '<span class="girando mini"></span>' : ui.icone(tipo === 'ok' ? 'ok' : 'alerta', 20)) + '<span>' + html + '</span></div>' : ''; }
-    function definir(id, v) { var x = el.querySelector(id); if (x && v != null && v !== '') { x.value = v; } }
+    function definir(id, v) { var x = el.querySelector(id); if (x && v != null && v !== '') { x.value = x.type === 'email' ? v : ui.maiusculas(v); } }
     ['#f-tel', '#f-telresp'].forEach(function (id) { var x = el.querySelector(id); x.addEventListener('input', function () { x.value = ui.formatarTelefone(x.value); }); });
     var cep = el.querySelector('#f-cep'); cep.addEventListener('input', function () { cep.value = ui.soNumeros(cep.value).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2'); });
 
@@ -401,6 +401,7 @@
           var ordem = parseInt(fundo.querySelector('#fa-ordem').value, 10);
           if (!nome) { ui.toast('Informe o nome da área.', 'erro'); return false; }
           if (isNaN(ordem) || ordem < 0) { ui.toast('Informe uma ordem válida (0 ou mais).', 'erro'); return false; }
+          if (b.areas.some(function (x) { return x.id !== a.id && ui.normalizar(x.nome) === ui.normalizar(nome); })) { ui.toast('Já existe uma área com este nome.', 'erro'); return false; }
           try {
             await dados.banco.salvarArea({ id: a.id, nome: nome, ordem: ordem, ativa: a.id ? fundo.querySelector('#fa-ativa').checked : true });
             ui.toast('Área salva.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); return true;
@@ -529,6 +530,7 @@
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar competência', principal: true, aoClicar: async function (fundo) {
           var nome = fundo.querySelector('#fc-nome').value.trim().replace(/\s+/g, ' ');
           if (!nome) { ui.toast('Informe o nome da competência.', 'erro'); return false; }
+          if (b.competencias.some(function (x) { return x.id !== c.id && ui.normalizar(x.nome) === ui.normalizar(nome); })) { ui.toast('Já existe uma competência com este nome.', 'erro'); return false; }
           try {
             if (!c.id) {
               var teste = fundo.querySelector('#fc-teste').value;

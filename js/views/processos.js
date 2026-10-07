@@ -171,9 +171,9 @@
   function formTurma(p, t, ag, empresas, aoSalvar) {
     var D = window.CF.datas, novo = !t;
     var dias = t ? diasDaTurma(ag, t.id) : [];
-    var usados = turmasDe(ag, p.id).map(function (x) { return x.nome; });
-    var sugestao = 'Turma A';
-    for (var i = 0; i < 26; i++) { var n = 'Turma ' + String.fromCharCode(65 + i); if (usados.indexOf(n) < 0) { sugestao = n; break; } }
+    var usados = turmasDe(ag, p.id).map(function (x) { return ui.maiusculas(x.nome); });
+    var sugestao = 'TURMA A';
+    for (var i = 0; i < 26; i++) { var n = 'TURMA ' + String.fromCharCode(65 + i); if (usados.indexOf(n) < 0) { sugestao = n; break; } }
     var qtd = dias.length === 2 ? 2 : 1;
     var e = porId(empresas, p.empresa_id) || {};
     var j = ui.janela({
@@ -181,13 +181,13 @@
       corpo: '<div class="form-grade"><label class="campo" for="tu-nome"><span>Nome <span class="obrig">*</span></span><input class="entrada" id="tu-nome" maxlength="40" value="' + esc(t ? t.nome : sugestao) + '"></label>' +
         '<div class="campo"><span>Quantos dias?</span><div class="segmentos" role="group" aria-label="Quantos dias"><button type="button" data-qtd="1" aria-pressed="' + (qtd === 1) + '">1 dia</button><button type="button" data-qtd="2" aria-pressed="' + (qtd === 2) + '">2 dias</button></div></div></div>' +
         '<div id="tu-cal" class="cal-escolha"></div><div id="tu-esc"></div>' +
-        '<div class="form-grade"><label class="campo" for="tu-hor"><span>Horário</span><input class="entrada" id="tu-hor" maxlength="60" value="' + esc(t ? t.horario || '' : '08:00 às 17:00') + '"></label>' +
+        '<div class="form-grade"><label class="campo" for="tu-hor"><span>Horário</span><input class="entrada" id="tu-hor" maxlength="60" value="' + esc(t ? t.horario || '' : '08:00 ÀS 17:00') + '"></label>' +
         '<label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
         '<p class="dica" style="margin:0">Os dias riscados já estão ocupados por outra turma, pré-reserva ou bloqueio. Fins de semana podem ser escolhidos.</p>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Criar turma' : 'Salvar turma', principal: true, aoClicar: async function (f) {
-        var nome = f.querySelector('#tu-nome').value.trim().replace(/\s+/g, ' '), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#tu-vagas').value, 10);
+        var nome = ui.maiusculas(f.querySelector('#tu-nome').value.trim().replace(/\s+/g, ' ')), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#tu-vagas').value, 10);
         if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
-        if (usados.some(function (u) { return u === nome && (!t || t.nome !== nome); })) { ui.toast('Já existe uma turma com este nome neste processo.', 'erro'); return false; }
+        if (usados.some(function (u) { return u === ui.maiusculas(nome) && (!t || ui.maiusculas(t.nome) !== ui.maiusculas(nome)); })) { ui.toast('Já existe uma turma com este nome neste processo.', 'erro'); return false; }
         if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os 2 dias da turma.', 'erro'); return false; }
         if (isNaN(vagas) || vagas < 1 || vagas > 60) { ui.toast('Vagas entre 1 e 60.', 'erro'); return false; }
         try {

@@ -197,6 +197,31 @@
     finally { if (botao) { botao.disabled = false; botao.textContent = original; } }
   }
 
-  window.CF.ui = { pill: pill, normalizar: normalizar, soNumeros: soNumeros, formatarCNPJ: formatarCNPJ, cnpjValido: cnpjValido,
+  /* Tudo o que é digitado fica em MAIÚSCULAS (menos e-mail, senha, busca,
+     números e campos marcados com data-normal, como o texto do agradecimento) */
+  function deveMaiusculo(el) {
+    if (!el || !el.classList || !el.classList.contains('entrada') || el.hasAttribute('data-normal')) return false;
+    // senhas nunca (mesmo com "mostrar senha", que troca o tipo para texto)
+    if (/senha|password/i.test(el.id + ' ' + (el.getAttribute('autocomplete') || '') + ' ' + (el.getAttribute('name') || ''))) return false;
+    if (el.tagName === 'TEXTAREA') return true;
+    if (el.tagName !== 'INPUT') return false;
+    var t = (el.getAttribute('type') || 'text').toLowerCase();
+    return t === 'text' || t === 'tel';
+  }
+  var compondo = false;
+  document.addEventListener('compositionstart', function () { compondo = true; }, true);
+  document.addEventListener('compositionend', function (e) { compondo = false; maiusculo(e.target); }, true);
+  function maiusculo(el) {
+    if (!deveMaiusculo(el)) return;
+    var v = el.value, m = v.toLocaleUpperCase('pt-BR');
+    if (v === m) return;
+    var i = el.selectionStart, f = el.selectionEnd;
+    el.value = m;
+    try { el.setSelectionRange(i, f); } catch (e) { /* alguns tipos não aceitam */ }
+  }
+  document.addEventListener('input', function (e) { if (!compondo) maiusculo(e.target); }, true);
+  function maiusculas(t) { return t == null ? t : String(t).toLocaleUpperCase('pt-BR'); }
+
+  window.CF.ui = { maiusculas: maiusculas, pill: pill, normalizar: normalizar, soNumeros: soNumeros, formatarCNPJ: formatarCNPJ, cnpjValido: cnpjValido,
     formatarTelefone: formatarTelefone, executar: executar, logo: logo, esc: esc, icone: icone, toast: toast, janela: janela, confirmar: confirmar, ligarVerSenha: ligarVerSenha, campoSenha: campoSenha, iniciais: iniciais };
 })();

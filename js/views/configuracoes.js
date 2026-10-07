@@ -156,7 +156,7 @@
     var EXEMPLO = { empresa: 'Empresa Exemplo', vaga: 'Auxiliar Administrativo', processo: '2º semestre 2026', data: new Date().toLocaleDateString('pt-BR') };
     area.innerHTML = cabecalho('Texto do agradecimento', 'Página 2 do PDF entregue à empresa') +
       '<div class="agr-grade"><section class="card bloco" style="gap:12px"><label class="lbl" for="a-texto">Texto</label>' +
-        '<textarea class="entrada" id="a-texto" rows="10" maxlength="2000" style="line-height:1.6">' + esc(cfg.texto_agradecimento) + '</textarea>' +
+        '<textarea class="entrada" id="a-texto" data-normal rows="10" maxlength="2000" style="line-height:1.6">' + esc(cfg.texto_agradecimento) + '</textarea>' +
         '<div class="vars"><span class="dica">Inserir:</span>' + ['empresa', 'vaga', 'processo', 'data'].map(function (v) { return '<button type="button" class="chip-var" data-var="' + v + '">{' + v + '}</button>'; }).join('') + '</div>' +
         '<div class="botoes-fim"><button type="button" class="btn" id="a-padrao">Restaurar texto padrão</button><button type="button" class="btn btn-pri" id="a-salvar">Salvar</button></div></section>' +
         '<section class="grupo"><span class="lbl">Prévia (exemplo: ' + EXEMPLO.empresa + ' · ' + EXEMPLO.vaga + ')</span><div class="folha" id="a-previa"></div></section></div>';
