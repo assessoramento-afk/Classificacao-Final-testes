@@ -75,7 +75,7 @@
       var incompletos = parts.filter(function (x) { return x.turma_id === t.id && faltas(x).length; }).length;
       box.innerHTML = '<header class="cabecalho"><div><h1>Jovens do processo</h1><p>' + ts.length + ' turma' + (ts.length > 1 ? 's' : '') + ' · ' + tot + ' jove' + (tot === 1 ? 'm' : 'ns') + ' cadastrado' + (tot === 1 ? '' : 's') + ' de ' + vagas + ' vagas</p></div>' +
         '<div class="botoes-topo">' + (lista.length ? '<button type="button" class="btn" id="jv-termos">🖨 Termos da turma</button>' : '') +
-        (aberto ? '<button type="button" class="btn" id="jv-importar">⬆ Importar lista</button><button type="button" class="btn btn-pri" id="jv-novo">' + ui.icone('mais', 17) + 'Novo jovem</button>' : '') + '</div></header>' +
+        (aberto ? '<button type="button" class="btn" id="jv-importar">⬆ Importar lista</button><button type="button" class="btn" id="jv-existente">+ Já cadastrado</button><button type="button" class="btn btn-pri" id="jv-novo">' + ui.icone('mais', 17) + 'Novo jovem</button>' : '') + '</div></header>' +
         '<div class="segmentos seg-turmas" role="group" aria-label="Turma">' + ts.map(function (x) {
           var n = parts.filter(function (y) { return y.turma_id === x.id; }).length;
           return '<button type="button" data-turma="' + x.id + '" aria-pressed="' + (x.id === t.id) + '">' + esc(x.nome + ' · ' + x.dias.map(D.curta).join(' e ') + ' · ' + n + ' de ' + x.vagas) + '</button>';
@@ -97,6 +97,7 @@
       bb.addEventListener('input', function () { st.busca = ui.normalizar(bb.value); var pos = bb.selectionStart; desenhar(); var n = area.querySelector('#jv-busca'); n.focus(); n.setSelectionRange(pos, pos); });
       if (box.querySelector('#jv-novo')) box.querySelector('#jv-novo').addEventListener('click', function () { formJovem(null); });
       if (box.querySelector('#jv-importar')) box.querySelector('#jv-importar').addEventListener('click', function () { importar(t); });
+      if (box.querySelector('#jv-existente')) box.querySelector('#jv-existente').addEventListener('click', function () { adicionarExistente(t); });
       if (box.querySelector('#jv-termos')) box.querySelector('#jv-termos').addEventListener('click', function () { imprimirTermos(lista); });
       box.querySelectorAll('[data-editar]').forEach(function (b) { b.addEventListener('click', function () { formJovem(porId(parts, b.getAttribute('data-editar'))); }); });
       box.querySelectorAll('[data-termo]').forEach(function (b) { b.addEventListener('click', function () { imprimirTermos([porId(parts, b.getAttribute('data-termo'))]); }); });
@@ -200,6 +201,44 @@
           } catch (e) { erro(e); return false; }
         });
       }
+    }
+
+    /* ---------- Adicionar jovem já cadastrado ---------- */
+    async function adicionarExistente(turmaAtual) {
+      var todos = [];
+      try { todos = await dados.jovens.todos(); } catch (e) { erro(e); return; }
+      var noProc = {}; parts.forEach(function (x) { noProc[x.jovem_id] = 1; });
+      var livres = todos.filter(function (j) { return !noProc[j.id]; });
+      var ts = turmas(), escolhido = null, busca = '';
+      var jn = ui.janela({ titulo: 'Adicionar jovem já cadastrado',
+        corpo: '<label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="ex-busca" placeholder="Digite parte do nome (pelo menos 2 letras)" autocomplete="off"></label>' +
+          '<div class="res-j" id="ex-res"><p class="dica" style="margin:0">' + livres.length + ' jove' + (livres.length === 1 ? 'm' : 'ns') + ' cadastrado(s) fora deste processo.</p></div>' +
+          '<div class="form-grade"><label class="campo" for="ex-turma"><span>Turma <span class="obrig">*</span></span><select class="entrada" id="ex-turma">' + ts.map(function (t) {
+              var ocup = parts.filter(function (x) { return x.turma_id === t.id; }).length;
+              return '<option value="' + t.id + '"' + (t.id === turmaAtual.id ? ' selected' : '') + (ocup >= t.vagas ? ' disabled' : '') + '>' + esc(t.nome + ' · ' + t.dias.map(D.curta).join(' e ') + ' · ' + ocup + ' de ' + t.vagas) + '</option>'; }).join('') + '</select></label>' +
+            '<label class="campo" for="ex-conv"><span>Convocação</span><input class="entrada" type="date" id="ex-conv"></label></div>' +
+          '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>O termo de consentimento é deste processo (cita a empresa e a vaga). Depois de adicionar, imprima o termo para o jovem assinar.</span></div>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Adicionar ao processo', principal: true, aoClicar: async function (f) {
+          if (!escolhido) { ui.toast('Busque e escolha o jovem.', 'erro'); return false; }
+          try {
+            var r = await dados.jovens.salvar({ processo_id: p.id, turma_id: f.querySelector('#ex-turma').value, jovem_id: escolhido.id, nome: escolhido.nome, genero: escolhido.genero,
+              nascimento: escolhido.nascimento, telefone: escolhido.telefone, convocacao: f.querySelector('#ex-conv').value || null });
+            ui.toast(escolhido.nome + ' adicionado(a) · código ' + r.codigo + '.', 'ok'); st.turma = f.querySelector('#ex-turma').value; await recarregar(); return true;
+          } catch (e) { erro(e); return false; }
+        } }] });
+      var el = jn.elemento, res = el.querySelector('#ex-res'), inp = el.querySelector('#ex-busca');
+      function desenharRes() {
+        if (busca.length < 2) { res.innerHTML = '<p class="dica" style="margin:0">' + livres.length + ' jove' + (livres.length === 1 ? 'm' : 'ns') + ' cadastrado(s) fora deste processo.</p>'; return; }
+        var achados = livres.filter(function (j) { return ui.normalizar(j.nome).indexOf(busca) >= 0; }).slice(0, 30);
+        res.innerHTML = achados.length ? achados.map(function (j) {
+          var i = idade(j.nascimento);
+          return '<button type="button" class="res-i" data-j="' + j.id + '" aria-pressed="' + (escolhido && escolhido.id === j.id) + '">' + fotoHTML(j) + '<span class="txt"><b>' + esc(j.nome) + '</b><small>' + esc(NOME_G[j.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + (j.nascimento ? ' · nascimento ' + D.completa(j.nascimento) : '') + '</small></span>' + (escolhido && escolhido.id === j.id ? ui.pill('Escolhido', 'sim') : '') + '</button>';
+        }).join('') : '<p class="dica" style="margin:0">Ninguém encontrado com esse nome. Use "Novo jovem" para cadastrar.</p>';
+        carregarFotos(res);
+        res.querySelectorAll('[data-j]').forEach(function (b) { b.addEventListener('click', function () { escolhido = porId(livres, b.getAttribute('data-j')); desenharRes(); }); });
+      }
+      inp.addEventListener('input', function () { busca = ui.normalizar(inp.value); desenharRes(); });
+      inp.focus();
     }
 
     /* ---------- Cadastro repetido ---------- */
@@ -359,7 +398,8 @@
      TODOS OS JOVENS (Cadastros → Jovens)
      ================================================================ */
   window.CF.telas.jovensTodos = async function (area) {
-    area.innerHTML = '<a class="voltar" href="#/cadastros">← Cadastros</a><header class="cabecalho"><div><h1>Jovens</h1><p>Todos os jovens cadastrados e o histórico de cada um</p></div></header>' +
+    area.innerHTML = '<a class="voltar" href="#/cadastros">← Cadastros</a><header class="cabecalho"><div><h1>Jovens</h1><p>Todos os jovens cadastrados e o histórico de cada um</p></div>' +
+      '<button type="button" class="btn btn-pri" id="tj-novo">' + ui.icone('mais', 17) + 'Novo jovem</button></header>' +
       '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="tj-busca" placeholder="Buscar por nome"></label></div><div id="tj"><div class="girando" style="margin:30px auto"></div></div>';
     var js = [], parts = [], ag = null;
     try { var r = await Promise.all([dados.jovens.todos(), dados.jovens.todasParticipacoes(), dados.agenda.carregarTudo()]); js = r[0]; parts = r[1]; ag = r[2]; }
@@ -373,7 +413,7 @@
         itens.slice(0, 300).map(function (j) {
           var n = parts.filter(function (x) { return x.jovem_id === j.id; }).length, i = idade(j.nascimento);
           return '<tr><td><div class="cel-j">' + fotoHTML(j) + '<div><b>' + esc(j.nome) + '</b><small>' + esc(NOME_G[j.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '</small></div></div></td>' +
-            '<td>' + (j.nascimento ? D.completa(j.nascimento) : '—') + '</td><td class="num">' + n + '</td><td><div class="acoes"><button type="button" class="btn btn-p" data-hist="' + j.id + '">Histórico</button></div></td></tr>';
+            '<td>' + (j.nascimento ? D.completa(j.nascimento) : '—') + '</td><td class="num">' + (n ? n : '0 · ainda sem processo') + '</td><td><div class="acoes"><button type="button" class="btn btn-p" data-ed="' + j.id + '">Editar</button><button type="button" class="btn btn-p" data-hist="' + j.id + '">Histórico</button></div></td></tr>';
         }).join('') + '</tbody></table></div>' + (itens.length > 300 ? '<p class="dica">Mostrando os 300 primeiros. Use a busca para encontrar outros.</p>' : '');
       carregarFotos(box);
       box.querySelectorAll('[data-hist]').forEach(function (b) {
@@ -388,6 +428,53 @@
       });
     }
     area.querySelector('#tj-busca').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
+    area.querySelector('#tj-novo').addEventListener('click', function () { formPessoa(null); });
+    area.querySelector('#tj').addEventListener('click', function (e) { var b = e.target.closest('[data-ed]'); if (b) formPessoa(porId(js, b.getAttribute('data-ed'))); });
+    async function recarregar() { try { js = await dados.jovens.todos(); desenhar(); } catch (e) { erro(e); } }
     desenhar();
+
+    // Cadastro da pessoa, sem processo (o vínculo é feito depois, no processo)
+    function formPessoa(j) {
+      var novo = !j; j = j || {};
+      var genero = j.genero || '', arquivoFoto = null;
+      var jn = ui.janela({ titulo: novo ? 'Novo jovem' : 'Editar jovem',
+        corpo: '<div class="jovem-topo"><div class="foto-col"><div class="foto-box" id="fp-foto">' + (j.foto_path ? '' : 'SEM FOTO') + '</div>' +
+            '<div class="foto-bts"><button type="button" class="btn btn-p" id="fp-camera">📷 Foto</button><button type="button" class="btn btn-p" id="fp-galeria">🖼 Galeria</button></div></div>' +
+          '<div class="jovem-dados"><label class="campo" for="fp-nome"><span>Nome completo <span class="obrig">*</span></span><input class="entrada" id="fp-nome" maxlength="120" value="' + esc(j.nome || '') + '"></label>' +
+            '<div class="campo"><span>Gênero <span class="obrig">*</span></span><div class="segmentos seg-genero" role="group" aria-label="Gênero">' + GENEROS.map(function (g) { return '<button type="button" data-gen="' + g[0] + '" aria-pressed="' + (genero === g[0]) + '">' + g[1] + '</button>'; }).join('') + '</div></div>' +
+            '<div class="form-grade"><label class="campo" for="fp-nasc"><span>Nascimento</span><input class="entrada" type="date" id="fp-nasc" value="' + esc(j.nascimento || '') + '" max="' + D.hoje() + '"></label>' +
+            '<label class="campo" for="fp-tel"><span>Telefone</span><input class="entrada" id="fp-tel" inputmode="tel" maxlength="15" value="' + esc(j.telefone || '') + '" placeholder="(11) 00000-0000"></label></div></div></div>' +
+          '<p class="dica" style="margin:0">' + (novo ? 'Depois, para colocar o jovem num processo, use "+ Já cadastrado" na tela de jovens do processo.' : 'As alterações valem para todos os processos deste jovem.') + '</p>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Cadastrar jovem' : 'Salvar', principal: true, aoClicar: async function (f) {
+          var nome = ui.maiusculas(f.querySelector('#fp-nome').value.trim().replace(/\s+/g, ' ')), nasc = f.querySelector('#fp-nasc').value;
+          if (!nome) { ui.toast('Informe o nome completo.', 'erro'); return false; }
+          if (!genero) { ui.toast('Escolha o gênero.', 'erro'); return false; }
+          if (nasc && (nasc > D.hoje() || idade(nasc) > 40)) { ui.toast('Confira a data de nascimento.', 'erro'); return false; }
+          var dadosJ = { nome: nome, genero: genero, nascimento: nasc || null, telefone: f.querySelector('#fp-tel').value || null };
+          return ui.executar(f.querySelector('.janela-pe .btn-pri'), 'Salvando…', async function () {
+            try {
+              if (novo) {
+                var ig = await dados.jovens.iguais(nome, nasc || null);
+                if (ig.length && !(await ui.confirmar('Já existe um jovem com este nome' + (nasc ? ' e nascimento' : ''), ig[0].nome + (ig[0].nascimento ? ' · nascimento ' + D.completa(ig[0].nascimento) : '') + '. Cadastrar mesmo assim (outra pessoa)?', 'Cadastrar mesmo assim', 'Voltar'))) return false;
+              }
+              var salvo = novo ? await dados.jovens.criar(dadosJ) : await dados.jovens.atualizar(j.id, dadosJ);
+              if (arquivoFoto) { try { await dados.jovens.salvarFoto(salvo.id, arquivoFoto); } catch (e) { ui.toast('Salvo, mas a foto não foi enviada: ' + api.traduzErro(e), 'erro'); } }
+              ui.toast(novo ? 'Jovem cadastrado.' : 'Cadastro atualizado.', 'ok'); await recarregar(); return true;
+            } catch (e) { erro(e); return false; }
+          });
+        } }] });
+      var el = jn.elemento;
+      if (j.foto_path) dados.jovens.urlFoto(j.foto_path).then(function (u) { if (u) el.querySelector('#fp-foto').innerHTML = '<img src="' + esc(u) + '" alt="">'; });
+      el.querySelectorAll('[data-gen]').forEach(function (b) { b.addEventListener('click', function () { genero = b.getAttribute('data-gen'); el.querySelectorAll('[data-gen]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); }); });
+      var tel = el.querySelector('#fp-tel'); tel.addEventListener('input', function () { tel.value = ui.formatarTelefone(tel.value); });
+      function escolherFoto(camera) {
+        var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; if (camera) inp.setAttribute('capture', 'environment');
+        inp.addEventListener('change', function () { var fl = inp.files && inp.files[0]; if (!fl) return; arquivoFoto = fl; el.querySelector('#fp-foto').innerHTML = '<img src="' + URL.createObjectURL(fl) + '" alt="">'; el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); });
+        inp.click();
+      }
+      el.querySelector('#fp-camera').addEventListener('click', function () { escolherFoto(true); });
+      el.querySelector('#fp-galeria').addEventListener('click', function () { escolherFoto(false); });
+      el.querySelector('#fp-nome').focus();
+    }
   };
 })();

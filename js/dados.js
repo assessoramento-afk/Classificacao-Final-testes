@@ -157,6 +157,8 @@
       return parts.map(function (x) { return Object.assign({}, x, { jovem: js.filter(function (j) { return j.id === x.jovem_id; })[0] || {} }); });
     },
     todos: function () { return q(sb.from('jovens').select('*').order('nome')); },
+    criar: function (j) { return q(sb.from('jovens').insert(j).select().single()); },
+    atualizar: function (id, j) { return q(sb.from('jovens').update(j).eq('id', id).select().single()); },
     participacoesDe: function (jovemId) { return q(sb.from('participacoes').select('*').eq('jovem_id', jovemId)); },
     todasParticipacoes: function () { return q(sb.from('participacoes').select('*')); },
     salvar: function (p) { return q(sb.rpc('salvar_jovem', { p: p })); },

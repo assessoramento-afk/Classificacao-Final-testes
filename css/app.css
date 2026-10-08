@@ -597,6 +597,9 @@ html[data-tema="claro"] .cor-mat-txt { color: #8a6114; }
 .painel-online .h-emp { margin-top: 10px; }
 .painel-online .h-emp small { font-weight: 500; color: var(--texto-3); font-size: 11px; }
 
+/* Foco levado ao conteúdo ao trocar de tela: sem contorno (só para leitores de tela) */
+#conteudo:focus { outline: none; }
+
 /* ---------- Jovens ---------- */
 .cod { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .06em; background: var(--entrada); border: 1px solid var(--borda); border-radius: 6px; padding: 2px 7px; font-size: 12.5px; white-space: nowrap; }
 .fotinho { width: 40px; height: 40px; border-radius: 50%; background: var(--surface-2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--texto-3); flex: none; overflow: hidden; }
@@ -617,6 +620,12 @@ html[data-tema="claro"] .cor-mat-txt { color: #8a6114; }
 .dup-g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .dup-c { border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; background: var(--entrada); display: flex; flex-direction: column; gap: 4px; }
 .dup-c.ex { box-shadow: inset 3px 0 0 var(--laranja); }
+.res-j { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+.res-i { display: flex; gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--entrada); cursor: pointer; text-align: left; font: inherit; color: var(--texto); width: 100%; }
+.res-i:hover { border-color: var(--borda-2); background: var(--hover); }
+.res-i[aria-pressed="true"] { border-color: var(--laranja); box-shadow: inset 3px 0 0 var(--laranja); }
+.res-i .txt { flex: 1; min-width: 0; }
+.res-i small { display: block; color: var(--texto-3); font-size: 12px; }
 .imp-ok { color: #5fcb8b; } .imp-dup { color: var(--laranja); cursor: pointer; } .imp-err { color: #ef8582; }
 html[data-tema="claro"] .imp-ok { color: #1f7a48; } html[data-tema="claro"] .imp-err { color: #b23a36; }
 .grade.grade-painel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
