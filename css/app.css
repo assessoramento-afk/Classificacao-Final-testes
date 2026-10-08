@@ -597,6 +597,50 @@ html[data-tema="claro"] .cor-mat-txt { color: #8a6114; }
 .painel-online .h-emp { margin-top: 10px; }
 .painel-online .h-emp small { font-weight: 500; color: var(--texto-3); font-size: 11px; }
 
+/* ---------- Jovens ---------- */
+.cod { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .06em; background: var(--entrada); border: 1px solid var(--borda); border-radius: 6px; padding: 2px 7px; font-size: 12.5px; white-space: nowrap; }
+.fotinho { width: 40px; height: 40px; border-radius: 50%; background: var(--surface-2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--texto-3); flex: none; overflow: hidden; }
+.fotinho img { width: 100%; height: 100%; object-fit: cover; }
+.cel-j { display: flex; gap: 12px; align-items: center; }
+.cel-j small { display: block; color: var(--texto-3); font-size: 12px; }
+.jovem-topo { display: flex; gap: 16px; align-items: flex-start; }
+.foto-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.foto-box { width: 112px; height: 140px; border-radius: 14px; border: 1px dashed var(--borda); display: flex; align-items: center; justify-content: center; color: var(--texto-3); font-size: 12px; font-weight: 700; overflow: hidden; background: var(--entrada); }
+.foto-box img { width: 100%; height: 100%; object-fit: cover; }
+.foto-bts { display: flex; gap: 6px; }
+.jovem-dados { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.seg-genero { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+.resp { border: 1px solid color-mix(in srgb, var(--laranja) 50%, transparent); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--laranja) 6%, transparent); }
+.resp > b { font-size: 14px; }
+.termo-linha { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.termo-linha .marcar { flex: 1; min-width: 240px; }
+.dup-g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.dup-c { border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; background: var(--entrada); display: flex; flex-direction: column; gap: 4px; }
+.dup-c.ex { box-shadow: inset 3px 0 0 var(--laranja); }
+.imp-ok { color: #5fcb8b; } .imp-dup { color: var(--laranja); cursor: pointer; } .imp-err { color: #ef8582; }
+html[data-tema="claro"] .imp-ok { color: #1f7a48; } html[data-tema="claro"] .imp-err { color: #b23a36; }
+.grade.grade-painel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.grade-painel > section:nth-child(-n+3) { grid-column: span 2; }
+.grade-painel > section:nth-child(n+4) { grid-column: span 3; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+@media (max-width: 1000px) { .grade.grade-painel { grid-template-columns: minmax(0, 1fr); } .grade-painel > section { grid-column: auto !important; } }
+@media (max-width: 640px) {
+  .jovem-topo { flex-direction: column; align-items: center; }
+  .jovem-dados { width: 100%; }
+  .dup-g { grid-template-columns: minmax(0, 1fr); }
+  .tabela-jovens th:nth-child(4), .tabela-jovens td:nth-child(4) { display: none; }
+}
+
+/* ---------- Topo fixo no celular e no app (abaixo da barra do aparelho) ---------- */
+.topo { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+@media (max-width: 640px) {
+  .topo { flex-wrap: nowrap; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; gap: 8px; }
+  .topo-esq { flex: 1; min-width: 0; }
+  .topo-dir { gap: 6px; flex: none; flex-wrap: nowrap; }
+  .topo-dir .usuario-txt { display: none; }
+  #conexao .txt-conexao { display: none; }
+}
+
 /* ---------- Agenda ---------- */
 .btn { white-space: nowrap; }
 .ag-lado { display: grid; grid-template-columns: minmax(0, 1000px) 280px; gap: 16px; align-items: start; }

@@ -18,6 +18,7 @@
     notas: '<path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/>',
     prereserva: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     agradecimento: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7"/>',
+    termo: '<path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 13h6M10 17h4"/>',
     materiais: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>'
   };
   function icone(n, t) { return '<svg width="' + (t || 22) + '" height="' + (t || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES[n] + '</svg>'; }
@@ -37,6 +38,7 @@
     if (sub === 'notas') return paginaNotas(area);
     if (sub === 'prereserva') return paginaPreReserva(area);
     if (sub === 'agradecimento') return paginaAgradecimento(area);
+    if (sub === 'termo') return paginaTermo(area);
     paginaInicial(area);
   };
 
@@ -76,7 +78,7 @@
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'padrao', 'Notas de corte', cfg ? 'Aprovado a partir de ' + fmt(cfg.corte_aprovado) + ' · Backup a partir de ' + fmt(cfg.corte_backup) : '') +
         card('prereserva', 'padrao', 'Pré-reserva da agenda', cfg ? 'Prazo de ' + cfg.prazo_pre_reserva_dias + ' dias · aviso ' + cfg.aviso_pre_reserva_dias + ' dia' + (cfg.aviso_pre_reserva_dias === 1 ? '' : 's') + ' antes' : '') +
-        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + '</div></section>';
+        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('termo', 'padrao', 'Termo de consentimento', 'Texto impresso para o jovem e o responsável assinarem') + '</div></section>';
   }
 
   /* ---------- Notas de corte ---------- */
@@ -151,6 +153,45 @@
       });
     });
     exemplo();
+  }
+
+  /* ---------- Texto do termo de consentimento ---------- */
+  var TERMO_JOVEM = 'Eu, acima identificado(a), autorizo a Kolping Estadual de São Paulo a utilizar meus dados pessoais e minha imagem (foto) exclusivamente para a realização deste processo seletivo do Projeto Gol Jovens Talentos, e a compartilhar o resultado da minha avaliação com a empresa {empresa}, responsável pela vaga de {vaga}. Estou ciente de que posso solicitar a qualquer momento informações sobre o uso dos meus dados ou a sua exclusão, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).';
+  var TERMO_RESP = 'Como responsável legal, autorizo o uso dos dados e da imagem do(a) jovem nas condições acima.';
+  async function paginaTermo(area) {
+    var cfg = await dados.config.carregar();
+    var EX = { empresa: 'Empresa Exemplo', vaga: 'Auxiliar Administrativo', processo: '2º semestre 2026' };
+    area.innerHTML = cabecalho('Termo de consentimento', 'Texto impresso para o jovem e, se menor de idade, o responsável assinarem') +
+      '<div class="agr-grade"><section class="card bloco" style="gap:12px">' +
+        '<label class="lbl" for="t-jovem">Autorização do jovem</label><textarea class="entrada" id="t-jovem" data-normal rows="9" maxlength="3000" style="line-height:1.6">' + esc(cfg.texto_termo_jovem || TERMO_JOVEM) + '</textarea>' +
+        '<label class="lbl" for="t-resp">Autorização do responsável (menores de 18 anos)</label><textarea class="entrada" id="t-resp" data-normal rows="3" maxlength="1500" style="line-height:1.6">' + esc(cfg.texto_termo_responsavel || TERMO_RESP) + '</textarea>' +
+        '<div class="vars"><span class="dica">Inserir no texto selecionado:</span>' + ['empresa', 'vaga', 'processo'].map(function (v) { return '<button type="button" class="chip-var" data-var="' + v + '">{' + v + '}</button>'; }).join('') + '</div>' +
+        '<p class="dica" style="margin:0">Como o termo trata de dados pessoais e imagem de menores, recomendamos que a versão final seja revisada por quem cuida da parte jurídica ou de proteção de dados.</p>' +
+        '<div class="botoes-fim"><button type="button" class="btn" id="t-padrao">Restaurar texto padrão</button><button type="button" class="btn btn-pri" id="t-salvar">Salvar</button></div></section>' +
+        '<section class="grupo"><span class="lbl">Prévia (exemplo: ' + EX.empresa + ' · ' + EX.vaga + ')</span><div class="folha" id="t-previa"></div></section></div>';
+    var tj = area.querySelector('#t-jovem'), tr = area.querySelector('#t-resp'), pv = area.querySelector('#t-previa'), ultimo = tj;
+    [tj, tr].forEach(function (x) { x.addEventListener('focus', function () { ultimo = x; }); x.addEventListener('input', previa); });
+    function troca(t) { return esc(t).replace(/\{(empresa|vaga|processo)\}/g, function (m, k) { return '<b>' + esc(EX[k]) + '</b>'; }).replace(/\n/g, '<br>'); }
+    function previa() {
+      pv.innerHTML = '<p><b>Autorização</b><br>' + troca(tj.value) + '</p><p style="margin-top:14px">Assinatura do(a) jovem: ____________________</p>' +
+        '<p style="margin-top:14px"><b>Para menores de 18 anos · responsável legal</b><br>' + troca(tr.value) + '</p><p>Assinatura do(a) responsável: ____________________</p>';
+    }
+    area.querySelectorAll('[data-var]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var ins = '{' + b.getAttribute('data-var') + '}', i = ultimo.selectionStart || ultimo.value.length, f = ultimo.selectionEnd || i;
+        ultimo.value = ultimo.value.slice(0, i) + ins + ultimo.value.slice(f); ultimo.focus(); ultimo.setSelectionRange(i + ins.length, i + ins.length); previa();
+      });
+    });
+    area.querySelector('#t-padrao').addEventListener('click', async function () {
+      if (await ui.confirmar('Restaurar o texto padrão?', 'Os dois textos voltam ao padrão (só ficam salvos ao clicar em Salvar).', 'Restaurar', 'Cancelar')) { tj.value = TERMO_JOVEM; tr.value = TERMO_RESP; previa(); }
+    });
+    area.querySelector('#t-salvar').addEventListener('click', function (ev) {
+      if (tj.value.trim().length < 40) { ui.toast('O texto da autorização está muito curto.', 'erro'); return; }
+      ui.executar(ev.currentTarget, 'Salvando…', async function () {
+        try { await dados.config.salvar({ texto_termo_jovem: tj.value.trim(), texto_termo_responsavel: tr.value.trim() }); ui.toast('Texto do termo salvo.', 'ok'); } catch (x) { erro(x); }
+      });
+    });
+    previa();
   }
 
   /* ---------- Texto do agradecimento ---------- */

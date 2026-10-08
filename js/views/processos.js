@@ -47,6 +47,8 @@
 
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.processos = function (area, ctx) {
+    var mj = (window.location.hash || '').match(/^#\/processos\/([0-9a-z-]{8,})\/jovens/i);
+    if (mj) { window.CF.telas.jovensProcesso(area, ctx, mj[1]); return; }
     var id = idDaRota();
     if (id) painel(area, ctx, id); else lista(area, ctx);
   };
@@ -104,29 +106,31 @@
     area.innerHTML = '<a class="voltar" href="#/processos">← Processos</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
     var p, testesProc, empresas, b, ag;
     try {
-      var r = await Promise.all([dados.processos.obter(id), dados.processos.testes(id), dados.empresas.listar(), dados.banco.carregarTudo(), dados.agenda.carregarTudo()]);
-      p = r[0]; testesProc = r[1]; empresas = r[2]; b = r[3]; ag = r[4];
+      var r = await Promise.all([dados.processos.obter(id), dados.processos.testes(id), dados.empresas.listar().catch(function () { return []; }), dados.banco.carregarTudo(), dados.agenda.carregarTudo(), dados.jovens.doProcesso(id).catch(function () { return []; })]);
+      p = r[0]; testesProc = r[1]; empresas = r[2]; b = r[3]; ag = r[4]; var jovensP = r[5];
+      if (!empresas.length) empresas = ag.empresas;
     } catch (e) { erro(e); area.querySelector('#painel').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Processo não encontrado.</span></div>'; return; }
     var e = porId(empresas, p.empresa_id) || {};
     var montagem = p.situacao === 'montagem';
     var turmas = turmasDe(ag, p.id).sort(function (x, y) { return (diasDaTurma(ag, x.id)[0] || '').localeCompare(diasDaTurma(ag, y.id)[0] || ''); });
     var podeTurma = admin && (p.situacao === 'montagem' || p.situacao === 'andamento');
     var vagasTot = turmas.reduce(function (s2, t) { return s2 + t.vagas; }, 0);
-    var falta = [turmas.length ? null : 'turma', 'jovens'].filter(Boolean);
+    var falta = [testesProc.length ? null : 'testes', turmas.length ? null : 'turma', jovensP.length ? null : 'jovens'].filter(Boolean);
+    var incompletosJ = jovensP.filter(function (x) { return !x.termo_recebido_em || !(x.jovem && x.jovem.foto_path); }).length;
     var etapas = [['montagem', 'Montagem', 'dados, testes, turmas e jovens'], ['andamento', 'Em andamento', 'lançamento das notas'], ['revisao', 'Revisão', 'conferência e fechamento'], ['liberado', 'Liberado', 'resultado para a empresa']];
     var idxAtual = etapas.map(function (x) { return x[0]; }).indexOf(p.situacao);
     var porArea = {};
-    testesProc.forEach(function (pt) { var t = porId(b.testes, pt.teste_id); var a = t && porId(b.areas, t.area_id); var n = a ? a.nome : 'Sem área'; porArea[n] = (porArea[n] || 0) + 1; });
+    testesProc.forEach(function (pt) { var t = porId(b.testes, pt.teste_id); var a = t && porId(b.areas, t.area_id); var n = a ? a.nome : 'SEM ÁREA'; porArea[n] = (porArea[n] || 0) + 1; });
     var resumoAreas = Object.keys(porArea).map(function (k) { return k + ' ' + porArea[k]; }).join(' · ');
     area.querySelector('#painel').innerHTML =
       '<header class="cabecalho"><div class="painel-tit">' + logoHTML(e, 'grande') + '<div><h1>' + esc(e.nome_fantasia || '') + ' · ' + esc(p.vaga) + '</h1>' +
         '<p>' + esc(p.identificacao) + ' · período ' + esc(periodoReal(ag, p)) + '</p></div></div>' +
         '<div class="painel-acoes">' + selo(p.situacao) +
-        (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><div class="iniciar-box"><button type="button" class="btn btn-pri btn-iniciar" id="p-iniciar" disabled>Iniciar processo</button><small>Falta: ' + esc(falta.join(' e ')) + '</small></div>' : '') + '</div></header>' +
+        (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><div class="iniciar-box"><button type="button" class="btn btn-pri btn-iniciar" id="p-iniciar"' + (falta.length ? ' disabled' : '') + '>Iniciar processo</button>' + (falta.length ? '<small>Falta: ' + esc(falta.join(' e ')) + '</small>' : '') + '</div>' : '') + '</div></header>' +
       '<div class="etapas" role="list">' + etapas.map(function (x, i) {
         return '<div role="listitem" class="' + (i < idxAtual ? 'feita' : (i === idxAtual ? 'atual' : '')) + '"' + (i === idxAtual ? ' aria-current="step"' : '') + '><b>' + (i + 1) + ' · ' + esc(x[1]) + '</b>' + esc(x[2]) + '</div>';
       }).join('') + '</div>' +
-      '<div class="grade">' +
+      '<div class="grade grade-painel">' +
         '<section class="card bloco card-cor" style="--cor:var(--c-teste)"><span class="lbl">Testes</span><h2>' + testesProc.length + ' teste' + (testesProc.length === 1 ? '' : 's') + '</h2><p>' + esc(resumoAreas) + '</p>' +
           '<div class="bloco-botoes"><button type="button" class="btn btn-p" id="p-ver-testes">Ver testes</button>' + (admin && montagem ? '<button type="button" class="btn btn-p" id="p-aj-testes">Ajustar</button>' : '') + '</div></section>' +
         (function () {
@@ -142,14 +146,16 @@
         '<section class="card bloco card-cor" style="--cor:var(--c-area)"><span class="lbl">Turmas</span><h2>' + (turmas.length ? turmas.length + ' turma' + (turmas.length > 1 ? 's' : '') + ' · até ' + vagasTot + ' vagas' : 'Nenhuma turma') + '</h2>' +
           '<p>' + (turmas.length ? esc(turmas.map(function (t) { return t.nome + ': ' + diasDaTurma(ag, t.id).map(window.CF.datas.curta).join(' e '); }).join(' · ')) : 'Uma turma por dia, com 1 ou 2 dias.') + '</p>' +
           '<div class="bloco-botoes">' + (podeTurma ? '<button type="button" class="btn btn-p" id="p-nova-turma">+ Turma</button>' : '') + '</div></section>' +
-        '<section class="card bloco card-cor em-espera" style="--cor:var(--c-aval)"><span class="lbl">Jovens · Etapa 2.3</span><h2>Nenhum jovem</h2><p>Cadastro e importação da lista de candidatos.</p><div class="bloco-botoes"><button type="button" class="btn btn-p" disabled>+ Jovens</button></div></section>' +
+        '<section class="card bloco card-cor" style="--cor:var(--c-aval)"><span class="lbl">Jovens</span><h2>' + (jovensP.length ? jovensP.length + ' jove' + (jovensP.length === 1 ? 'm' : 'ns') + ' · de ' + vagasTot + ' vagas' : 'Nenhum jovem') + '</h2>' +
+          '<p>' + (jovensP.length ? (incompletosJ ? incompletosJ + ' cadastro(s) com foto ou termo pendente.' : 'Todos os cadastros completos.') : 'Cadastro, importação da lista e termos de consentimento.') + '</p>' +
+          '<div class="bloco-botoes"><a class="btn btn-p" href="#/processos/' + p.id + '/jovens">' + (jovensP.length ? 'Ver jovens' : '+ Jovens') + '</a></div></section>' +
       '</div>' +
       (turmas.length ? '<section class="card bloco card-cor" style="--cor:var(--c-area)"><span class="lbl">Turmas do processo</span><div class="turmas-lista">' + turmas.map(function (t) {
         var dias = diasDaTurma(ag, t.id);
         return '<div class="tlinha"><div class="tl-txt"><b>' + esc(t.nome) + '</b><small>' + esc(window.CF.datas.listaDias(dias)) + ' · ' + dias.length + ' dia' + (dias.length > 1 ? 's' : '') + (t.horario ? ' · ' + esc(t.horario) : '') + ' · ' + t.vagas + ' vagas</small></div>' +
           (podeTurma ? '<div class="acoes"><button type="button" class="btn btn-p" data-ed-turma="' + t.id + '">Editar</button>' + (montagem ? '<button type="button" class="btn btn-p btn-perigo" data-ex-turma="' + t.id + '">Excluir</button>' : '') + '</div>' : '') + '</div>';
       }).join('') + '</div><span class="dica">As datas ficam travadas na agenda. Remarcar uma turma libera os dias antigos e trava os novos.</span></section>' : '') +
-      (montagem ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Para <b>iniciar</b>: pelo menos 1 turma, 1 jovem e 1 teste. Ao iniciar, a configuração de testes fica guardada e a lista de jovens de cada turma vai para os avaliadores. (Jovens chegam na próxima etapa.)</span></div>' : '') +
+      (montagem ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Para <b>iniciar</b>: pelo menos 1 turma, 1 jovem e 1 teste. Ao iniciar, a configuração de testes fica guardada e a lista de jovens de cada turma vai para os avaliadores. </span></div>' : '') +
       (p.observacoes ? '<section class="card bloco"><span class="lbl">Observações</span><p style="white-space:pre-wrap">' + esc(p.observacoes) + '</p></section>' : '') +
       (admin && montagem ? '<div><button type="button" class="btn-link perigo" id="p-excluir">Excluir este processo</button></div>' : '');
     carregarLogos(area);
@@ -165,6 +171,10 @@
         if (!(await ui.confirmar('Excluir a ' + t.nome + '?', 'Os dias dela ficam livres na agenda.', 'Excluir turma', 'Cancelar'))) return;
         try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); recarregarPainel(); } catch (x) { erro(x); }
       });
+    });
+    if (q('#p-iniciar') && !falta.length) q('#p-iniciar').addEventListener('click', async function (ev) {
+      if (!(await ui.confirmar('Iniciar o processo?', 'Os testes e as competências ficam guardados como estão, e a lista de jovens de cada turma vai para os avaliadores. Depois disso, os testes e as notas de corte não podem mais ser alterados.', 'Iniciar processo', 'Cancelar'))) return;
+      try { await dados.processos.iniciar(p.id); ui.toast('Processo iniciado.', 'ok'); window.dispatchEvent(new HashChangeEvent('hashchange')); } catch (x) { erro(x); }
     });
     if (q('#p-editar')) q('#p-editar').addEventListener('click', function () { assistente(p, 1, ctx, testesProc); });
     if (q('#p-aj-testes')) q('#p-aj-testes').addEventListener('click', function () { assistente(p, 2, ctx, testesProc); });
@@ -312,10 +322,9 @@
             (empresasOp.length ? '' : '<small class="dica">Nenhuma empresa ativa. Cadastre em Configurações → Empresas.</small>') + '</label>' +
           '<label class="campo" for="w-vaga"><span>Vaga <span class="obrig">*</span></span><input class="entrada" id="w-vaga" maxlength="120" value="' + esc(st.vaga) + '" placeholder="Ex.: Auxiliar Administrativo"></label>' +
           '<label class="campo" for="w-ident"><span>Identificação <span class="obrig">*</span></span><input class="entrada" id="w-ident" maxlength="80" value="' + esc(st.identificacao) + '" placeholder="Ex.: 2º semestre 2026"></label>' +
-          '<label class="campo" for="w-ini"><span>Início previsto</span><input class="entrada" type="date" id="w-ini" value="' + esc(st.data_inicio) + '"></label>' +
-          '<label class="campo" for="w-fim"><span>Fim previsto</span><input class="entrada" type="date" id="w-fim" value="' + esc(st.data_fim) + '"></label>' +
+
           '<label class="campo largo" for="w-obs"><span>Observações</span><textarea class="entrada" id="w-obs" rows="2" maxlength="1000">' + esc(st.observacoes) + '</textarea></label></div>' +
-          '<p class="dica" style="margin:0">As datas são só uma previsão. As datas reais vêm das turmas, na agenda.</p>';
+          '<p class="dica" style="margin:0">O período do processo vem das datas das turmas.</p>';
       } else if (passo === 2) {
         var grupos = b.areas.filter(function (a) { return a.ativa; }).sort(function (x, y) { return x.ordem - y.ordem; }).map(function (a) { return { nome: a.nome, testes: b.testes.filter(function (t) { return t.area_id === a.id; }) }; });
         grupos.push({ nome: 'Sem área', testes: b.testes.filter(function (t) { return !t.area_id; }) });
@@ -370,7 +379,6 @@
         var porArea = {}; ts.forEach(function (t) { var n = areaNome(t); porArea[n] = (porArea[n] || 0) + 1; });
         c.innerHTML = '<dl class="conferir">' +
           '<dt>Empresa</dt><dd>' + esc(e.nome_fantasia || '') + '</dd><dt>Vaga</dt><dd>' + esc(st.vaga) + '</dd><dt>Identificação</dt><dd>' + esc(st.identificacao) + '</dd>' +
-          '<dt>Período previsto</dt><dd>' + esc(periodo(st)) + '</dd>' +
           '<dt>Testes</dt><dd>' + ts.length + ' · ' + esc(Object.keys(porArea).map(function (k) { return k + ' ' + porArea[k]; }).join(' · ')) + '</dd>' +
           '<dt>Notas de corte</dt><dd>Aprovado a partir de ' + fmtNota(st.ap) + ' · Backup a partir de ' + fmtNota(st.bk) + '</dd></dl>' +
           (semComp.length ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>' + semComp.length + ' teste(s) sem competências não vão contar na nota: ' + esc(semComp.map(function (t) { return t.nome; }).join(', ')) + '.</span></div>' : '') +
@@ -388,7 +396,7 @@
       var c = el.querySelector('#w-corpo');
       if (passo === 1) {
         st.empresa_id = c.querySelector('#w-emp').value; st.vaga = c.querySelector('#w-vaga').value.trim().replace(/\s+/g, ' ');
-        st.identificacao = c.querySelector('#w-ident').value.trim().replace(/\s+/g, ' '); st.data_inicio = c.querySelector('#w-ini').value; st.data_fim = c.querySelector('#w-fim').value;
+        st.identificacao = c.querySelector('#w-ident').value.trim().replace(/\s+/g, ' '); 
         st.observacoes = c.querySelector('#w-obs').value.trim();
       }
       if (passo === 3) { st.ap = numero(c.querySelector('#w-ap').value); st.bk = numero(c.querySelector('#w-bk').value); }
@@ -399,7 +407,6 @@
         if (!st.empresa_id) { ui.toast('Escolha a empresa.', 'erro'); return false; }
         if (!st.vaga) { ui.toast('Informe a vaga.', 'erro'); return false; }
         if (!st.identificacao) { ui.toast('Informe a identificação (ex.: 2º semestre 2026).', 'erro'); return false; }
-        if (st.data_inicio && st.data_fim && st.data_fim < st.data_inicio) { ui.toast('O fim previsto não pode ser antes do início.', 'erro'); return false; }
       }
       if (passo === 2) {
         var ts = escolhidos();

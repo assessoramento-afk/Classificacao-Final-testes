@@ -122,6 +122,7 @@
     testes: function (id) { return q(sb.from('processo_testes').select('*').eq('processo_id', id).order('ordem')); },
     salvar: function (p) { return q(sb.rpc('salvar_processo', { p: p })); },
     excluir: function (id) { return q(sb.from('processos').delete().eq('id', id)); },
+    iniciar: function (id) { return q(sb.rpc('iniciar_processo', { p_id: id })); },
     modelos: async function () {
       var r = await Promise.all([q(sb.from('modelos_processo').select('*').order('nome')), q(sb.from('modelo_testes').select('*').order('ordem'))]);
       return r[0].filter(function (m) { return m.ativo !== false; }).map(function (m) { return Object.assign({}, m, { testes: r[1].filter(function (x) { return x.modelo_id === m.id; }).map(function (x) { return x.teste_id; }) }); });
@@ -147,5 +148,30 @@
     excluirBloqueio: function (id) { return q(sb.from('bloqueios').delete().eq('id', id)); }
   };
 
-  window.CF.dados = { agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  /* ---------- Jovens ---------- */
+  var jovens = {
+    doProcesso: async function (processoId) {
+      var parts = await q(sb.from('participacoes').select('*').eq('processo_id', processoId).order('numero'));
+      var ids = parts.map(function (x) { return x.jovem_id; });
+      var js = ids.length ? await q(sb.from('jovens').select('*').in('id', ids)) : [];
+      return parts.map(function (x) { return Object.assign({}, x, { jovem: js.filter(function (j) { return j.id === x.jovem_id; })[0] || {} }); });
+    },
+    todos: function () { return q(sb.from('jovens').select('*').order('nome')); },
+    participacoesDe: function (jovemId) { return q(sb.from('participacoes').select('*').eq('jovem_id', jovemId)); },
+    todasParticipacoes: function () { return q(sb.from('participacoes').select('*')); },
+    salvar: function (p) { return q(sb.rpc('salvar_jovem', { p: p })); },
+    iguais: function (nome, nascimento) { return q(sb.rpc('buscar_jovens_iguais', { p_nome: nome, p_nascimento: nascimento || null })); },
+    remover: function (participacaoId) { return q(sb.rpc('remover_participacao', { p_id: participacaoId })); },
+    salvarFoto: async function (jovemId, arquivo) {
+      var blob = await reduzirImagem(arquivo, 600, 'image/jpeg');
+      var caminho = 'jovens/' + jovemId + '/foto-' + Date.now() + '.jpg';
+      var r = await sb.storage.from('fotos').upload(caminho, blob, { contentType: 'image/jpeg', upsert: false });
+      if (r.error) throw r.error;
+      await q(sb.from('jovens').update({ foto_path: caminho }).eq('id', jovemId).select('id').single());
+      return caminho;
+    },
+    urlFoto: async function (caminho) { if (!caminho) return null; var r = await sb.storage.from('fotos').createSignedUrl(caminho, 3600); return r.error ? null : r.data.signedUrl; }
+  };
+
+  window.CF.dados = { jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();

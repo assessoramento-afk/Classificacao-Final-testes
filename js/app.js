@@ -150,6 +150,7 @@
   }
 
   function navegar() {
+    document.querySelectorAll('.janela-fundo').forEach(function (f) { f.remove(); });
     var p = estado.perfil;
     var conteudo = document.getElementById('conteudo');
     if (!p || !conteudo) return;

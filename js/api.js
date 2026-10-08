@@ -52,6 +52,7 @@
       return 'Sua sessão expirou. Entre novamente.';
     if (m.indexOf('processo_testes_teste_id_fkey') >= 0)
       return 'Este teste já foi usado em um processo e não pode ser excluído. Em vez disso, desative o teste (Editar → Teste ativo).';
+    if (m.indexOf('participacoes_turma_id_fkey') >= 0) return 'Esta turma tem jovens cadastrados. Mude os jovens de turma antes de excluí-la.';
     if (m.indexOf('processos_empresa_id_fkey') >= 0) return 'Esta empresa tem processos e não pode ser excluída. Inative a empresa.';
     if (m.indexOf('processo_cortes') >= 0 || m.indexOf('cortes_coerentes') >= 0) return 'A nota de backup precisa ser menor ou igual à de aprovado.';
     if (m.indexOf('row-level security') >= 0 || m.indexOf('permission denied') >= 0)

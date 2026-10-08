@@ -64,7 +64,7 @@
     }
     var emp = estado.empresas || [];
     if ((!estado.disponivel || !estado.pessoas.length) && !emp.length) {
-      area.innerHTML = '<span class="pill pill-ok">' + ui.icone('nuvem', 15) + 'Online</span>';
+      area.innerHTML = '<span class="pill pill-ok" title="Online">' + ui.icone('nuvem', 15) + '<span class="txt-conexao">Online</span></span>';
       return;
     }
     var n = estado.pessoas.length + emp.length;
