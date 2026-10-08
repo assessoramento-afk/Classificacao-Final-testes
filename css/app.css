@@ -581,6 +581,18 @@ html[data-tema="claro"] .cor-mat-txt { color: #8a6114; }
 .passo-i { display: flex; gap: 10px; font-size: 14px; margin: 6px 0; align-items: flex-start; }
 .passo-i > b { width: 24px; height: 24px; border-radius: 50%; background: var(--laranja); color: #1b1111; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
 @media (max-width: 640px) { .inst { grid-template-columns: minmax(0, 1fr); } .inst-qr { margin: 0 auto; } }
+.ios-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 96; display: flex; align-items: flex-end; }
+.ios-folha { width: 100%; background: var(--cartao-solido); border-radius: 22px 22px 0 0; padding: 20px 20px calc(96px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -10px 30px rgba(0,0,0,.4); }
+.ios-folha h2 { font-size: 19px; display: flex; align-items: center; gap: 10px; }
+.ios-folha h2 img { width: 40px; height: 40px; border-radius: 10px; }
+.ios-txt { margin: 0; color: var(--texto-2); font-size: 15px; }
+.ios-p { display: flex; gap: 12px; align-items: center; font-size: 15px; line-height: 1.4; }
+.ios-p .n { width: 28px; height: 28px; border-radius: 50%; background: var(--laranja); color: #1b1111; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+.ios-ic { display: inline-flex; vertical-align: middle; background: var(--entrada); border: 1px solid var(--borda); border-radius: 8px; padding: 3px 6px; margin: 0 2px; color: var(--texto); }
+.seta-ios { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 97; color: #fff; font-size: 13px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,.6); animation: pula-ios 1.2s ease-in-out infinite; pointer-events: none; }
+.seta-ios .seta-ic { font-size: 26px; }
+@keyframes pula-ios { 50% { transform: translate(-50%, 8px); } }
+@media (prefers-reduced-motion: reduce) { .seta-ios { animation: none; } }
 .btn-perigo-cheio { background: var(--erro) !important; border-color: var(--erro) !important; color: #fff !important; box-shadow: none !important; }
 .painel-online .h-emp { margin-top: 10px; }
 .painel-online .h-emp small { font-weight: 500; color: var(--texto-3); font-size: 11px; }
