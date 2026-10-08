@@ -18,6 +18,7 @@
     if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) a--;
     return a;
   }
+  function alfabetica(l) { return l.slice().sort(function (a, b) { return String(a.jovem.nome).localeCompare(String(b.jovem.nome), 'pt-BR'); }); }
   function iniciais(nome) { return ui.iniciais(nome || '?'); }
   function fotoHTML(j, cls) { return '<span class="fotinho ' + (cls || '') + '" data-foto="' + esc(j.foto_path || '') + '">' + esc(iniciais(j.nome)) + '</span>'; }
   function carregarFotos(raiz) {
@@ -71,10 +72,11 @@
         return;
       }
       var t = porId(ts, st.turma);
-      var lista = parts.filter(function (x) { return x.turma_id === t.id && (!st.busca || ui.normalizar(x.jovem.nome + ' ' + x.codigo).indexOf(st.busca) >= 0); });
+      var daTurma = alfabetica(parts.filter(function (x) { return x.turma_id === t.id; }));
+      var lista = daTurma.filter(function (x) { return !st.busca || ui.normalizar(x.jovem.nome + ' ' + x.codigo).indexOf(st.busca) >= 0; });
       var incompletos = parts.filter(function (x) { return x.turma_id === t.id && faltas(x).length; }).length;
       box.innerHTML = '<header class="cabecalho"><div><h1>Jovens do processo</h1><p>' + ts.length + ' turma' + (ts.length > 1 ? 's' : '') + ' · ' + tot + ' jove' + (tot === 1 ? 'm' : 'ns') + ' cadastrado' + (tot === 1 ? '' : 's') + ' de ' + vagas + ' vagas</p></div>' +
-        '<div class="botoes-topo">' + (lista.length ? '<button type="button" class="btn" id="jv-termos">🖨 Termos da turma</button>' : '') +
+        '<div class="botoes-topo">' + (daTurma.length ? '<button type="button" class="btn" id="jv-kit">🖨 Kit da turma</button>' : '') +
         (aberto ? '<button type="button" class="btn" id="jv-importar">⬆ Importar lista</button><button type="button" class="btn" id="jv-existente">+ Já cadastrado</button><button type="button" class="btn btn-pri" id="jv-novo">' + ui.icone('mais', 17) + 'Novo jovem</button>' : '') + '</div></header>' +
         '<div class="segmentos seg-turmas" role="group" aria-label="Turma">' + ts.map(function (x) {
           var n = parts.filter(function (y) { return y.turma_id === x.id; }).length;
@@ -85,7 +87,7 @@
         (lista.length ? '<div class="card tabela-card"><table class="tabela tabela-jovens"><thead><tr><th>Nº</th><th>Jovem</th><th>Código</th><th>Convocação</th><th>Cadastro</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
           lista.map(function (x) {
             var i = idade(x.jovem.nascimento), f = faltas(x);
-            return '<tr><td class="num">' + x.numero + '</td><td><div class="cel-j">' + fotoHTML(x.jovem) + '<div><b>' + esc(x.jovem.nome) + '</b><small>' + esc(NOME_G[x.jovem.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '</small></div></div></td>' +
+            return '<tr><td class="num">' + (daTurma.indexOf(x) + 1) + '</td><td><div class="cel-j">' + fotoHTML(x.jovem) + '<div><b>' + esc(x.jovem.nome) + '</b><small>' + esc(NOME_G[x.jovem.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '</small></div></div></td>' +
               '<td><span class="cod">' + esc(x.codigo) + '</span></td><td>' + (x.convocacao ? D.completa(x.convocacao) : '—') + '</td>' +
               '<td>' + (f.length ? f.map(function (y) { return ui.pill(y, 'off'); }).join(' ') : ui.pill('Completo', 'sim')) + (contagem[x.jovem_id] > 1 ? ' ' + ui.pill(contagem[x.jovem_id] + 'º processo', 'neu') : '') + '</td>' +
               '<td><div class="acoes"><button type="button" class="btn btn-p" data-termo="' + x.id + '" title="Imprimir termo">🖨</button>' + (aberto ? '<button type="button" class="btn btn-p" data-editar="' + x.id + '">Editar</button>' : '') +
@@ -98,7 +100,7 @@
       if (box.querySelector('#jv-novo')) box.querySelector('#jv-novo').addEventListener('click', function () { formJovem(null); });
       if (box.querySelector('#jv-importar')) box.querySelector('#jv-importar').addEventListener('click', function () { importar(t); });
       if (box.querySelector('#jv-existente')) box.querySelector('#jv-existente').addEventListener('click', function () { adicionarExistente(t); });
-      if (box.querySelector('#jv-termos')) box.querySelector('#jv-termos').addEventListener('click', function () { imprimirTermos(lista); });
+      if (box.querySelector('#jv-kit')) box.querySelector('#jv-kit').addEventListener('click', function () { kit(t, daTurma); });
       box.querySelectorAll('[data-editar]').forEach(function (b) { b.addEventListener('click', function () { formJovem(porId(parts, b.getAttribute('data-editar'))); }); });
       box.querySelectorAll('[data-termo]').forEach(function (b) { b.addEventListener('click', function () { imprimirTermos([porId(parts, b.getAttribute('data-termo'))]); }); });
       box.querySelectorAll('[data-remover]').forEach(function (b) {
@@ -114,11 +116,11 @@
     function infoDoc() { return { empresa: emp.nome_fantasia || '', vaga: p.vaga, processo: p.identificacao }; }
     function imprimirTermos(lista) {
       var ts = turmas();
-      window.CF.documentos.termos(infoDoc(), lista.map(function (x) {
+      return window.CF.documentos.termos(infoDoc(), alfabetica(lista).map(function (x) {
         var t = porId(ts, x.turma_id) || {};
         return { nome: x.jovem.nome, codigo: x.codigo, turma: t.nome, dias: (t.dias || []).map(D.curta).join(' e '), genero: x.jovem.genero, nascimento: x.jovem.nascimento,
           telefone: x.jovem.telefone, responsavel_nome: x.responsavel_nome, responsavel_parentesco: x.responsavel_parentesco };
-      }), { jovem: cfg.texto_termo_jovem, responsavel: cfg.texto_termo_responsavel });
+      }), { jovem: cfg.texto_termo_jovem, responsavel: cfg.texto_termo_responsavel }, arguments[1]);
     }
 
     /* ---------- Cadastro / edição ---------- */
@@ -201,6 +203,76 @@
           } catch (e) { erro(e); return false; }
         });
       }
+    }
+
+    /* ---------- Kit da turma: crachás, presença, termos pendentes e materiais ---------- */
+    async function kit(turma, itens) {
+      var Doc = window.CF.documentos, M = window.CF.materiais;
+      var pendentes = itens.filter(function (x) { return !x.termo_recebido_em; });
+      var modelos = cfg.modelos_documento || {};
+      var bMat = null, testesProc = [];
+      try { var r = await Promise.all([dados.banco.carregarTudo(), dados.processos.testes(p.id)]); bMat = r[0]; testesProc = r[1]; } catch (e) { /* sem materiais */ }
+      var gruposMat = bMat ? M.lista(bMat, testesProc.map(function (x) { return x.teste_id; }), itens.length) : [];
+      var nomes = Doc.nomesCracha(itens.map(function (x) { return { nome: x.jovem.nome, nome_cracha: x.nome_cracha }; }));
+      var ajustados = nomes.filter(function (n) { return n.ajustado; }).length;
+      var inicio = 1;
+      var folhasCr = function () { return Math.ceil((itens.length + inicio - 1) / 8); };
+      function total(f) {
+        var n = 0;
+        if (f.querySelector('#k-cr').checked) n += folhasCr();
+        if (f.querySelector('#k-pr').checked) n += turma.dias.length * Math.max(1, Math.ceil(itens.length / 20));
+        if (f.querySelector('#k-te').checked) n += pendentes.length;
+        if (f.querySelector('#k-mt') && f.querySelector('#k-mt').checked) n += 1;
+        return n;
+      }
+      var j = ui.janela({ titulo: 'Imprimir kit da turma · ' + turma.nome, confirmarDescarte: false,
+        corpo: '<p style="margin:0;color:var(--texto-2)">Marque o que entra no kit. Tudo sai num arquivo só, nesta ordem, com os jovens em ordem alfabética:</p>' +
+          '<label class="kit-op"><input type="checkbox" id="k-cr" checked><span><b>1 · Crachás</b><small id="k-cr-txt"></small>' +
+            '<span class="kit-pos"><span class="pos" role="group" aria-label="Posição do primeiro crachá na folha">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return '<button type="button" data-pos="' + n + '" aria-label="Começar na posição ' + n + '"></button>'; }).join('') + '</span>' +
+            '<small id="k-pos-txt"></small></span></span></label>' +
+          '<label class="kit-op"><input type="checkbox" id="k-pr" checked><span><b>2 · Lista de presença</b><small>Uma folha para cada dia: ' + esc(turma.dias.map(D.curta).join(' e ')) + ' → ' + turma.dias.length * Math.max(1, Math.ceil(itens.length / 20)) + ' folha(s), com telefone e assinatura</small></span></label>' +
+          '<label class="kit-op"><input type="checkbox" id="k-te"' + (pendentes.length ? ' checked' : ' disabled') + '><span><b>3 · Termos de consentimento</b><small>' + (pendentes.length ? 'Só de quem ainda não entregou o termo assinado: ' + pendentes.length + ' de ' + itens.length + ' → ' + pendentes.length + ' folha(s)' : 'Todos os termos já foram recebidos.') + '</small></span></label>' +
+          (gruposMat.length ? '<label class="kit-op"><input type="checkbox" id="k-mt"><span><b>4 · Lista de materiais</b><small>Ajustada para ' + itens.length + ' jovens → 1 folha</small></span></label>' : '') +
+          (ajustados ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>' + ajustados + ' nome(s) do crachá foram ajustados para diferenciar pessoas com o mesmo nome curto. <button type="button" class="btn-link" id="k-nomes">Conferir nomes do crachá</button></span></div>' : '<div><button type="button" class="btn-link" id="k-nomes">Conferir nomes do crachá</button></div>'),
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Imprimir', principal: true, aoClicar: function (f) {
+          var corpo = '', info = infoDoc();
+          var turmaCurta = turma.nome + ' · ' + turma.dias.map(D.curta).join(' e ');
+          var ordem = itens.map(function (x, i) { return { nome: x.jovem.nome, nome_cracha: x.nome_cracha, codigo: x.codigo, turmaCurta: turmaCurta }; });
+          if (f.querySelector('#k-cr').checked) corpo += Doc.crachas(info, ordem, { inicio: inicio, qr: modelos.cracha !== 'sem_qr' });
+          if (f.querySelector('#k-pr').checked) corpo += Doc.presenca(Object.assign({}, info, { logoUrl: logoUrl }), turma, itens.map(function (x) { return { nome: x.jovem.nome, codigo: x.codigo }; }));
+          if (f.querySelector('#k-te').checked && pendentes.length) corpo += imprimirTermos(pendentes, true);
+          if (f.querySelector('#k-mt') && f.querySelector('#k-mt').checked) corpo += M.secao({ titulo: info.empresa + ' · ' + info.vaga, turma: turma.nome + ' · ' + itens.length + ' jovens', data: D.listaDias(turma.dias), pessoas: itens.length, grupos: gruposMat });
+          if (!corpo) { ui.toast('Marque pelo menos um item.', 'erro'); return false; }
+          Doc.imprimir('Kit da turma · ' + turma.nome + ' · ' + info.vaga, corpo, M.CSS);
+          return true;
+        } }] });
+      var el = j.elemento;
+      function atualizar() {
+        el.querySelector('#k-cr-txt').textContent = itens.length + ' jove' + (itens.length === 1 ? 'm' : 'ns') + ' · 8 por folha A4 → ' + folhasCr() + ' folha(s)' + (modelos.cracha === 'sem_qr' ? ' · sem QR Code' : ' · com código e QR Code');
+        el.querySelector('#k-pos-txt').innerHTML = inicio === 1 ? 'Começa na <b>posição 1</b> (folha nova). Toque numa posição para aproveitar uma folha já usada.' : 'Começa na <b>posição ' + inicio + '</b> da 1ª folha (aproveita uma folha já usada).';
+        el.querySelectorAll('[data-pos]').forEach(function (b) { var n = +b.getAttribute('data-pos'); b.className = n < inicio ? 'usada' : (n === inicio ? 'inicio' : ''); b.setAttribute('aria-pressed', String(n === inicio)); });
+        el.querySelector('.janela-pe .btn-pri').textContent = '🖨 Imprimir kit (' + total(el) + ' folha' + (total(el) === 1 ? '' : 's') + ')';
+      }
+      el.querySelectorAll('[data-pos]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); inicio = +b.getAttribute('data-pos'); atualizar(); }); });
+      el.querySelectorAll('input[type=checkbox]').forEach(function (c) { c.addEventListener('change', atualizar); });
+      el.querySelector('#k-nomes').addEventListener('click', function () { conferirNomes(itens, nomes); });
+      var logoUrl = null;
+      if (emp.logo_path) dados.empresas.urlLogo(emp.logo_path).then(function (u) { logoUrl = u; });
+      atualizar();
+    }
+    function conferirNomes(itens, nomes) {
+      var j = ui.janela({ titulo: 'Nomes do crachá', confirmarDescarte: false,
+        corpo: '<p class="dica" style="margin:0">O sistema usa o primeiro nome e o primeiro sobrenome. Para mudar, digite outro nome (ex.: um apelido). Deixe em branco para voltar ao automático.</p>' +
+          '<div class="tabela-card" style="padding:0;max-height:52vh;overflow:auto"><table class="tabela mini"><thead><tr><th>Nome completo</th><th>No crachá</th></tr></thead><tbody>' +
+          itens.map(function (x, i) { return '<tr><td>' + esc(x.jovem.nome) + (nomes[i].ajustado ? ' ' + ui.pill('ajustado', 'off') : '') + '</td><td><input class="entrada" data-nc="' + x.id + '" maxlength="40" placeholder="' + esc(nomes[i].auto) + '" value="' + esc(x.nome_cracha || '') + '"></td></tr>'; }).join('') + '</tbody></table></div>',
+        botoes: [{ texto: 'Fechar', acao: 'fechar' }, { texto: 'Salvar nomes', principal: true, aoClicar: async function (f) {
+          var mud = [].filter.call(f.querySelectorAll('[data-nc]'), function (inp) { var x = porId(parts, inp.getAttribute('data-nc')); return (x.nome_cracha || '') !== inp.value.trim(); });
+          try {
+            for (var k = 0; k < mud.length; k++) { var v = ui.maiusculas(mud[k].value.trim()) || null; var rr = await window.CF.sb.from('participacoes').update({ nome_cracha: v }).eq('id', mud[k].getAttribute('data-nc')); if (rr && rr.error) throw rr.error; porId(parts, mud[k].getAttribute('data-nc')).nome_cracha = v; }
+            ui.toast(mud.length ? 'Nomes do crachá salvos.' : 'Nada mudou.', 'ok'); return true;
+          } catch (e) { erro(e); return false; }
+        } }] });
+      return j;
     }
 
     /* ---------- Adicionar jovem já cadastrado ---------- */

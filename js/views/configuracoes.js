@@ -18,6 +18,7 @@
     notas: '<path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/>',
     prereserva: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     agradecimento: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7"/>',
+    modelos: '<rect x="4" y="3" width="12" height="16" rx="1.5"/><path d="M8 7h5M8 11h5"/><rect x="9" y="8" width="11" height="13" rx="1.5"/>',
     termo: '<path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 13h6M10 17h4"/>',
     materiais: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>'
   };
@@ -39,6 +40,7 @@
     if (sub === 'prereserva') return paginaPreReserva(area);
     if (sub === 'agradecimento') return paginaAgradecimento(area);
     if (sub === 'termo') return paginaTermo(area);
+    if (sub === 'modelos') return paginaModelos(area);
     paginaInicial(area);
   };
 
@@ -78,7 +80,7 @@
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'padrao', 'Notas de corte', cfg ? 'Aprovado a partir de ' + fmt(cfg.corte_aprovado) + ' · Backup a partir de ' + fmt(cfg.corte_backup) : '') +
         card('prereserva', 'padrao', 'Pré-reserva da agenda', cfg ? 'Prazo de ' + cfg.prazo_pre_reserva_dias + ' dias · aviso ' + cfg.aviso_pre_reserva_dias + ' dia' + (cfg.aviso_pre_reserva_dias === 1 ? '' : 's') + ' antes' : '') +
-        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('termo', 'padrao', 'Termo de consentimento', 'Texto impresso para o jovem e o responsável assinarem') + '</div></section>';
+        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('termo', 'padrao', 'Termo de consentimento', 'Texto impresso para o jovem e o responsável assinarem') + card('modelos', 'padrao', 'Modelos de documentos', 'Modelo padrão de cada documento impresso') + '</div></section>';
   }
 
   /* ---------- Notas de corte ---------- */
@@ -153,6 +155,34 @@
       });
     });
     exemplo();
+  }
+
+  /* ---------- Modelos de documentos ---------- */
+  var DOCS = [
+    { k: 'cracha', nome: 'Crachá', det: '8 por folha A4 · 9,4 × 5,9 cm', opcoes: [['com_qr', 'Faixa lateral com código e QR Code'], ['sem_qr', 'Faixa lateral com código, sem QR Code']] },
+    { k: 'presenca', nome: 'Lista de presença', det: 'folha deitada · 1 por dia · telefone e assinatura', opcoes: [['padrao', 'Com logos, código, telefone e assinatura']] },
+    { k: 'termo', nome: 'Termo de consentimento', det: '1 página por jovem', opcoes: [['padrao', 'Jovem + responsável (menores de 18)']] },
+    { k: 'materiais', nome: 'Lista de materiais', det: 'por turma, com conferência', opcoes: [['padrao', 'Com caixas de conferência e observações']] },
+    { k: 'ficha', nome: 'Ficha do candidato (PDF)', det: 'Fase 5' }, { k: 'relatorio', nome: 'Classificação e relatório (PDF)', det: 'Fase 5' },
+    { k: 'excel', nome: 'Planilha Excel do processo', det: 'Fase 5' }, { k: 'certificado', nome: 'Certificado de participação', det: 'Fase 5' }];
+  async function paginaModelos(area) {
+    var cfg = await dados.config.carregar(), atual = Object.assign({}, cfg.modelos_documento || {});
+    area.innerHTML = cabecalho('Modelos de documentos', 'Escolha qual modelo cada documento usa como padrão') +
+      '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Documento</th><th>Modelo padrão</th><th>Modelos disponíveis</th></tr></thead><tbody>' +
+      DOCS.map(function (d) {
+        if (!d.opcoes) return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td><td><span class="dica">em construção</span></td><td></td></tr>';
+        var v = atual[d.k] || d.opcoes[0][0];
+        return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td>' +
+          '<td>' + (d.opcoes.length > 1 ? '<select class="entrada sel-modelo" data-doc="' + d.k + '" aria-label="Modelo padrão de ' + esc(d.nome) + '">' + d.opcoes.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>'
+            : ui.pill(d.opcoes[0][1], 'sim')) + '</td><td class="num">' + d.opcoes.length + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<p class="dica" style="margin:0">Novos modelos aparecem aqui conforme forem criados. Trocar o padrão não muda documentos já impressos.</p>';
+    area.querySelectorAll('[data-doc]').forEach(function (sel) {
+      sel.addEventListener('change', async function () {
+        atual[sel.getAttribute('data-doc')] = sel.value;
+        try { await dados.config.salvar({ modelos_documento: atual }); ui.toast('Modelo padrão salvo.', 'ok'); } catch (x) { erro(x); }
+      });
+    });
   }
 
   /* ---------- Texto do termo de consentimento ---------- */

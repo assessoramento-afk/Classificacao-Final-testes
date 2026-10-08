@@ -456,7 +456,8 @@ html[data-tema="escuro"] .cfg .ic { color: color-mix(in srgb, var(--cor) 60%, wh
 .proc .logo-mini { width: 64px; height: 40px; }
 .nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .nums div { background: var(--entrada); border: 1px solid var(--borda-2); border-radius: 10px; padding: 8px 10px; min-width: 0; }
-.nums b { display: block; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nums b { display: block; font-size: 17px; line-height: 1.25; overflow-wrap: anywhere; }
+.nums div:last-child b { font-size: 14px; }
 .nums span { font-size: 12px; color: var(--texto-3); }
 .painel-tit { display: flex; gap: 16px; align-items: center; }
 .painel-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -599,6 +600,18 @@ html[data-tema="claro"] .cor-mat-txt { color: #8a6114; }
 
 /* Foco levado ao conteúdo ao trocar de tela: sem contorno (só para leitores de tela) */
 #conteudo:focus { outline: none; }
+
+/* ---------- Kit da turma ---------- */
+.kit-op { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--borda); border-radius: 12px; background: var(--entrada); cursor: pointer; }
+.kit-op input { width: 18px; height: 18px; accent-color: var(--laranja); margin-top: 2px; flex: none; }
+.kit-op small { display: block; color: var(--texto-3); font-size: 12.5px; }
+.kit-pos { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+.pos { display: grid; grid-template-columns: repeat(2, 38px); gap: 4px; flex: none; }
+.pos button { height: 24px; border: 1px solid var(--borda); border-radius: 4px; background: var(--surface-2); cursor: pointer; padding: 0; }
+.pos button.usada { background: repeating-linear-gradient(135deg, var(--texto-4) 0 3px, transparent 3px 6px); }
+.pos button.inicio { background: var(--laranja); border-color: var(--laranja); }
+.sub-cel { display: block; color: var(--texto-3); font-size: 12px; }
+.sel-modelo { min-width: 280px; width: auto; }
 
 /* ---------- Jovens ---------- */
 .cod { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .06em; background: var(--entrada); border: 1px solid var(--borda); border-radius: 6px; padding: 2px 7px; font-size: 12.5px; white-space: nowrap; }

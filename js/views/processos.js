@@ -63,8 +63,10 @@
       (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + 'Novo processo</button>' : '') + '</header>' +
       '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-p" placeholder="Buscar por empresa, vaga ou processo"></label></div>' +
       '<div class="filtros" id="filtros" role="group" aria-label="Situação"></div><div id="procs"><div class="girando" style="margin:30px auto"></div></div>';
-    var procs = [], empresas = [], ag = null;
-    try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar(), dados.agenda.carregarTudo().catch(function () { return null; })]); procs = r[0]; empresas = r[1]; ag = r[2]; }
+    var procs = [], empresas = [], ag = null, nJovens = {};
+    try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar().catch(function () { return []; }), dados.agenda.carregarTudo().catch(function () { return null; }), dados.jovens.todasParticipacoes().catch(function () { return []; })]); procs = r[0]; empresas = r[1]; ag = r[2];
+      r[3].forEach(function (x) { nJovens[x.processo_id] = (nJovens[x.processo_id] || 0) + 1; });
+      if (!empresas.length && ag) empresas = ag.empresas; }
     catch (e) { erro(e); area.querySelector('#procs').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
     if (admin) area.querySelector('#b-novo').addEventListener('click', function () { assistente(null, 1, ctx); });
     area.querySelector('#busca-p').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
@@ -91,7 +93,7 @@
         return '<a class="card proc" href="#/processos/' + p.id + '" style="--sc:' + cor + '">' +
           '<div class="proc-cab">' + logoHTML(e) + '<div class="proc-tit"><h3>' + esc(e.nome_fantasia || 'Empresa') + '</h3><small>' + esc(p.vaga) + ' · ' + esc(p.identificacao) + '</small>' +
           '<div>' + selo(p.situacao) + '</div></div></div>' +
-          '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>0</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div></a>';
+          '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>' + (nJovens[p.id] || 0) + '</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div></a>';
       }).join('') + '</div>';
       carregarLogos(box);
     }
