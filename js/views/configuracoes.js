@@ -17,7 +17,8 @@
     competencias: '<path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.8 5.8 21l1.4-7L2 9.3l7-.8z"/>',
     notas: '<path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/>',
     prereserva: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-    agradecimento: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7"/>'
+    agradecimento: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7"/>',
+    materiais: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>'
   };
   function icone(n, t) { return '<svg width="' + (t || 22) + '" height="' + (t || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES[n] + '</svg>'; }
   function seta() { return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'; }
@@ -32,7 +33,7 @@
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.config = function (area, ctx) {
     var sub = subAtual();
-    if (sub && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias'].indexOf(sub) >= 0) { window.CF.configPaginas.render(area, sub, ctx); return; }
+    if (sub && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias', 'materiais'].indexOf(sub) >= 0) { window.CF.configPaginas.render(area, sub, ctx); return; }
     if (sub === 'notas') return paginaNotas(area);
     if (sub === 'prereserva') return paginaPreReserva(area);
     if (sub === 'agradecimento') return paginaAgradecimento(area);
@@ -53,7 +54,7 @@
     var emp = r[0], pes = r[1], b = r[2], cfg = r[3];
     var empAtivas = emp.filter(function (e) { return e.ativa; }).length;
     var comAcesso = pes.filter(function (p) { return p.aprovado && p.ativo; }).length, pend = pes.filter(function (p) { return !p.aprovado && p.ativo; }).length;
-    var resumoBanco = { areas: '', testes: '', competencias: '' };
+    var resumoBanco = { areas: '', testes: '', competencias: '', materiais: '' };
     if (b) {
       var nAreas = b.areas.filter(function (a) { return a.ativa; }).length;
       var testesAt = b.testes.filter(function (t) { return t.ativo; });
@@ -63,13 +64,15 @@
       resumoBanco.areas = nAreas + (nAreas === 1 ? ' área' : ' áreas') + ' no radar';
       resumoBanco.testes = testesAt.length + ' testes' + (semComp ? ' · ' + semComp + ' sem competências' : '');
       resumoBanco.competencias = compAt.length + ' competências' + (compSem ? ' · ' + compSem + ' sem testes' : '');
+      var nMat = (b.materiais || []).filter(function (m) { return m.ativo; }).length, tComMat = {}; (b.testeMateriais || []).forEach(function (m) { tComMat[m.teste_id] = 1; });
+      resumoBanco.materiais = nMat + (nMat === 1 ? ' material' : ' materiais') + ' · ' + Object.keys(tComMat).length + ' testes com lista';
     }
     area.querySelector('#cfg-cards').innerHTML =
       '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
         card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
         card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') + '</div></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
-        card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + '</div></section>' +
+        card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'padrao', 'Notas de corte', cfg ? 'Aprovado a partir de ' + fmt(cfg.corte_aprovado) + ' · Backup a partir de ' + fmt(cfg.corte_backup) : '') +
         card('prereserva', 'padrao', 'Pré-reserva da agenda', cfg ? 'Prazo de ' + cfg.prazo_pre_reserva_dias + ' dias · aviso ' + cfg.aviso_pre_reserva_dias + ' dia' + (cfg.aviso_pre_reserva_dias === 1 ? '' : 's') + ' antes' : '') +

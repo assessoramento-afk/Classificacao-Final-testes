@@ -40,6 +40,7 @@
   window.CF.bancoEditor = function (estado) {
     estado.abertas = estado.abertas || {};
     function B() { return estado.b; }
+    function numeroBR(v) { var n = parseFloat(String(v || '').replace(',', '.')); return isNaN(n) ? null : n; }
     function criteriosDe(tid) { return B().criterios.filter(function (c) { return c.teste_id === tid; }).sort(function (x, y) { return x.ordem - y.ordem; }); }
     /* ---------- Listas de opções ---------- */
     function opcoesAreas(sel, exceto) {
@@ -69,6 +70,9 @@
       var novo = !t;
       t = t || { area_id: areaInicial || null, ativo: true };
       var linhas = novo ? [{}] : criteriosDe(t.id).map(function (c) { return { id: c.id, nome_exibido: c.nome_exibido, competencia_id: c.competencia_id, sem: !c.competencia_id }; });
+      var modalidade = t.modalidade || 'individual';
+      var mats = novo ? [] : (B().testeMateriais || []).filter(function (m) { return m.teste_id === t.id; }).sort(function (x, y) { return x.ordem - y.ordem; })
+        .map(function (m) { return { material_id: m.material_id, quantidade: m.quantidade, fixa: m.fixa, observacao: m.observacao || '' }; });
       var j = ui.janela({
         titulo: novo ? 'Novo teste' : 'Editar teste',
         corpo: '<div class="form-grade">' + campo('ft-nome', 'Nome do teste', t.nome, { obrig: true, largo: true, max: 100 }) +
@@ -76,6 +80,7 @@
             (t.area_id ? '' : '<option value="">Escolha a área…</option>') + opcoesAreas(t.area_id) + '</select></label>' +
           '<label class="campo" for="ft-entrada"><span>Como o avaliador lança</span><select class="entrada" id="ft-entrada"><option value="nota">Nota de 1 a 5</option><option value="pontuacao">Pontuação (convertida pela tabela)</option></select></label>' +
           campo('ft-desc', 'Descrição', t.descricao, { largo: true, area: true }) +
+          '<div class="campo largo"><span>Como é feito</span><div class="segmentos" role="group" aria-label="Como é feito"><button type="button" data-mod="individual" aria-pressed="' + (modalidade === 'individual') + '">👤 Individual</button><button type="button" data-mod="grupo" aria-pressed="' + (modalidade === 'grupo') + '">👥 Em grupo</button></div></div>' +
           marcar('ft-padrao', 'Teste padrão', t.padrao, 'Entra em todo processo novo') +
           marcar('ft-nivel', 'Tem seleção de nível', t.tem_nivel, 'Iniciante ou Jovem Aprendiz') +
           (novo ? '' : '<div class="largo">' + marcar('ft-ativo', 'Teste ativo', t.ativo, 'Testes inativos não aparecem para processos novos') + '</div>') +
@@ -84,10 +89,51 @@
           '<div class="comp-linha comp-cab" aria-hidden="true"><span>Nome que o avaliador vê</span><span>Competência</span><span></span></div>' +
           '<div id="ft-linhas"></div>' +
           '<button type="button" class="btn btn-p btn-comp-leve" id="ft-mais" style="align-self:flex-start">' + ui.icone('mais', 15) + 'Adicionar competência</button>' +
-          '<span class="dica">O nome pode ficar em branco: o sistema usa o nome da competência. Para nível, pontuação e descrição de cada uma, use o lápis na competência, no card do teste.</span></div>',
+          '<span class="dica">O nome pode ficar em branco: o sistema usa o nome da competência. Para nível, pontuação e descrição de cada uma, use o lápis na competência, no card do teste.</span></div>' +
+          '<div class="bloco-comps bloco-mat"><span class="lbl cor-mat-txt">Materiais necessários · referência: 20 pessoas (4 grupos de 5)</span>' +
+          '<div class="mat-linha mat-cab" aria-hidden="true"><span>Material</span><span>Qtd.</span><span>Unid.</span><span>Observação</span><span>Fixa</span><span></span></div>' +
+          '<div id="ft-mats"></div>' +
+          '<button type="button" class="btn btn-p" id="ft-mat-mais" style="align-self:flex-start">' + ui.icone('mais', 15) + 'Adicionar material</button>' +
+          '<span class="dica">"Fixa": a quantidade não muda com o tamanho da turma (ex.: 1 cronômetro). As outras são ajustadas pelo número de grupos (em grupo) ou de pessoas (individual).</span></div>',
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar teste', principal: true, aoClicar: salvar }]
       });
-      var el = j.elemento, caixa = el.querySelector('#ft-linhas');
+      var el = j.elemento, caixa = el.querySelector('#ft-linhas'), caixaM = el.querySelector('#ft-mats');
+      el.querySelectorAll('[data-mod]').forEach(function (b2) {
+        b2.addEventListener('click', function () { modalidade = b2.getAttribute('data-mod'); el.querySelectorAll('[data-mod]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b2)); }); el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); });
+      });
+      function unidadeDe(id) { var m = porId(B().materiais || [], id); return m ? m.unidade : ''; }
+      function desenharMats() {
+        caixaM.innerHTML = mats.map(function (m, i) {
+          return '<div class="mat-item-f" data-mi="' + i + '"><div class="mat-linha">' +
+            '<select class="entrada" data-m="mat" aria-label="Material"><option value="">Escolha…</option>' + (B().materiais || []).filter(function (x) { return x.ativo || x.id === m.material_id; }).map(function (x) {
+              return '<option value="' + x.id + '"' + (x.id === m.material_id ? ' selected' : '') + '>' + esc(x.nome) + '</option>'; }).join('') + '<option value="' + NOVA + '"' + (m.novo ? ' selected' : '') + '>＋ Novo material…</option></select>' +
+            '<input class="entrada" data-m="qtd" inputmode="decimal" aria-label="Quantidade" value="' + esc(m.quantidade == null ? '' : String(m.quantidade).replace('.', ',')) + '">' +
+            '<span class="un" data-m="un">' + esc(m.novo ? '' : unidadeDe(m.material_id)) + '</span>' +
+            '<input class="entrada" data-m="obs" maxlength="120" aria-label="Observação" placeholder="Ex.: 1 por grupo" value="' + esc(m.observacao || '') + '">' +
+            '<label class="fixa-ck" title="Quantidade fixa"><input type="checkbox" data-m="fixa"' + (m.fixa ? ' checked' : '') + '><span class="sr">Quantidade fixa</span></label>' +
+            '<button type="button" class="ico perigo" data-mrem="' + i + '" aria-label="Remover material">' + icone('lixo') + '</button></div>' +
+            '<div class="novo-mat' + (m.novo ? '' : ' oculto') + '"><input class="entrada" data-m="nnome" placeholder="Nome do material *" maxlength="80" value="' + esc(m.novo ? m.novo.nome : '') + '">' +
+            '<input class="entrada" data-m="nun" placeholder="Unidade (ex.: UN., ROLO, FOLHA)" maxlength="20" value="' + esc(m.novo ? m.novo.unidade : 'UN.') + '"></div></div>';
+        }).join('') || '<p class="dica">Nenhum material. Use "Adicionar material" se o teste precisar de algum.</p>';
+        caixaM.querySelectorAll('.mat-item-f').forEach(function (it) {
+          var sel = it.querySelector('[data-m=mat]');
+          sel.addEventListener('change', function () {
+            it.querySelector('.novo-mat').classList.toggle('oculto', sel.value !== NOVA);
+            it.querySelector('[data-m=un]').textContent = sel.value === NOVA ? '' : unidadeDe(sel.value);
+            if (sel.value === NOVA) it.querySelector('[data-m=nnome]').focus();
+          });
+        });
+        caixaM.querySelectorAll('[data-mrem]').forEach(function (bt) { bt.addEventListener('click', function () { lerMats(); mats.splice(+bt.getAttribute('data-mrem'), 1); desenharMats(); }); });
+      }
+      function lerMats() {
+        mats = [].map.call(caixaM.querySelectorAll('.mat-item-f'), function (it) {
+          var v = it.querySelector('[data-m=mat]').value;
+          return { material_id: v && v !== NOVA ? v : null, novo: v === NOVA ? { nome: limpo(it.querySelector('[data-m=nnome]').value), unidade: limpo(it.querySelector('[data-m=nun]').value) || 'UN.' } : null,
+            quantidade: numeroBR(it.querySelector('[data-m=qtd]').value), fixa: it.querySelector('[data-m=fixa]').checked, observacao: limpo(it.querySelector('[data-m=obs]').value) };
+        });
+      }
+      el.querySelector('#ft-mat-mais').addEventListener('click', function () { lerMats(); mats.push({ quantidade: null }); desenharMats(); var it = caixaM.querySelectorAll('.mat-item-f'); it[it.length - 1].querySelector('select').focus(); });
+      desenharMats();
       function desenharLinhas() {
         caixa.innerHTML = linhas.map(function (l, i) {
           return '<div class="comp-item" data-i="' + i + '"><div class="comp-linha">' +
@@ -131,11 +177,27 @@
           if (l.nova) c.nova_competencia = l.nova; else c.competencia_id = l.competencia_id || null;
           crits.push(c);
         }
-        var payload = { id: t.id || null, nome: nome, area_id: areaId, descricao: limpo(fundo.querySelector('#ft-desc').value) || null,
+        lerMats();
+        var vistos = {};
+        for (var k = 0; k < mats.length; k++) {
+          var mm = mats[k];
+          if (!mm.material_id && !mm.novo) { ui.toast('Escolha o material da linha ' + (k + 1) + ', ou remova a linha.', 'erro'); return false; }
+          if (mm.novo && !mm.novo.nome) { ui.toast('Informe o nome do novo material (linha ' + (k + 1) + ').', 'erro'); return false; }
+          if (mm.novo && (B().materiais || []).some(function (x) { return ui.normalizar(x.nome) === ui.normalizar(mm.novo.nome); })) { ui.toast('O material "' + mm.novo.nome + '" já existe. Escolha-o na lista.', 'erro'); return false; }
+          if (!(mm.quantidade > 0)) { ui.toast('Informe a quantidade do material da linha ' + (k + 1) + '.', 'erro'); return false; }
+          var chave = mm.material_id || ('n:' + ui.normalizar(mm.novo.nome));
+          if (vistos[chave]) { ui.toast('O mesmo material aparece duas vezes. Junte as quantidades numa linha só.', 'erro'); return false; }
+          vistos[chave] = 1;
+        }
+        var payload = { id: t.id || null, nome: nome, area_id: areaId, descricao: limpo(fundo.querySelector('#ft-desc').value) || null, modalidade: modalidade,
           padrao: fundo.querySelector('#ft-padrao').checked, tem_nivel: fundo.querySelector('#ft-nivel').checked, criterios: crits };
         if (!novo) payload.ativo = fundo.querySelector('#ft-ativo').checked;
         return ui.executar(fundo.querySelector('.janela-pe .btn-pri'), 'Salvando…', async function () {
           try {
+            for (var k2 = 0; k2 < mats.length; k2++) {
+              if (mats[k2].novo) { var criado = await dados.banco.salvarMaterial({ nome: ui.maiusculas(mats[k2].novo.nome), unidade: ui.maiusculas(mats[k2].novo.unidade) }); B().materiais.push(criado); mats[k2].material_id = criado.id; mats[k2].novo = null; }
+            }
+            payload.materiais = mats.map(function (m) { return { material_id: m.material_id, quantidade: m.quantidade, fixa: m.fixa, observacao: m.observacao || null }; });
             var id = await dados.banco.salvarTesteCompleto(payload);
             estado.abertas[areaId] = true;
             ui.toast(novo ? 'Teste cadastrado.' : 'Teste atualizado.', 'ok');
@@ -400,7 +462,7 @@
         var a = g.area;
         return '<section class="card area-card' + (g.id === 'sem' ? ' area-sem' : '') + '" data-grupo="' + g.id + '">' +
           '<div class="area-cab"><button type="button" class="area-toggle" aria-expanded="' + aberta + '" data-toggle="' + g.id + '">' + icone(aberta ? 'abre' : 'fecha') +
-            '<h2>' + esc(g.nome) + '</h2>' + (a && !a.ativa ? ui.pill('Inativa', 'neu') : '') + (g.id === 'sem' ? ui.pill('reorganizar', 'off') : '') +
+            '<h2>' + esc(g.nome) + '</h2>' + (a && !a.ativa ? ui.pill('Inativa', 'nao') : '') + (g.id === 'sem' ? ui.pill('reorganizar', 'off') : '') +
             '<span class="cont">' + g.testes.length + ' teste' + (g.testes.length === 1 ? '' : 's') + '</span></button>' +
             (admin && a ? '<div class="mini-acoes"><button type="button" class="ico" data-ed-area="' + a.id + '" title="Editar área" aria-label="Editar área ' + esc(a.nome) + '">' + icone('lapis') + '</button>' +
               '<button type="button" class="ico perigo" data-ex-area="' + a.id + '" title="Excluir área" aria-label="Excluir área ' + esc(a.nome) + '">' + icone('lixo') + '</button></div>' : '') +
@@ -416,9 +478,9 @@
     function cardTeste(t) {
       var cs = criteriosDe(t.id);
       var usaPont = cs.some(function (c) { return c.entrada === 'pontuacao'; });
-      var selos = [t.padrao ? 'Padrão' : null, t.tem_nivel ? 'Com nível' : null, !t.ativo ? 'Inativo' : null].filter(Boolean);
+      var selos = [t.padrao ? 'Padrão' : null, t.tem_nivel ? 'Com nível' : null, null].filter(Boolean);
       return '<article class="teste-card" id="teste-' + t.id + '"><div class="teste-cab"><div class="teste-tit"><b>' + esc(t.nome) + '</b>' +
-          (selos.length ? '<div class="selos">' + selos.map(function (s) { return ui.pill(s, 'neu'); }).join('') + '</div>' : '') + '</div>' +
+          '<div class="selos">' + '<span class="selo-mod">' + (t.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual') + '</span>' + selos.map(function (s) { return ui.pill(s, 'neu'); }).join('') + (!t.ativo ? ui.pill('Inativo', 'nao') : '') + '</div>' + '</div>' +
           (admin ? '<div class="mini-acoes"><button type="button" class="ico" data-ed-teste="' + t.id + '" title="Editar teste" aria-label="Editar teste ' + esc(t.nome) + '">' + icone('lapis') + '</button>' +
             '<button type="button" class="ico perigo" data-ex-teste="' + t.id + '" title="Excluir teste" aria-label="Excluir teste ' + esc(t.nome) + '">' + icone('lixo') + '</button></div>' : '') + '</div>' +
         (t.descricao ? '<p class="teste-desc">' + esc(t.descricao) + '</p>' : '') +
@@ -432,11 +494,20 @@
             (admin ? '<button type="button" data-ed-crit="' + c.id + '" title="Editar" aria-label="Editar ' + esc(nome) + ' neste teste">' + icone('lapis') + '</button>' +
               '<button type="button" data-ex-crit="' + c.id + '" title="Remover deste teste" aria-label="Remover ' + esc(nome) + ' deste teste">' + icone('lixo') + '</button>' : '') + '</span>';
         }).join('') : '<span class="dica">Sem competências</span>') + '</div>' +
+        caixaMateriais(t) +
         '<div class="teste-pe">' + (admin ? '<button type="button" class="btn btn-p btn-comp-leve" data-add-comp="' + t.id + '">' + ui.icone('mais', 15) + 'Competência</button>' : '') +
           (usaPont ? '<button type="button" class="btn btn-p" data-conv="' + t.id + '">Tabela de conversão</button>' : '') + '</div>' +
         '</article>';
     }
 
+    function caixaMateriais(t) {
+      var ms = (b.testeMateriais || []).filter(function (m) { return m.teste_id === t.id; }).sort(function (x, y) { return x.ordem - y.ordem; });
+      if (!ms.length) return '';
+      return '<div class="mat-box"><span class="lbl cor-mat-txt">Materiais · ' + ms.length + '</span>' + ms.map(function (m) {
+        var mat = porId(b.materiais || [], m.material_id) || { nome: '?', unidade: '' };
+        return '<div class="mat-li"><span>' + esc(mat.nome) + (m.fixa ? ' <small class="dica">(fixa)</small>' : '') + '</span><b>' + esc(window.CF.materiais.fmtQtd(m.quantidade) + ' ' + mat.unidade) + '</b></div>';
+      }).join('') + '</div>';
+    }
     function ligar(box) {
       box.querySelectorAll('[data-toggle]').forEach(function (x) { x.addEventListener('click', function () { var id = x.getAttribute('data-toggle'); abertas[id] = !abertas[id]; desenhar(); }); });
       if (!admin) { box.querySelectorAll('[data-conv]').forEach(function (x) { x.addEventListener('click', function () { ed.verConversao(porId(b.testes, x.getAttribute('data-conv'))); }); }); return; }

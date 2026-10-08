@@ -72,6 +72,11 @@
     atualizarConexao();
     window.CF.online.iniciar(p);
     window.CF.avisos.iniciar(p);
+    if (window.CF.instalar) window.CF.instalar.colocar(p);
+    if (p.perfil === 'empresa') {   // atividade da empresa: só o administrador enxerga
+      var registrar = function () { if (document.hidden || !navigator.onLine) return; try { window.CF.dados.pessoas.registrarAtividade().catch(function () {}); } catch (e) { /* sem registro */ } };
+      registrar(); clearInterval(window.__cfAtividade); window.__cfAtividade = setInterval(registrar, 60000);
+    }
     if (p.perfil === 'admin' && window.CF.agendaUtil) setTimeout(window.CF.agendaUtil.atualizarBadge, 600);
     window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 30 minutos sem uso. Entre novamente.' } : null); });
 
@@ -197,6 +202,7 @@
   async function sair(mensagem) {
     if (mensagem && mensagem.type) mensagem = null; // clique no botão Sair
     window.CF.inatividade.parar();
+    clearInterval(window.__cfAtividade);
     window.CF.online.parar();
     window.CF.avisos.parar();
     await sb.auth.signOut();

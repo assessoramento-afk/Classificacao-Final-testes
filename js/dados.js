@@ -63,7 +63,10 @@
   /* ---------- Pessoas (perfis) ---------- */
   var pessoas = {
     listar: function () { return q(sb.rpc('listar_pessoas')); },
-    atualizar: function (id, campos) { return q(sb.from('perfis').update(campos).eq('id', id).select('id').single()); }
+    atualizar: function (id, campos) { return q(sb.from('perfis').update(campos).eq('id', id).select('id').single()); },
+    excluir: function (id) { return q(sb.rpc('excluir_pessoa', { p_id: id })); },
+    empresasOnline: function () { return q(sb.rpc('empresas_online')); },
+    registrarAtividade: function () { return q(sb.rpc('registrar_atividade')); }
   };
 
   /* ---------- Banco de testes ---------- */
@@ -75,11 +78,15 @@
         q(sb.from('competencias').select('*').order('nome')),
         q(sb.from('testes').select('*').order('nome')),
         q(sb.from('teste_criterios').select('*').order('ordem')),
-        q(sb.from('tabelas_conversao').select('*').order('pont_min'))
+        q(sb.from('tabelas_conversao').select('*').order('pont_min')),
+        q(sb.from('materiais').select('*').order('nome')).catch(function () { return []; }),
+        q(sb.from('teste_materiais').select('*').order('ordem')).catch(function () { return []; })
       ]);
-      return { areas: r[0], qualificacoes: r[1], competencias: r[2], testes: r[3], criterios: r[4], conversao: r[5] };
+      return { areas: r[0], qualificacoes: r[1], competencias: r[2], testes: r[3], criterios: r[4], conversao: r[5], materiais: r[6], testeMateriais: r[7] };
     },
     salvarArea: function (a) { return salvar('areas', a); },
+    salvarMaterial: function (m) { return salvar('materiais', m); },
+    excluirMaterial: function (id) { return q(sb.from('materiais').delete().eq('id', id)); },
     salvarCompetencia: function (c) { return salvar('competencias', c); },
     excluirCompetencia: function (id) { return q(sb.from('competencias').delete().eq('id', id)); },
     salvarTeste: function (t) { return salvar('testes', t); },

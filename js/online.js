@@ -62,16 +62,18 @@
       area.innerHTML = '<span class="pill pill-off">' + ui.icone('nuvemOff', 15) + 'Sem internet</span>';
       return;
     }
-    if (!estado.disponivel || !estado.pessoas.length) {
+    var emp = estado.empresas || [];
+    if ((!estado.disponivel || !estado.pessoas.length) && !emp.length) {
       area.innerHTML = '<span class="pill pill-ok">' + ui.icone('nuvem', 15) + 'Online</span>';
       return;
     }
-    var n = estado.pessoas.length;
+    var n = estado.pessoas.length + emp.length;
     area.innerHTML =
       '<div class="flutuante"><button type="button" class="online-btn" id="b-online" aria-haspopup="true" aria-expanded="' + estado.aberto + '" aria-label="' + n + ' pessoa(s) da equipe online">' +
         '<span class="ponto-online" aria-hidden="true"></span><span class="pilha"></span><span class="online-txt">' + n + ' online</span></button>' +
         '<div class="painel-online card' + (estado.aberto ? '' : ' oculto') + '" id="p-online" role="dialog" aria-label="Equipe online agora">' +
-          '<h3>Equipe online agora · ' + n + '</h3><div class="lista-online"></div></div></div>';
+          '<h3>Equipe online agora · ' + estado.pessoas.length + '</h3><div class="lista-online"></div>' +
+          (emp.length ? '<h3 class="h-emp">Empresas online · ' + emp.length + ' <small>(só administradores veem)</small></h3><div class="lista-online lista-emp"></div>' : '') + '</div></div>';
     var pilha = area.querySelector('.pilha');
     estado.pessoas.slice(0, 3).forEach(function (p) { pilha.appendChild(avatar(p, 'mini')); });
     var lista = area.querySelector('.lista-online');
@@ -89,6 +91,15 @@
         '<small>' + esc(NOMES_PERFIL[p.perfil] || '') + ' · ' + (p.ativo ? 'ativo' : 'ausente') + '</small>';
       linha.appendChild(caixa); linha.appendChild(txt);
       lista.appendChild(linha);
+    });
+    var listaE = area.querySelector('.lista-emp');
+    emp.forEach(function (p) {
+      var linha = document.createElement('div'); linha.className = 'pessoa-online';
+      var caixa = document.createElement('span'); caixa.className = 'av-caixa'; caixa.appendChild(avatar(p, 'av'));
+      var marca = document.createElement('i'); marca.className = 'ativo'; marca.setAttribute('aria-hidden', 'true'); caixa.appendChild(marca);
+      var txt = document.createElement('div');
+      txt.innerHTML = '<b>' + esc(p.nome) + '</b><small>Empresa' + (p.empresa ? ' · ' + esc(p.empresa) : '') + '</small>';
+      linha.appendChild(caixa); linha.appendChild(txt); listaE.appendChild(linha);
     });
     var botao = area.querySelector('#b-online'), painel = area.querySelector('#p-online');
     botao.addEventListener('click', function (e) {
@@ -126,9 +137,20 @@
     if (document.hidden) { estado.meuEstado = 'ausente'; enviar(); } else marcarAtividade();
   });
 
+  // Empresas online (consulta a cada 30 s; só o administrador recebe a lista)
+  async function lerEmpresas() {
+    try {
+      var r = await Promise.all([window.CF.dados.pessoas.empresasOnline(), estado.nomesEmp ? Promise.resolve(estado.nomesEmp) : window.CF.sb.rpc('empresas_nomes').then(function (x) { return x.data || []; })]);
+      estado.nomesEmp = r[1];
+      estado.empresas = (r[0] || []).map(function (p) { var e = r[1].filter(function (x) { return x.id === p.empresa_id; })[0]; return { id: p.id, nome: p.nome, perfil: 'empresa', foto_path: p.foto_path, empresa: e ? e.nome_fantasia : '' }; });
+    } catch (e) { estado.empresas = []; }
+    desenhar();
+  }
+
   async function iniciar(perfil) {
     parar();
     estado.perfil = perfil;
+    if (perfil && perfil.perfil === 'admin') { lerEmpresas(); estado.timerEmp = setInterval(lerEmpresas, 30000); }
     if (!perfil || (perfil.perfil !== 'admin' && perfil.perfil !== 'avaliador')) { desenhar(); return; }
     try {
       if (sb.realtime && sb.realtime.setAuth) await sb.realtime.setAuth();
@@ -149,6 +171,7 @@
   function parar() {
     clearTimeout(estado.timer);
     if (estado.canal) { try { estado.canal.untrack(); sb.removeChannel(estado.canal); } catch (e) { /* ignora */ } }
+    clearInterval(estado.timerEmp); estado.empresas = [];
     estado.canal = null; estado.disponivel = false; estado.pessoas = []; estado.aberto = false;
   }
 

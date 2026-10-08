@@ -129,6 +129,13 @@
       '<div class="grade">' +
         '<section class="card bloco card-cor" style="--cor:var(--c-teste)"><span class="lbl">Testes</span><h2>' + testesProc.length + ' teste' + (testesProc.length === 1 ? '' : 's') + '</h2><p>' + esc(resumoAreas) + '</p>' +
           '<div class="bloco-botoes"><button type="button" class="btn btn-p" id="p-ver-testes">Ver testes</button>' + (admin && montagem ? '<button type="button" class="btn btn-p" id="p-aj-testes">Ajustar</button>' : '') + '</div></section>' +
+        (function () {
+          var gl = window.CF.materiais.lista(b, testesProc.map(function (pt) { return pt.teste_id; }), 0);
+          var nItens = gl.reduce(function (n, g) { return n + g.itens.length; }, 0);
+          return '<section class="card bloco card-cor" style="--cor:var(--c-mat)"><span class="lbl">Materiais</span><h2>' + (nItens ? nItens + ' ite' + (nItens > 1 ? 'ns' : 'm') + ' em ' + gl.length + ' teste' + (gl.length > 1 ? 's' : '') : 'Nenhum material') + '</h2>' +
+            '<p>' + (nItens ? 'Lista para separar e conferir, ajustada pelo tamanho de cada turma.' : 'Os testes deste processo não têm materiais cadastrados.') + '</p>' +
+            (nItens ? '<div class="bloco-botoes"><button type="button" class="btn btn-p" id="p-materiais">Ver e imprimir</button></div>' : '') + '</section>';
+        })() +
         '<section class="card bloco card-cor" style="--cor:var(--c-padrao)"><span class="lbl">Notas de corte</span><h2>' + fmtNota(p.corte_aprovado) + ' · ' + fmtNota(p.corte_backup) + '</h2>' +
           '<p>Aprovado a partir de ' + fmtNota(p.corte_aprovado) + ' · Backup a partir de ' + fmtNota(p.corte_backup) + '. ' + (montagem ? 'Podem mudar até a primeira nota.' : 'Travadas neste processo.') + '</p>' +
           (admin && montagem ? '<div class="bloco-botoes"><button type="button" class="btn btn-p" id="p-aj-notas">Ajustar</button></div>' : '') + '</section>' +
@@ -148,6 +155,7 @@
     carregarLogos(area);
     var q = function (s) { return area.querySelector(s); };
     q('#p-ver-testes').addEventListener('click', function () { verTestes(p, testesProc, b); });
+    if (q('#p-materiais')) q('#p-materiais').addEventListener('click', function () { verMateriais(p, e, testesProc, b, turmas, ag); });
     var recarregarPainel = function () { window.dispatchEvent(new HashChangeEvent('hashchange')); };
     if (q('#p-nova-turma')) q('#p-nova-turma').addEventListener('click', function () { formTurma(p, null, ag, empresas, recarregarPainel); });
     area.querySelectorAll('[data-ed-turma]').forEach(function (bt) { bt.addEventListener('click', function () { formTurma(p, porId(ag.turmas, bt.getAttribute('data-ed-turma')), ag, empresas, recarregarPainel); }); });
@@ -211,6 +219,35 @@
         cal.definirMax(qtd);
       });
     });
+  }
+
+  /* ---------- Materiais do processo ---------- */
+  function verMateriais(p, e, testesProc, b, turmas, ag) {
+    var D = window.CF.datas, M = window.CF.materiais;
+    var opcoes = turmas.map(function (t) { return { id: t.id, rotulo: t.nome + ' · ' + t.vagas + ' vagas', pessoas: t.vagas, turma: t.nome + ' · ' + t.vagas + ' vagas', data: D.listaDias(diasDaTurma(ag, t.id)) }; });
+    opcoes.push({ id: 'ref', rotulo: 'Referência · 20 pessoas', pessoas: 0, turma: '', data: '' });
+    var atual = opcoes[0];
+    var j = ui.janela({ titulo: 'Materiais do processo', confirmarDescarte: false,
+      corpo: '<div class="segmentos seg-turmas" role="group" aria-label="Turma">' + opcoes.map(function (o, i) { return '<button type="button" data-op="' + i + '" aria-pressed="' + (i === 0) + '">' + esc(o.rotulo) + '</button>'; }).join('') + '</div>' +
+        '<div id="mt-aviso"></div><div id="mt-lista" class="mt-lista"></div>',
+      botoes: [{ texto: 'Fechar', acao: 'fechar' }, { texto: '🖨 Imprimir lista', principal: true, aoClicar: function () {
+        M.imprimir({ titulo: (e.nome_fantasia || '') + ' · ' + p.vaga, turma: atual.turma, data: atual.data, pessoas: atual.pessoas,
+          grupos: M.lista(b, testesProc.map(function (pt) { return pt.teste_id; }), atual.pessoas) });
+        return false;
+      } }] });
+    function desenhar() {
+      var gl = M.lista(b, testesProc.map(function (pt) { return pt.teste_id; }), atual.pessoas);
+      j.elemento.querySelector('#mt-aviso').innerHTML = '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>' + esc(M.descricaoAjuste(atual.pessoas)) + '</span></div>';
+      j.elemento.querySelector('#mt-lista').innerHTML = gl.map(function (g) {
+        return '<div class="mt-grupo"><b>' + esc(g.teste) + ' <span class="selo-mod">' + esc(M.rotuloModalidade(g, atual.pessoas)) + '</span></b>' + g.itens.map(function (i) {
+          return '<label class="mat-li mt-item"><span><input type="checkbox"> ' + esc(i.nome) + (i.obs ? ' <small class="dica">· ' + esc(i.obs) + '</small>' : '') + '</span><b>' + esc(M.fmtQtd(i.qtd) + ' ' + i.unidade) + '</b></label>';
+        }).join('') + '</div>';
+      }).join('');
+    }
+    j.elemento.querySelectorAll('[data-op]').forEach(function (bt) {
+      bt.addEventListener('click', function () { atual = opcoes[+bt.getAttribute('data-op')]; j.elemento.querySelectorAll('[data-op]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === bt)); }); desenhar(); });
+    });
+    desenhar();
   }
 
   function verTestes(p, testesProc, b) {
@@ -290,7 +327,9 @@
             return ts.length ? '<div class="grupo-teste"><span class="lbl">' + esc(g.nome) + '</span><div class="testes-op">' + ts.map(function (t) {
               var on = !!st.testes[t.id];
               var semComp = !b.criterios.some(function (x) { return x.teste_id === t.id && x.competencia_id; });
-              return '<label class="teste-op' + (on ? ' on' : '') + '"><input type="checkbox" data-teste="' + t.id + '"' + (on ? ' checked' : '') + '><span>' + esc(t.nome) + (t.padrao ? ' <small class="dica">(padrão)</small>' : '') + (semComp ? ' <small class="alerta-txt" title="Teste sem competências">sem competências</small>' : '') + '</span>' +
+              var ms = on ? window.CF.materiais.lista(b, [t.id], 0)[0] : null;
+              return '<label class="teste-op' + (on ? ' on' : '') + '"><input type="checkbox" data-teste="' + t.id + '"' + (on ? ' checked' : '') + '><span>' + esc(t.nome) + (t.padrao ? ' <small class="dica">(padrão)</small>' : '') + (semComp ? ' <small class="alerta-txt" title="Teste sem competências">sem competências</small>' : '') +
+                (ms ? '<small class="mat-resumo">🧰 ' + esc(ms.itens.map(function (i) { return i.nome + ' ' + window.CF.materiais.fmtQtd(i.qtd); }).join(' · ')) + '</small>' : '') + '</span>' +
                 (t.tem_nivel && on ? '<select class="entrada sel-nivel" data-nivel="' + t.id + '" aria-label="Nível de ' + esc(t.nome) + '"><option value="">Nível…</option>' +
                   Object.keys(NIVEIS).map(function (k) { return '<option value="' + k + '"' + (st.testes[t.id].nivel === k ? ' selected' : '') + '>' + NIVEIS[k] + '</option>'; }).join('') + '</select>' : '') + '</label>';
             }).join('') + '</div></div>' : '';

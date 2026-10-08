@@ -7,7 +7,7 @@
   'use strict';
   var ui = window.CF.ui, api = window.CF.api, dados = window.CF.dados, esc = ui.esc;
   var NOMES_PERFIL = { admin: 'Administrador', avaliador: 'Avaliador', empresa: 'Empresa' };
-  var ABAS = [['empresas', 'Empresas', 'empresa'], ['avaliadores', 'Avaliadores', 'aval'], ['areas', 'Áreas', 'area'], ['testes', 'Testes', 'teste'], ['competencias', 'Competências', 'comp']];
+  var ABAS = [['empresas', 'Empresas', 'empresa'], ['avaliadores', 'Avaliadores', 'aval'], ['areas', 'Áreas', 'area'], ['testes', 'Testes', 'teste'], ['competencias', 'Competências', 'comp'], ['materiais', 'Materiais', 'mat']];
 
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
 
@@ -36,18 +36,18 @@
   /* Página de um item das Configurações (empresas, avaliadores, áreas, testes, competências).
      Chamada por views/configuracoes.js. */
   var TITULOS = { empresas: ['Empresas', 'Empresas parceiras, com CNPJ, contato e logotipo'], avaliadores: ['Avaliadores', 'Quem tem acesso ao sistema e a aprovação de novos cadastros'],
-    areas: ['Áreas', 'Eixos do gráfico de radar'], testes: ['Testes', 'Testes do banco e as competências de cada um'], competencias: ['Competências', 'Competências avaliadas nos testes'] };
+    areas: ['Áreas', 'Eixos do gráfico de radar'], materiais: ['Materiais', 'Materiais usados nos testes · quantidades de referência para 20 pessoas (4 grupos de 5)'], testes: ['Testes', 'Testes do banco e as competências de cada um'], competencias: ['Competências', 'Competências avaliadas nos testes'] };
   window.CF.configPaginas = {
     itens: ABAS,
     render: function (area, aba, ctx) {
-      var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', testes: 'Novo teste', competencias: 'Nova competência' };
+      var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', testes: 'Novo teste', competencias: 'Nova competência', materiais: 'Novo material' };
       var corAba = ABAS.filter(function (a) { return a[0] === aba; })[0][2];
       area.innerHTML = '<a class="voltar" href="#/config">← Configurações</a>' +
         '<header class="cabecalho"><div><h1><i class="ponto-cor grande cor-' + corAba + '"></i>' + esc(TITULOS[aba][0]) + '</h1><p>' + esc(TITULOS[aba][1]) + '</p></div>' +
         '<button type="button" class="btn btn-' + corAba + '" id="b-novo">' + ui.icone(aba === 'avaliadores' ? 'link' : 'mais', 17) + esc(BOTOES[aba]) + '</button></header>' +
         '<div id="aba"><div class="girando" style="margin:30px auto"></div></div>';
       var alvo = area.querySelector('#aba');
-      var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, testes: abaTestes, competencias: abaCompetencias }[aba];
+      var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, testes: abaTestes, competencias: abaCompetencias, materiais: abaMateriais }[aba];
       fn(alvo, area.querySelector('#b-novo'), ctx).catch(function (e) {
         erro(e); alvo.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível carregar. ' + esc(api.traduzErro(e)) + '</span></div>';
       });
@@ -89,7 +89,7 @@
           return '<tr><td><div class="cel-empresa"><span class="logo-mini" data-logo="' + esc(e.logo_path || '') + '">' + (e.logo_path ? '' : 'SEM LOGO') + '</span>' +
             '<div><b>' + esc(e.nome_fantasia) + '</b><small>' + esc(e.razao_social) + '</small></div></div></td>' +
             '<td class="num">' + esc(ui.formatarCNPJ(e.cnpj)) + '</td><td>' + esc(contato) + '</td>' +
-            '<td>' + ui.pill(e.ativa ? 'Ativa' : 'Inativa', 'neu') + '</td>' +
+            '<td>' + ui.pill(e.ativa ? 'Ativa' : 'Inativa', e.ativa ? 'sim' : 'nao') + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + e.id + '">Editar</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-logo]').forEach(function (el) {
@@ -324,13 +324,31 @@
           var perfil = NOMES_PERFIL[p.perfil] + (p.perfil === 'empresa' ? ' · ' + nomeEmpresa(p.empresa_id) : '');
           var situ = !p.ativo ? (p.aprovado ? 'Desativado' : 'Recusado') : 'Ativo';
           return '<tr><td><div class="cel-pessoa">' + avatarHTML(p) + '<b>' + esc(p.nome || '(sem nome)') + (p.id === eu ? ' <span class="voce">(você)</span>' : '') + '</b></div></td>' +
-            '<td>' + esc(p.email) + '</td><td>' + esc(perfil) + '</td><td>' + ui.pill(situ, 'neu') + '</td>' +
-            '<td><div class="acoes">' + (p.id === eu ? '' : '<button type="button" class="btn btn-p" data-editar="' + esc(p.id) + '">Editar</button>') + '</div></td></tr>';
+            '<td>' + esc(p.email) + '</td><td>' + esc(perfil) + '</td><td>' + ui.pill(situ, p.ativo ? 'sim' : 'nao') + '</td>' +
+            '<td><div class="acoes">' + (p.id === eu ? '' : '<button type="button" class="btn btn-p" data-editar="' + esc(p.id) + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir-p="' + esc(p.id) + '">Excluir</button>') + '</div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-editar]').forEach(function (b) {
         b.addEventListener('click', function () { formPessoa(lista.filter(function (p) { return p.id === b.getAttribute('data-editar'); })[0]); });
       });
+      box.querySelectorAll('[data-excluir-p]').forEach(function (b) {
+        b.addEventListener('click', function () { excluirPessoa(lista.filter(function (p) { return p.id === b.getAttribute('data-excluir-p'); })[0]); });
+      });
       fotos(bp); fotos(box);
+    }
+    function excluirPessoa(p) {
+      var j = ui.janela({ titulo: 'Excluir ' + (p.nome || p.email) + ' do sistema?', confirmarDescarte: false,
+        corpo: '<p style="margin:0;color:var(--texto-2)">O acesso e o cadastro serão <b>apagados definitivamente</b>. Para voltar, a pessoa precisará se cadastrar de novo.</p>' +
+          '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>As notas e observações que ela já lançou continuam nos processos, com o nome guardado.</span></div>' +
+          '<label class="campo" for="ex-conf"><span>Para confirmar, digite <b>EXCLUIR</b></span><input class="entrada" id="ex-conf" autocomplete="off"></label>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Excluir definitivamente', principal: true, aoClicar: async function (f) {
+          if (f.querySelector('#ex-conf').value.trim().toUpperCase() !== 'EXCLUIR') { ui.toast('Digite EXCLUIR para confirmar.', 'erro'); return false; }
+          try {
+            if (p.foto_path) { try { await window.CF.sb.storage.from('avatares').remove([p.foto_path]); } catch (e) { /* segue mesmo sem apagar a foto */ } }
+            await dados.pessoas.excluir(p.id);
+            ui.toast((p.nome || p.email) + ' foi excluído(a) do sistema.', 'ok'); await recarregar(); return true;
+          } catch (x) { erro(x); return false; }
+        } }] });
+      j.elemento.querySelector('.janela-pe .btn-pri').classList.add('btn-perigo-cheio');
     }
     function formPessoa(p) {
       var j = ui.janela({
@@ -379,7 +397,7 @@
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Ordem</th><th>Área</th><th>Testes</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (a) {
           var n = b.testes.filter(function (t) { return t.area_id === a.id && t.ativo; }).length;
-          return '<tr><td class="num">' + a.ordem + '</td><td><b>' + esc(a.nome) + '</b></td><td class="num">' + n + '</td><td>' + ui.pill(a.ativa ? 'Ativa' : 'Inativa', 'neu') + '</td>' +
+          return '<tr><td class="num">' + a.ordem + '</td><td><b>' + esc(a.nome) + '</b></td><td class="num">' + n + '</td><td>' + ui.pill(a.ativa ? 'Ativa' : 'Inativa', a.ativa ? 'sim' : 'nao') + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + a.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + a.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-editar]').forEach(function (bt) {
@@ -462,7 +480,7 @@
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Teste</th><th>Área</th><th>Competências</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (t) {
           var a = areaDe(t), n = comps(t);
-          var situ = !t.ativo ? ui.pill('Inativo', 'neu') : (!n ? ui.pill('Sem vínculo', 'off') : (t.padrao ? ui.pill('Padrão', 'neu') : ui.pill('Ativo', 'neu')));
+          var situ = !t.ativo ? ui.pill('Inativo', 'nao') : (!n ? ui.pill('Sem vínculo', 'off') : ui.pill('Ativo', 'sim') + (t.padrao ? ' ' + ui.pill('Padrão', 'neu') : ''));
           return '<tr><td><b>' + esc(t.nome) + '</b></td><td>' + (a ? '<span class="tag-area">' + esc(a.nome) + '</span>' : ui.pill('sem área', 'off')) + '</td><td class="num">' + n + '</td><td>' + situ + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + t.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + t.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
@@ -472,6 +490,58 @@
     ligarFiltros(alvo, desenhar);
     desenhar();
     botaoNovo.addEventListener('click', function () { ed.formTeste(null, null); });
+  }
+
+  /* ================================================================
+     MATERIAIS
+     ================================================================ */
+  async function abaMateriais(alvo, botaoNovo) {
+    var b = await dados.banco.carregarTudo();
+    function usos(id) { var ts = {}; (b.testeMateriais || []).forEach(function (m) { if (m.material_id === id) ts[m.teste_id] = 1; }); return b.testes.filter(function (t) { return ts[t.id]; }); }
+    alvo.innerHTML = barraBusca('Buscar material') + '<div id="lista"></div>';
+    function desenhar() {
+      contar('materiais', (b.materiais || []).filter(function (m) { return m.ativo; }).length);
+      var f = filtro(alvo);
+      var itens = (b.materiais || []).filter(function (m) { return (m.ativo || f.inativos) && (!f.texto || ui.normalizar(m.nome).indexOf(f.texto) >= 0); });
+      var box = alvo.querySelector('#lista');
+      if (!itens.length) { box.innerHTML = vazio((b.materiais || []).length ? 'Nenhum material encontrado.' : 'Nenhum material cadastrado ainda. Use "Novo material", ou cadastre direto no teste.'); return; }
+      box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Material</th><th>Unidade</th><th>Usado em</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
+        itens.map(function (m) {
+          var u = usos(m.id);
+          return '<tr><td><b>' + esc(m.nome) + '</b></td><td>' + esc(m.unidade) + '</td><td>' + (u.length ? esc(u.length + ' teste' + (u.length > 1 ? 's' : '')) : '<span class="dica">nenhum teste</span>') + '</td>' +
+            '<td>' + ui.pill(m.ativo ? 'Ativo' : 'Inativo', m.ativo ? 'sim' : 'nao') + '</td>' +
+            '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + m.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + m.id + '">Excluir</button></div></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      box.querySelectorAll('[data-editar]').forEach(function (bt) { bt.addEventListener('click', function () { form(b.materiais.filter(function (m) { return m.id === bt.getAttribute('data-editar'); })[0]); }); });
+      box.querySelectorAll('[data-excluir]').forEach(function (bt) { bt.addEventListener('click', function () { excluir(b.materiais.filter(function (m) { return m.id === bt.getAttribute('data-excluir'); })[0]); }); });
+    }
+    function form(m) {
+      m = m || { unidade: 'UN.', ativo: true };
+      ui.janela({ titulo: m.id ? 'Editar material' : 'Novo material',
+        corpo: '<div class="form-grade">' + campo('fm-nome', 'Nome do material', m.nome, { obrig: true, max: 80, ph: 'Ex.: FITA CREPE' }) + campo('fm-un', 'Unidade', m.unidade, { max: 20, ph: 'UN., ROLO, FOLHA, METRO' }) +
+          (m.id ? '<div class="largo">' + marcar('fm-ativo', 'Material ativo', m.ativo) + '</div>' : '') + '</div>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar material', principal: true, aoClicar: async function (f) {
+          var nome = ui.maiusculas(f.querySelector('#fm-nome').value.trim().replace(/\s+/g, ' ')), un = ui.maiusculas(f.querySelector('#fm-un').value.trim()) || 'UN.';
+          if (!nome) { ui.toast('Informe o nome do material.', 'erro'); return false; }
+          if ((b.materiais || []).some(function (x) { return x.id !== m.id && ui.normalizar(x.nome) === ui.normalizar(nome); })) { ui.toast('Já existe um material com este nome.', 'erro'); return false; }
+          try { await dados.banco.salvarMaterial({ id: m.id, nome: nome, unidade: un, ativo: m.id ? f.querySelector('#fm-ativo').checked : true }); ui.toast('Material salvo.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); return true; }
+          catch (x) { erro(x); return false; }
+        } }] });
+    }
+    async function excluir(m) {
+      var u = usos(m.id);
+      if (u.length) {
+        ui.janela({ titulo: 'Não é possível excluir este material', confirmarDescarte: false,
+          corpo: '<p style="margin:0;color:var(--texto-2)"><b>' + esc(m.nome) + '</b> está em <b>' + u.length + ' teste(s)</b>. Tire-o desses testes primeiro, ou desative o material:</p><ul class="lista-pend">' + u.map(function (t) { return '<li>' + esc(t.nome) + '</li>'; }).join('') + '</ul>',
+          botoes: [{ texto: 'Entendi', principal: true, aoClicar: function () { return true; } }] });
+        return;
+      }
+      if (!(await ui.confirmar('Excluir o material?', '"' + m.nome + '" não está em nenhum teste.', 'Excluir', 'Cancelar'))) return;
+      try { await dados.banco.excluirMaterial(m.id); ui.toast('Material excluído.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); } catch (x) { erro(x); }
+    }
+    ligarFiltros(alvo, desenhar);
+    desenhar();
+    botaoNovo.addEventListener('click', function () { form(null); });
   }
 
   /* ================================================================
@@ -503,7 +573,7 @@
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Competência</th><th>Qualificação-chave</th><th>Testes</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (c) {
           var n = nTestes(c.id);
-          var situ = !c.ativa ? ui.pill('Inativa', 'neu') : (n ? ui.pill('Ativa', 'neu') : ui.pill('Sem vínculo', 'off'));
+          var situ = !c.ativa ? ui.pill('Inativa', 'nao') : (n ? ui.pill('Ativa', 'sim') : ui.pill('Sem vínculo', 'off'));
           return '<tr><td><b>' + esc(c.nome) + '</b></td><td>' + esc(nomeQual(c.qualificacao_id)) + '</td><td class="num">' + n + '</td><td>' + situ + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + c.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + c.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
