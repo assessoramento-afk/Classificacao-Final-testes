@@ -4,7 +4,7 @@
    Os dados (Supabase) NUNCA são guardados aqui: só os arquivos do app.
    A cada versão nova, o nome do cache muda e o antigo é apagado.
    ===================================================================== */
-var VERSAO = 'cf-3.2.1';
+var VERSAO = 'cf-3.2.2';
 var ARQUIVOS = [
   './',
   'index.html',

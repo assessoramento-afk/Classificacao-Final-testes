@@ -78,9 +78,10 @@
     var t = ts.filter(function (x) { return x.teste_id === estado.teste; })[0];
     var ativos = lista.filter(function (j) { return !desistiu(snap, j); });
     function abas() {
-      return '<div class="ttab" role="tablist">' + ts.map(function (x) {
-        var feitos = ativos.filter(function (j) { return completo(snap, j, x); }).length, todos = feitos === ativos.length && ativos.length > 0;
-        return '<button type="button" role="tab" data-teste="' + x.teste_id + '" aria-selected="' + (x.teste_id === t.teste_id) + '" class="' + (todos ? 'ok' : '') + '">' + (todos ? '✓ ' : '') + esc(x.nome) + ' · ' + feitos + ' de ' + ativos.length + '</button>';
+      return '<div class="tgrid" role="tablist" aria-label="Testes">' + ts.map(function (x) {
+        var feitos = ativos.filter(function (j) { return completo(snap, j, x); }).length, todos = feitos === ativos.length && ativos.length > 0, pct = ativos.length ? Math.round(feitos * 100 / ativos.length) : 0;
+        return '<button type="button" role="tab" class="tc' + (x.teste_id === t.teste_id ? ' on' : '') + (todos ? ' ok' : '') + '" data-teste="' + x.teste_id + '" aria-selected="' + (x.teste_id === t.teste_id) + '">' +
+          '<b>' + esc(x.nome) + '</b><span class="pr">' + (todos ? '✓ ' : '') + feitos + '/' + ativos.length + '<span class="bar"><i style="width:' + pct + '%"></i></span></span></button>';
       }).join('') + '</div>';
     }
     var feitos = ativos.filter(function (j) { return completo(snap, j, t); }).length;
@@ -187,10 +188,12 @@
     box.innerHTML = '<div class="pj-nav"><button type="button" class="btn btn-p" id="pj-ant"' + (i <= 0 ? ' disabled' : '') + '>‹</button>' +
       '<select class="entrada" id="pj-sel" aria-label="Jovem">' + ativos.map(function (x) { return '<option value="' + x.id + '"' + (x.id === j.id ? ' selected' : '') + '>' + esc(x.nome + (pode(snap, x) ? '' : ' (outro grupo)')) + '</option>'; }).join('') + '</select>' +
       '<button type="button" class="btn btn-p" id="pj-prox"' + (i >= ativos.length - 1 ? ' disabled' : '') + '>›</button><button type="button" class="btn btn-p" id="pj-qr">📷</button></div>' +
-      '<div id="pj-testes"></div>';
+      '<div class="tgrid" id="pj-res"></div><div id="pj-testes" class="pj-testes"></div>';
     var cont = box.querySelector('#pj-testes');
-    cont.innerHTML = ts.map(function (t) { return '<section class="card bloco pj-t" data-t="' + t.teste_id + '"><h2>' + esc(t.nome) + (completo(snap, j, t) ? ' <span class="pill pill-sim">✓</span>' : '') + '</h2><div class="pj-l"></div></section>'; }).join('');
+    box.querySelector('#pj-res').innerHTML = ts.map(function (t) { var ok = completo(snap, j, t); return '<button type="button" class="tc' + (ok ? ' ok' : '') + '" data-ir="' + t.teste_id + '"><b>' + esc(t.nome) + '</b><span class="pr">' + (ok ? '✓ completo' : 'falta lançar') + '</span></button>'; }).join('');
+    cont.innerHTML = ts.map(function (t) { var ok = completo(snap, j, t); return '<section class="card bloco pj-t' + (ok ? ' feito' : '') + '" data-t="' + t.teste_id + '" id="pj-' + t.teste_id + '"><h2>' + esc(t.nome) + (ok ? ' <span class="pill pill-sim">✓</span>' : '') + '</h2><div class="pj-l"></div></section>'; }).join('');
     ts.forEach(function (t) { cartoes(cont.querySelector('[data-t="' + t.teste_id + '"] .pj-l'), snap, t, [j]); });
+    box.querySelectorAll('[data-ir]').forEach(function (b) { b.addEventListener('click', function () { var alvo = document.getElementById('pj-' + b.getAttribute('data-ir')); if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
     function ir(id) { estado.jovem = id; porJovem(box, snap, ts, lista); window.scrollTo(0, 0); }
     box.querySelector('#pj-sel').addEventListener('change', function (e) { ir(e.target.value); });
     box.querySelector('#pj-ant').addEventListener('click', function () { if (i > 0) ir(ativos[i - 1].id); });

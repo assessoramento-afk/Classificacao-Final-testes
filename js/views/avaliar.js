@@ -72,16 +72,24 @@
     });
     itens.sort(function (a, b) { return a.dias[0].localeCompare(b.dias[0]); });
     var hoje = itens.filter(function (t) { return t.dias.indexOf(h) >= 0; }), prox = itens.filter(function (t) { return t.dias.indexOf(h) < 0; });
-    function card(t) {
-      var g = guardadas[t.id], di = t.dias.indexOf(h);
-      return '<section class="card tcard"><div><h3>' + esc(t.empresa + ' · ' + t.vaga) + '</h3><small>' + esc(t.nome) + ' · ' + (di >= 0 ? 'dia ' + (di + 1) + ' de ' + t.dias.length : esc(D.listaDias(t.dias))) + (t.horario ? ' · ' + esc(t.horario.toLowerCase()) : '') + '</small></div>' +
-        (g ? '<span class="baixado">✓ Disponível sem internet · atualizado ' + (g.baixado_em.slice(0, 10) === h ? 'às ' + hora(g.baixado_em) : 'em ' + D.curta(g.baixado_em.slice(0, 10))) + '</span>' : '') +
-        '<div class="bloco-botoes"><a class="btn ' + (di >= 0 ? 'btn-pri' : '') + ' btn-p" href="#/avaliar/' + t.id + '">' + (di >= 0 ? 'Abrir turma' : 'Abrir') + '</a>' +
-        (!g && navigator.onLine ? '<button type="button" class="btn btn-p" data-baixar="' + t.id + '">⬇ Baixar para usar sem internet</button>' : '') + '</div></section>';
+    // Um card por processo, com as turmas em linhas
+    function grupo(lista, hojeSec) {
+      var porProc = {}, ordem = [];
+      lista.forEach(function (t) { var k = t.empresa + ' · ' + t.vaga; if (!porProc[k]) { porProc[k] = []; ordem.push(k); } porProc[k].push(t); });
+      return ordem.map(function (k) {
+        return '<section class="card pcard"><h3>' + esc(k) + '</h3>' + porProc[k].map(function (t) {
+          var g = guardadas[t.id], di = t.dias.indexOf(h);
+          return '<div class="tlin"><div class="tlin-tx"><b>' + esc(t.nome) + ' · ' + (di >= 0 ? 'dia ' + (di + 1) + ' de ' + t.dias.length : esc(D.listaDias(t.dias))) + '</b><small>' + (t.horario ? esc(t.horario.toLowerCase()) : '') +
+            (g ? (t.horario ? ' · ' : '') + '<span class="baixado">✓ disponível sem internet · ' + (g.baixado_em.slice(0, 10) === h ? 'atualizado às ' + hora(g.baixado_em) : 'atualizado em ' + D.curta(g.baixado_em.slice(0, 10))) + '</span>' : '') + '</small></div>' +
+            '<div class="acoes"><a class="btn ' + (hojeSec ? 'btn-pri' : '') + ' btn-p" href="#/avaliar/' + t.id + '">' + (hojeSec ? 'Abrir turma' : 'Abrir') + '</a>' +
+            (!g && navigator.onLine ? '<button type="button" class="btn btn-p" data-baixar="' + t.id + '" title="Baixar para usar sem internet">⬇ Baixar</button>' : '') + '</div></div>';
+        }).join('') + '</section>';
+      }).join('');
     }
     var box = area.querySelector('#av-lista');
-    box.innerHTML = (hoje.length ? '<span class="lbl">Turmas de hoje</span>' + hoje.map(card).join('') : '<div class="card vazio">Nenhuma turma hoje.' + (navigator.onLine ? '' : ' Sem internet, aparecem só as turmas baixadas neste aparelho.') + '</div>') +
-      (prox.length ? '<span class="lbl" style="margin-top:8px">Próximas turmas</span>' + prox.map(card).join('') : '') +
+    box.className = 'av-lista';
+    box.innerHTML = (hoje.length ? '<span class="lbl">Turmas de hoje</span>' + grupo(hoje, true) : '<div class="card vazio">Nenhuma turma hoje.' + (navigator.onLine ? '' : ' Sem internet, aparecem só as turmas baixadas neste aparelho.') + '</div>') +
+      (prox.length ? '<span class="lbl av-sec">Próximas turmas</span>' + grupo(prox, false) : '') +
       '<p class="dica">Aparecem as turmas de todos os processos em andamento, por data. Baixe a turma na véspera para usar sem internet.</p>';
     box.querySelectorAll('[data-baixar]').forEach(function (b) {
       b.addEventListener('click', function () {
