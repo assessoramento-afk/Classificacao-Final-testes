@@ -708,6 +708,7 @@ tr.falta td { opacity: .45; } tr.outro td.nm b { color: var(--texto-2); }
 .tc.ok { box-shadow: inset 3px 0 0 #3FA66B; } .tc.ok .bar i { background: #3FA66B; } .tc.ok .pr { color: #5fcb8b; } html[data-tema="claro"] .tc.ok .pr { color: #1f7a48; }
 .tc.on.ok { box-shadow: inset 3px 0 0 var(--laranja); }
 @media (max-width: 640px) { .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+#nt-corpo { display: flex; flex-direction: column; gap: 16px; }
 .pj-testes { display: flex; flex-direction: column; gap: 16px; }
 .pj-t { padding: 16px 20px; gap: 8px; box-shadow: inset 3px 0 0 var(--borda), var(--sombra); scroll-margin-top: 90px; }
 .pj-t.feito { box-shadow: inset 3px 0 0 #3FA66B, var(--sombra); }
