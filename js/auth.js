@@ -74,6 +74,7 @@
       msg(raiz, '', '');
       await executar(ev.submitter || area.querySelector('[type=submit]'), 'Entrando…', async function () {
         var r = await sb.auth.signInWithPassword({ email: email, password: senha });
+        if (!r.error && window.CF.offline) window.CF.offline.guardarChave(email, senha);
         if (r.error) msg(raiz, 'erro', api.traduzErro(r.error));
         // se deu certo, o app.js recebe o evento de login e abre o sistema
       });

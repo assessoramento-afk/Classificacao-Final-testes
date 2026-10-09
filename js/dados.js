@@ -175,5 +175,33 @@
     urlFoto: async function (caminho) { if (!caminho) return null; var r = await sb.storage.from('fotos').createSignedUrl(caminho, 3600); return r.error ? null : r.data.signedUrl; }
   };
 
-  window.CF.dados = { jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  /* ---------- Dia da turma (avaliação) ---------- */
+  var avaliacao = {
+    // Tudo o que o celular precisa para trabalhar sem internet naquela turma
+    baixarTurma: async function (turmaId) {
+      var t = await q(sb.from('turmas').select('*').eq('id', turmaId).single());
+      var r = await Promise.all([
+        q(sb.from('processos').select('*').eq('id', t.processo_id).single()), q(sb.from('agenda_dias').select('*').eq('turma_id', turmaId)),
+        q(sb.from('participacoes').select('*').eq('turma_id', turmaId)), q(sb.from('grupo_avaliadores').select('*').eq('turma_id', turmaId)),
+        q(sb.rpc('equipe_nomes')), q(sb.rpc('empresas_nomes'))
+      ]);
+      var parts = r[2], ids = parts.map(function (x) { return x.id; }), jids = parts.map(function (x) { return x.jovem_id; });
+      var r2 = await Promise.all([ids.length ? q(sb.from('presencas').select('*').in('participacao_id', ids)) : [], jids.length ? q(sb.from('jovens').select('*').in('id', jids)) : []]);
+      var emp = r[5].filter(function (e) { return e.id === r[0].empresa_id; })[0] || {};
+      var pres = {}; r2[0].forEach(function (x) { pres[x.participacao_id + '|' + x.dia] = { presente: x.presente, em: x.registrado_em }; });
+      var grupos = {}; r[3].forEach(function (x) { grupos[x.grupo] = x.avaliador_id; });
+      var equipe = {}; r[4].forEach(function (x) { equipe[x.id] = x.nome; });
+      return { turma: t, processo: r[0], empresa: { id: emp.id, nome: emp.nome_fantasia || '' },
+        dias: r[1].map(function (d) { return d.data; }).sort(),
+        jovens: parts.map(function (x) { var j = r2[1].filter(function (y) { return y.id === x.jovem_id; })[0] || {}; return { id: x.id, jovem_id: x.jovem_id, nome: j.nome, genero: j.genero, foto_path: j.foto_path, codigo: x.codigo, grupo: x.grupo }; })
+          .sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); }),
+        presencas: pres, grupos: grupos, equipe: equipe, baixado_em: new Date().toISOString() };
+    },
+    salvarPresencas: function (lista) { return q(sb.rpc('salvar_presencas', { p: lista })); },
+    salvarGrupos: function (turmaId, lista) { return q(sb.rpc('salvar_grupos', { p_turma: turmaId, p: lista })); },
+    escolherGrupos: function (turmaId, grupos) { return q(sb.rpc('escolher_grupos', { p_turma: turmaId, p_grupos: grupos })); },
+    definirAvaliador: function (turmaId, grupo, avaliador) { return q(sb.rpc('definir_avaliador_grupo', { p_turma: turmaId, p_grupo: grupo, p_avaliador: avaliador })); }
+  };
+
+  window.CF.dados = { avaliacao: avaliacao, jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();

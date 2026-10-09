@@ -1,6 +1,6 @@
 /* =====================================================================
    Classificação Final · inatividade.js
-   Saída automática após 30 minutos sem uso. Aos 28 minutos aparece
+   Saída automática após 1 hora sem uso. Dois minutos antes aparece
    "Você ainda está aí?" com contagem regressiva. Considera todas as
    abas abertas do sistema no mesmo aparelho.
    ===================================================================== */
@@ -8,7 +8,7 @@
   'use strict';
   var ui = window.CF.ui;
   var CHAVE = 'cf_ultima_atividade';
-  var LIMITE = (window.__CF_TESTE_INATIVIDADE_MS || 30 * 60 * 1000);
+  var LIMITE = (window.__CF_TESTE_INATIVIDADE_MS || 60 * 60 * 1000);
   var AVISO = (window.__CF_TESTE_AVISO_MS || 2 * 60 * 1000);
   var estado = { ativo: false, timer: null, janela: null, aoSair: null, ultimaGravacao: 0 };
 
@@ -56,8 +56,43 @@
   }
 
   function sair(porTempo) {
+    // Sem internet ou com itens aguardando envio: bloqueia a tela em vez de sair (nada se perde)
+    var pend = window.CF.offline ? window.CF.offline.pendentes() : 0;
+    if (porTempo && (!navigator.onLine || pend > 0)) { bloquear(); return; }
     parar();
     if (estado.aoSair) estado.aoSair(porTempo);
+  }
+
+  function bloquear() {
+    fecharAviso();
+    estado.ativo = false; clearInterval(estado.timer);
+    if (document.getElementById('tela-bloqueio')) return;
+    var p = window.CF.perfilAtual || {};
+    var f = document.createElement('div');
+    f.id = 'tela-bloqueio'; f.className = 'janela-fundo bloqueio'; f.style.zIndex = '99';
+    f.innerHTML = '<div class="janela card" role="alertdialog" aria-modal="true" aria-labelledby="bq-tit" style="max-width:420px"><div class="janela-corpo">' +
+      '<h2 id="bq-tit" style="font-size:20px">🔒 Tela bloqueada</h2>' +
+      '<p style="margin:0;color:var(--texto-2)">O sistema ficou 1 hora sem uso. ' + (navigator.onLine ? 'Há dados aguardando envio, por isso você continua conectado.' : 'Sem internet, você continua conectado e nada foi perdido.') + ' Digite sua senha para continuar.</p>' +
+      '<p style="margin:0;font-weight:700">' + ui.esc(p.nome || p.email || '') + '</p>' +
+      '<label class="campo" for="bq-senha"><span>Senha</span><input class="entrada" type="password" id="bq-senha" autocomplete="current-password"></label>' +
+      '</div><div class="janela-pe"><button type="button" class="btn btn-pri" id="bq-ok">Desbloquear</button></div></div>';
+    document.body.appendChild(f);
+    var inp = f.querySelector('#bq-senha'), bt = f.querySelector('#bq-ok');
+    async function tentar() {
+      var senha = inp.value; if (!senha) return;
+      bt.disabled = true;
+      var ok = false;
+      if (navigator.onLine && p.email) {
+        try { var r = await window.CF.sb.auth.signInWithPassword({ email: p.email, password: senha }); ok = !r.error; if (ok && window.CF.offline) window.CF.offline.guardarChave(p.email, senha); } catch (e) { ok = false; }
+        if (!ok && window.CF.offline) ok = await window.CF.offline.conferirChave(senha);
+      } else if (window.CF.offline) ok = await window.CF.offline.conferirChave(senha);
+      bt.disabled = false;
+      if (!ok) { ui.toast('Senha incorreta.', 'erro'); inp.value = ''; inp.focus(); return; }
+      f.remove(); iniciar(estado.aoSair);
+    }
+    bt.addEventListener('click', tentar);
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') tentar(); });
+    inp.focus();
   }
 
   function iniciar(aoSair) {
@@ -72,5 +107,5 @@
     document.removeEventListener('visibilitychange', verificar);
   }
 
-  window.CF.inatividade = { iniciar: iniciar, parar: parar };
+  window.CF.inatividade = { iniciar: iniciar, parar: parar, bloquear: bloquear };
 })();

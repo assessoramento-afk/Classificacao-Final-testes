@@ -10,9 +10,9 @@
 
   // Menu de cada perfil: [rota, texto, ícone]
   var MENUS = {
-    admin: [['painel', 'Painel', 'painel'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
+    admin: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
             ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
-    avaliador: [['painel', 'Painel', 'painel'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
+    avaliador: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
                 ['banco', 'Banco de testes', 'banco']],
     empresa: [['portal', 'Resultados', 'portal']]
   };
@@ -78,7 +78,7 @@
       registrar(); clearInterval(window.__cfAtividade); window.__cfAtividade = setInterval(registrar, 60000);
     }
     if (p.perfil === 'admin' && window.CF.agendaUtil) setTimeout(window.CF.agendaUtil.atualizarBadge, 600);
-    window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 30 minutos sem uso. Entre novamente.' } : null); });
+    window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 1 hora sem uso. Entre novamente.' } : null); });
 
     var lateral = raiz.querySelector('#lateral'), bMenu = raiz.querySelector('#b-menu');
     function fecharMenu() {
@@ -185,9 +185,16 @@
     if (estado.perfil && !forcar) { if (!document.getElementById('conteudo')) montarShell(); return; }
     telaCarregando('Carregando seu acesso…');
     try {
-      var perfil = await api.carregarPerfil(estado.sessao.user.id);
+      var perfil = null;
+      try { perfil = await api.carregarPerfil(estado.sessao.user.id); if (perfil) localStorage.setItem('cf_perfil_' + perfil.id, JSON.stringify(perfil)); }
+      catch (eRede) {
+        // sem internet: usa o perfil guardado no último acesso deste aparelho
+        var guardado = null; try { guardado = JSON.parse(localStorage.getItem('cf_perfil_' + estado.sessao.user.id) || 'null'); } catch (x) { /* nada */ }
+        if (!guardado || navigator.onLine) throw eRede;
+        perfil = guardado; perfil.__offline = true;
+      }
       if (!perfil) { telaMensagem('Perfil não encontrado', 'Seu cadastro não foi concluído corretamente. Fale com a coordenação.', true); return; }
-      estado.perfil = perfil;
+      estado.perfil = perfil; window.CF.perfilAtual = perfil;
       if (!perfil.ativo) { telaMensagem('Acesso desativado', 'Seu acesso foi desativado. Se acha que é um engano, fale com a coordenação.', true); return; }
       if (!perfil.aprovado) {
         telaMensagem('Cadastro aguardando aprovação', 'Olá, ' + (perfil.nome || '') + '! Seu cadastro foi recebido e precisa ser liberado por um administrador. Assim que for aprovado, você poderá entrar normalmente.', true);
@@ -202,12 +209,18 @@
 
   async function sair(mensagem) {
     if (mensagem && mensagem.type) mensagem = null; // clique no botão Sair
+    if (window.CF.offline && window.CF.offline.pendentes() > 0) {
+      ui.janela({ titulo: 'Ainda há dados para enviar', confirmarDescarte: false,
+        corpo: '<p style="margin:0">Há <b>' + window.CF.offline.pendentes() + ' item(ns)</b> salvos neste aparelho que ainda não foram enviados. Para não perder nada, conecte-se à internet e aguarde o envio antes de sair.</p>',
+        botoes: [{ texto: 'Entendi', principal: true, aoClicar: function () { window.CF.offline.enviar(); return true; } }] });
+      return;
+    }
     window.CF.inatividade.parar();
     clearInterval(window.__cfAtividade);
     window.CF.online.parar();
     window.CF.avisos.parar();
     await sb.auth.signOut();
-    estado.sessao = null; estado.perfil = null;
+    estado.sessao = null; estado.perfil = null; window.CF.perfilAtual = null;
     history.replaceState(null, '', window.location.pathname);
     auth.mostrarAcesso(raiz, 'entrar', mensagem || null);
   }
