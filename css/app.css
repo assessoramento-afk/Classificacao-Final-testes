@@ -656,6 +656,9 @@ html[data-tema="claro"] .tg button[data-v="1"][aria-pressed="true"] { color: #1f
 .achou { display: flex; gap: 12px; align-items: center; } .achou b { display: block; } .achou small { color: var(--texto-3); font-size: 12px; }
 .bloqueio { background: rgba(10,8,8,.92) !important; }
 
+.sem-net { align-items: center; text-align: center; gap: 10px; padding: 28px 20px; }
+.sem-net-ic { font-size: 36px; } .sem-net h2 { font-size: 20px; } .sem-net p { margin: 0; color: var(--texto-2); max-width: 520px; }
+
 /* ---------- Lançamento das notas ---------- */
 .ttab { display: flex; gap: 6px; flex-wrap: wrap; }
 .ttab button { padding: 0 12px; min-height: 36px; border: 1px solid var(--borda); border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--texto-2); background: var(--entrada); cursor: pointer; white-space: nowrap; }
@@ -757,9 +760,9 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 }
 
 /* ---------- Topo fixo no celular e no app (abaixo da barra do aparelho) ---------- */
-.topo { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+.topo { padding-top: calc(12px + var(--seguro-topo, env(safe-area-inset-top, 0px))); }
 @media (max-width: 640px) {
-  .topo { flex-wrap: nowrap; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; gap: 8px; }
+  .topo { flex-wrap: nowrap; padding: calc(10px + var(--seguro-topo, env(safe-area-inset-top, 0px))) 14px 10px; gap: 8px; }
   .topo-esq { flex: 1; min-width: 0; }
   .topo-dir { gap: 6px; flex: none; flex-wrap: nowrap; }
   .topo-dir .usuario-txt { display: none; }
@@ -876,10 +879,10 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 
 /* ---------- Celular ---------- */
 @media (max-width: 900px) {
-  .lateral { position: fixed; left: 0; top: 0; z-index: 40; transform: translateX(-105%); transition: transform .2s ease; box-shadow: 8px 0 24px rgba(0,0,0,.35); }
+  .lateral { padding-top: calc(20px + var(--seguro-topo, env(safe-area-inset-top, 0px))); position: fixed; left: 0; top: 0; z-index: 40; transform: translateX(-105%); transition: transform .2s ease; box-shadow: 8px 0 24px rgba(0,0,0,.35); }
   .lateral.aberta { transform: none; }
   .btn-menu { display: inline-flex; }
-  .topo { padding: 10px 14px; }
+  .topo { padding: calc(10px + var(--seguro-topo, env(safe-area-inset-top, 0px))) 14px 10px; }
   .conteudo { padding: 20px 16px 40px; }
   .cabecalho h1 { font-size: 23px; }
   .usuario-txt, .btn-tema span { display: none; }

@@ -9,6 +9,7 @@
   var NOMES_PERFIL = { admin: 'Administrador', avaliador: 'Avaliador', empresa: 'Empresa' };
 
   // Menu de cada perfil: [rota, texto, ícone]
+  var esc = ui.esc;
   var MENUS = {
     admin: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
             ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
@@ -167,6 +168,17 @@
     document.getElementById('topo-titulo').textContent = item ? item[1] : 'Minha conta';
     document.title = (item ? item[1] : 'Minha conta') + ' · ' + C.nomeSistema;
     var tela = window.CF.telas[rota];
+    // Sem internet, só o Avaliar (turmas baixadas) funciona: as outras telas mostram um aviso em vez de números zerados
+    if (!navigator.onLine && ['avaliar', 'painel'].indexOf(rota) < 0) {
+      conteudo.innerHTML = '<header class="cabecalho"><div><h1>' + esc(item ? item[1] : 'Minha conta') + '</h1></div></header>' +
+        '<section class="card bloco sem-net"><span class="sem-net-ic" aria-hidden="true">📡</span><h2>Sem internet</h2>' +
+        '<p>Esta tela precisa de internet para mostrar os dados. Sem internet, você pode usar o <b>Avaliar</b> nas turmas baixadas neste aparelho: presença, grupos e notas ficam salvos e são enviados quando a conexão voltar.</p>' +
+        '<a class="btn btn-pri" href="#/avaliar">Ir para Avaliar</a></section>';
+      var volta = function () { window.removeEventListener('online', volta); if (rotaAtual() === rota) navegar(); };
+      window.addEventListener('online', volta);
+      conteudo.focus({ preventScroll: true }); window.scrollTo(0, 0);
+      return;
+    }
     try {
       tela(conteudo, { perfil: p, atualizarUsuario: atualizarUsuario });
     } catch (e) {

@@ -38,3 +38,26 @@
   window.CF = window.CF || {};
   window.CF.tema = { escolha: escolha, efetivo: efetivo, definir: definir, aplicar: aplicar, NOMES: NOMES };
 })();
+
+/* iPhone com o app instalado: em alguns aparelhos a margem da barra de cima (relógio e bateria) vem zerada.
+   Mede e, se precisar, usa a altura padrão da barra para o topo do sistema não ficar por baixo dela. */
+(function () {
+  function ajustar() {
+    try {
+      var ios = /iphone|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var app = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      if (!ios || !app || !document.body) return;
+      var t = document.createElement('div');
+      t.style.cssText = 'position:fixed;top:0;left:0;height:0;padding-top:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+      document.body.appendChild(t);
+      var medido = parseFloat(getComputedStyle(t).paddingTop) || 0; t.remove();
+      if (medido > 0) { document.documentElement.style.removeProperty('--seguro-topo'); return; }
+      var deitado = window.innerWidth > window.innerHeight;
+      var alto = Math.max(screen.width, screen.height) >= 812;
+      document.documentElement.style.setProperty('--seguro-topo', deitado ? '0px' : (alto ? '50px' : '20px'));
+    } catch (e) { /* mantém o padrão */ }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ajustar); else ajustar();
+  window.addEventListener('orientationchange', function () { setTimeout(ajustar, 300); });
+  window.addEventListener('resize', ajustar);
+})();
