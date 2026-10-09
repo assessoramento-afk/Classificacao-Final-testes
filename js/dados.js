@@ -140,7 +140,7 @@
       return { dias: r[0], turmas: r[1], pre: r[2], bloqueios: r[3], processos: r[4], empresas: r[5], config: r[6] };
     },
     salvarTurma: function (t) { return q(sb.rpc('salvar_turma', { p: t })); },
-    excluirTurma: function (id) { return q(sb.rpc('excluir_turma', { p_id: id })); },
+    excluirTurma: function (id, destino, remover) { return q(sb.rpc('excluir_turma', { p_id: id, p_destino: destino || null, p_remover: !!remover })); },
     salvarPreReserva: function (p) { return q(sb.rpc('salvar_pre_reserva', { p: p })); },
     decidirPreReserva: function (id, acao, novaData) { return q(sb.rpc('decidir_pre_reserva', { p_id: id, p_acao: acao, p_nova_data: novaData || null })); },
     confirmarPreReserva: function (id, processoId, nome, horario, vagas) { return q(sb.rpc('confirmar_pre_reserva', { p_id: id, p_processo: processoId, p_nome: nome, p_horario: horario || null, p_vagas: vagas })); },
@@ -186,7 +186,12 @@
         q(sb.rpc('equipe_nomes')), q(sb.rpc('empresas_nomes'))
       ]);
       var parts = r[2], ids = parts.map(function (x) { return x.id; }), jids = parts.map(function (x) { return x.jovem_id; });
-      var r2 = await Promise.all([ids.length ? q(sb.from('presencas').select('*').in('participacao_id', ids)) : [], jids.length ? q(sb.from('jovens').select('*').in('id', jids)) : []]);
+      var r2 = await Promise.all([ids.length ? q(sb.from('presencas').select('*').in('participacao_id', ids)) : [], jids.length ? q(sb.from('jovens').select('*').in('id', jids)) : [],
+        ids.length ? q(sb.from('notas').select('*').in('participacao_id', ids)).catch(function () { return []; }) : [],
+        ids.length ? q(sb.from('sugestoes').select('*').in('participacao_id', ids)).catch(function () { return []; }) : [],
+        ids.length ? q(sb.from('observacoes').select('*').in('participacao_id', ids)).catch(function () { return []; }) : []]);
+      var notas = {}; r2[2].forEach(function (x) { notas[x.participacao_id + '|' + x.criterio_id] = { valor: Number(x.valor), pontos: x.pontos == null ? null : Number(x.pontos), av: x.avaliador_id, em: x.lancado_em }; });
+      var obs = {}; r2[4].forEach(function (x) { obs[x.participacao_id + '|' + x.teste_id] = { texto: x.texto, em: x.em, autor: x.autor_id }; });
       var emp = r[5].filter(function (e) { return e.id === r[0].empresa_id; })[0] || {};
       var pres = {}; r2[0].forEach(function (x) { pres[x.participacao_id + '|' + x.dia] = { presente: x.presente, em: x.registrado_em }; });
       var grupos = {}; r[3].forEach(function (x) { grupos[x.grupo] = x.avaliador_id; });
@@ -195,11 +200,16 @@
         dias: r[1].map(function (d) { return d.data; }).sort(),
         jovens: parts.map(function (x) { var j = r2[1].filter(function (y) { return y.id === x.jovem_id; })[0] || {}; return { id: x.id, jovem_id: x.jovem_id, nome: j.nome, genero: j.genero, foto_path: j.foto_path, codigo: x.codigo, grupo: x.grupo }; })
           .sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); }),
-        presencas: pres, grupos: grupos, equipe: equipe, baixado_em: new Date().toISOString() };
+        presencas: pres, grupos: grupos, equipe: equipe, notas: notas, sugestoes: r2[3], observacoes: obs, baixado_em: new Date().toISOString() };
     },
     salvarPresencas: function (lista) { return q(sb.rpc('salvar_presencas', { p: lista })); },
     salvarGrupos: function (turmaId, lista) { return q(sb.rpc('salvar_grupos', { p_turma: turmaId, p: lista })); },
     escolherGrupos: function (turmaId, grupos) { return q(sb.rpc('escolher_grupos', { p_turma: turmaId, p_grupos: grupos })); },
+    salvarNotas: function (lista) { return q(sb.rpc('salvar_notas', { p: lista })); },
+    sugerirNotas: function (lista) { return q(sb.rpc('sugerir_notas', { p: lista })); },
+    salvarObservacoes: function (lista) { return q(sb.rpc('salvar_observacoes', { p: lista })); },
+    decidirSugestao: function (id, aprovar, motivo) { return q(sb.rpc('decidir_sugestao', { p_id: id, p_aprovar: aprovar, p_motivo: motivo || null })); },
+    apagarNota: function (pid, crit) { return q(sb.rpc('apagar_nota', { p_part: pid, p_criterio: crit })); },
     definirAvaliador: function (turmaId, grupo, avaliador) { return q(sb.rpc('definir_avaliador_grupo', { p_turma: turmaId, p_grupo: grupo, p_avaliador: avaliador })); }
   };
 

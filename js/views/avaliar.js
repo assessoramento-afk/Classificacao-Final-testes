@@ -13,6 +13,7 @@
 
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
   function barraSync(area) {
+    var velho = area.querySelector(':scope > .sync-bar'); if (velho) velho.remove();
     var el = document.createElement('div'); el.className = 'sync-bar'; el.setAttribute('role', 'status');
     area.insertBefore(el, area.firstChild);
     var parar = OFF.ouvir(function (s) { el.className = 'sync-bar sync-' + s.tipo; el.textContent = (s.tipo === 'ok' ? '✓ ' : (s.tipo === 'env' ? '⟳ ' : '⚠ ')) + s.texto; });
@@ -38,7 +39,7 @@
   window.CF.telas.avaliar = function (area, ctx) {
     var m = (window.location.hash || '').match(/^#\/avaliar\/([0-9a-z-]{8,})(?:\/([a-z]+))?/i);
     if (!m) return inicio(area, ctx);
-    var tela = { presenca: presenca, grupos: grupos, avaliadores: avaliadores }[m[2]] || turmaPassos;
+    var tela = { presenca: presenca, grupos: grupos, avaliadores: avaliadores, notas: function (a, c, sn) { window.CF.avaliarNotas(a, c, sn); }, sugestoes: function (a, c, sn) { window.CF.avaliarSugestoes(a, c, sn); } }[m[2]] || turmaPassos;
     area.innerHTML = '<div class="girando" style="margin:30px auto"></div>';
     obterTurma(m[1]).then(function (snap) { area.innerHTML = ''; tela(area, ctx, snap); barraSync(area); })
       .catch(function (e) { area.innerHTML = '<a class="voltar" href="#/avaliar">← Avaliar</a><div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; });
@@ -58,7 +59,7 @@
           var p = ag.processos.filter(function (x) { return x.id === t.processo_id; })[0];
           if (!p || p.situacao !== 'andamento') return;
           var dias = ag.dias.filter(function (d) { return d.turma_id === t.id; }).map(function (d) { return d.data; }).sort();
-          if (!dias.length || dias[dias.length - 1] < h || dias[0] > lim) return;
+          if (!dias.length || dias[dias.length - 1] < h) return;
           var e = ag.empresas.filter(function (x) { return x.id === p.empresa_id; })[0] || {};
           itens.push({ id: t.id, nome: t.nome, empresa: e.nome_fantasia || '', vaga: p.vaga, dias: dias, horario: t.horario });
         });
@@ -81,7 +82,7 @@
     var box = area.querySelector('#av-lista');
     box.innerHTML = (hoje.length ? '<span class="lbl">Turmas de hoje</span>' + hoje.map(card).join('') : '<div class="card vazio">Nenhuma turma hoje.' + (navigator.onLine ? '' : ' Sem internet, aparecem só as turmas baixadas neste aparelho.') + '</div>') +
       (prox.length ? '<span class="lbl" style="margin-top:8px">Próximas turmas</span>' + prox.map(card).join('') : '') +
-      '<p class="dica">Aparecem as turmas de processos já iniciados. Baixe a turma na véspera para usar sem internet.</p>';
+      '<p class="dica">Aparecem as turmas de todos os processos em andamento, por data. Baixe a turma na véspera para usar sem internet.</p>';
     box.querySelectorAll('[data-baixar]').forEach(function (b) {
       b.addEventListener('click', function () {
         ui.executar(b, 'Baixando…', async function () {
@@ -113,7 +114,7 @@
         passo(1, ok1, !ok1, 'Presença', marc ? pres + ' presente(s) · ' + (marc - pres) + ' falta(s)' + (marc < snap.jovens.length ? ' · ' + (snap.jovens.length - marc) + ' a marcar' : '') : snap.jovens.length + ' jovens a marcar', '#/avaliar/' + snap.turma.id + '/presenca') +
         passo(2, ok2, ok1 && !ok2, 'Grupos', ok2 ? listaG.length + ' grupo(s) (' + listaG.map(function (g) { return nGrupos[g]; }).join(', ') + ')' : 'Montar os grupos com os presentes do 1º dia', '#/avaliar/' + snap.turma.id + '/grupos') +
         passo(3, ok3, ok2 && !ok3, 'Avaliadores dos grupos', !ok2 ? 'Depois de montar os grupos' : (meus.length ? 'Você: grupo' + (meus.length > 1 ? 's ' : ' ') + meus.join(' e ') : 'Você ainda não escolheu grupos') + (livres.length ? ' · falta escolher: ' + livres.join(', ') : ' · todos os grupos têm avaliador'), ok2 ? '#/avaliar/' + snap.turma.id + '/avaliadores' : null) +
-        passo(4, false, ok3, 'Lançar notas', ok3 ? 'Liberado · chega na Etapa 3.2' : 'Liberado quando todos os grupos tiverem avaliador', null) +
+        passo(4, false, ok3, 'Lançar notas', ok3 ? notasResumo(snap) : 'Liberado quando todos os grupos tiverem avaliador', ok3 ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
       '</div>';
     var at = area.querySelector('#tp-atual');
     if (at) at.addEventListener('click', function () { ui.executar(at, 'Atualizando…', async function () { try { var s = await obterTurma(snap.turma.id, true); turmaPassos(area, ctx, s); barraSync(area); ui.toast('Turma atualizada.', 'ok'); } catch (e) { erro(e); } }); });
@@ -307,4 +308,12 @@
     window.CF.__lerCodigo = mostrar;   // usado nos testes automáticos
   }
   window.CF.lerCracha = lerCracha;
+  window.CF.barraSync = barraSync;
+  function notasResumo(snap) {
+    var ts = ((snap.processo.configuracao || {}).testes || []), tot = 0, feitas = 0;
+    var meus = snap.jovens.filter(function (j) { return j.grupo && (snap.grupos[j.grupo] === meuId() || (window.CF.perfilAtual || {}).perfil === 'admin'); });
+    meus.forEach(function (j) { ts.forEach(function (t) { t.criterios.forEach(function (c) { tot++; if (snap.notas && snap.notas[j.id + '|' + c.id]) feitas++; }); }); });
+    var pend = (snap.sugestoes || []).filter(function (x) { return x.situacao === 'pendente' && x.autor_id !== meuId() && meus.some(function (j) { return j.id === x.participacao_id; }); }).length;
+    return 'Liberado · ' + feitas + ' de ' + tot + ' notas dos seus jovens' + (pend ? ' · ' + pend + ' sugestão(ões) para decidir' : '');
+  }
 })();

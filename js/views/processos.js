@@ -58,10 +58,11 @@
      ================================================================ */
   async function lista(area, ctx) {
     var admin = ctx.perfil.perfil === 'admin';
-    var filtroSit = 'todos', busca = '';
+    var filtroSit = 'todos', busca = '', aba = 'aberto', ano = '';
     area.innerHTML = '<header class="cabecalho"><div><h1>Processos</h1><p>Processos seletivos de cada empresa</p></div>' +
       (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + 'Novo processo</button>' : '') + '</header>' +
-      '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-p" placeholder="Buscar por empresa, vaga ou processo"></label></div>' +
+      '<div class="segmentos abas-proc" role="tablist" id="abas-p"></div>' +
+      '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-p" placeholder="Buscar por empresa, vaga ou processo"></label><select class="entrada oculto" id="ano-p" aria-label="Ano" style="width:170px"></select></div>' +
       '<div class="filtros" id="filtros" role="group" aria-label="Situação"></div><div id="procs"><div class="girando" style="margin:30px auto"></div></div>';
     var procs = [], empresas = [], ag = null, nJovens = {};
     try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar().catch(function () { return []; }), dados.agenda.carregarTudo().catch(function () { return null; }), dados.jovens.todasParticipacoes().catch(function () { return []; })]); procs = r[0]; empresas = r[1]; ag = r[2];
@@ -71,14 +72,24 @@
     if (admin) area.querySelector('#b-novo').addEventListener('click', function () { assistente(null, 1, ctx); });
     area.querySelector('#busca-p').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
 
+    var FIM = ['liberado', 'cancelado'];
+    function dataFim(p) { var d = []; turmasDe(ag, p.id).forEach(function (t) { d = d.concat(diasDaTurma(ag, t.id)); }); d.sort(); return d[d.length - 1] || (p.criado_em || '').slice(0, 10); }
     function desenhar() {
-      var cont = { todos: procs.length };
-      Object.keys(SITUACOES).forEach(function (k) { cont[k] = procs.filter(function (p) { return p.situacao === k; }).length; });
-      var opcoes = [['todos', 'Todos']].concat(Object.keys(SITUACOES).filter(function (k) { return k !== 'cancelado' || cont.cancelado; }).map(function (k) { return [k, SITUACOES[k][0]]; }));
+      var abertos = procs.filter(function (p) { return FIM.indexOf(p.situacao) < 0; }), fins = procs.filter(function (p) { return FIM.indexOf(p.situacao) >= 0; });
+      var ab = area.querySelector('#abas-p');
+      ab.innerHTML = '<button type="button" data-aba="aberto" aria-pressed="' + (aba === 'aberto') + '">Em aberto · ' + abertos.length + '</button><button type="button" data-aba="fim" aria-pressed="' + (aba === 'fim') + '">Finalizados · ' + fins.length + '</button>';
+      ab.querySelectorAll('[data-aba]').forEach(function (b) { b.addEventListener('click', function () { aba = b.getAttribute('data-aba'); filtroSit = 'todos'; desenhar(); }); });
+      var selAno = area.querySelector('#ano-p');
+      selAno.classList.toggle('oculto', aba !== 'fim');
+      area.querySelector('#filtros').classList.toggle('oculto', aba === 'fim');
+      if (aba === 'fim') { finalizados(fins, selAno); return; }
+      var cont = { todos: abertos.length };
+      Object.keys(SITUACOES).forEach(function (k) { cont[k] = abertos.filter(function (p) { return p.situacao === k; }).length; });
+      var opcoes = [['todos', 'Todos']].concat(Object.keys(SITUACOES).filter(function (k) { return FIM.indexOf(k) < 0; }).map(function (k) { return [k, SITUACOES[k][0]]; }));
       var fb = area.querySelector('#filtros');
       fb.innerHTML = opcoes.map(function (o) { return '<button type="button" data-sit="' + o[0] + '" aria-pressed="' + (filtroSit === o[0]) + '">' + esc(o[1]) + ' · ' + (cont[o[0]] || 0) + '</button>'; }).join('');
       fb.querySelectorAll('[data-sit]').forEach(function (b) { b.addEventListener('click', function () { filtroSit = b.getAttribute('data-sit'); desenhar(); }); });
-      var itens = procs.filter(function (p) {
+      var itens = abertos.filter(function (p) {
         if (filtroSit !== 'todos' && p.situacao !== filtroSit) return false;
         var e = porId(empresas, p.empresa_id) || {};
         return !busca || ui.normalizar([e.nome_fantasia, e.razao_social, p.vaga, p.identificacao].join(' ')).indexOf(busca) >= 0;
@@ -95,6 +106,29 @@
           '<div>' + selo(p.situacao) + '</div></div></div>' +
           '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>' + (nJovens[p.id] || 0) + '</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div></a>';
       }).join('') + '</div>';
+      carregarLogos(box);
+    }
+    // Finalizados: por empresa (A–Z) e, dentro dela, do mais recente para o mais antigo
+    function finalizados(fins, selAno) {
+      var anos = {}; fins.forEach(function (p) { anos[dataFim(p).slice(0, 4)] = 1; });
+      selAno.innerHTML = '<option value="">Todos os anos</option>' + Object.keys(anos).sort().reverse().map(function (a) { return '<option' + (a === ano ? ' selected' : '') + '>' + a + '</option>'; }).join('');
+      selAno.onchange = function () { ano = selAno.value; desenhar(); };
+      var itens = fins.filter(function (p) {
+        var e = porId(empresas, p.empresa_id) || {};
+        return (!ano || dataFim(p).slice(0, 4) === ano) && (!busca || ui.normalizar([e.nome_fantasia, e.razao_social, p.vaga, p.identificacao, dataFim(p).slice(0, 4)].join(' ')).indexOf(busca) >= 0);
+      });
+      var box = area.querySelector('#procs');
+      if (!itens.length) { box.innerHTML = '<div class="card vazio">' + (fins.length ? 'Nenhum processo finalizado encontrado.' : 'Nenhum processo finalizado ainda. Os processos aparecem aqui quando o resultado é liberado para a empresa.') + '</div>'; return; }
+      var porEmp = {}; itens.forEach(function (p) { (porEmp[p.empresa_id] = porEmp[p.empresa_id] || []).push(p); });
+      var ordem = Object.keys(porEmp).sort(function (a, b) { return String((porId(empresas, a) || {}).nome_fantasia).localeCompare(String((porId(empresas, b) || {}).nome_fantasia), 'pt-BR'); });
+      box.innerHTML = ordem.map(function (eid) {
+        var e = porId(empresas, eid) || {}, ps = porEmp[eid].sort(function (a, b) { return dataFim(b).localeCompare(dataFim(a)); });
+        return '<section class="emp-bloco"><div class="emp-cab">' + logoHTML(e) + '<div><h2>' + esc(e.nome_fantasia || 'Empresa') + '</h2><small>' + ps.length + ' processo' + (ps.length > 1 ? 's' : '') + ' finalizado' + (ps.length > 1 ? 's' : '') + ' · último em ' + window.CF.datas.completa(dataFim(ps[0])) + '</small></div></div>' +
+          ps.map(function (p) {
+            return '<a class="fin" href="#/processos/' + p.id + '" style="--sc:' + (SITUACOES[p.situacao] || SITUACOES.liberado)[1] + '"><span class="dt">' + window.CF.datas.completa(dataFim(p)) + '</span><div><b>' + esc(p.vaga) + '</b><small>' + esc(p.identificacao) + '</small></div>' +
+              '<span class="n">' + (nJovens[p.id] || 0) + ' jovens</span>' + selo(p.situacao) + '</a>';
+          }).join('') + '</section>';
+      }).join('') + '<p class="dica">Processos finalizados não podem mais ser alterados. Número de aprovados e PDF chegam nas Fases 4 e 5.</p>';
       carregarLogos(box);
     }
     desenhar();
@@ -155,7 +189,7 @@
       (turmas.length ? '<section class="card bloco card-cor" style="--cor:var(--c-area)"><span class="lbl">Turmas do processo</span><div class="turmas-lista">' + turmas.map(function (t) {
         var dias = diasDaTurma(ag, t.id);
         return '<div class="tlinha"><div class="tl-txt"><b>' + esc(t.nome) + '</b><small>' + esc(window.CF.datas.listaDias(dias)) + ' · ' + dias.length + ' dia' + (dias.length > 1 ? 's' : '') + (t.horario ? ' · ' + esc(t.horario) : '') + ' · ' + t.vagas + ' vagas</small></div>' +
-          (podeTurma ? '<div class="acoes"><button type="button" class="btn btn-p" data-ed-turma="' + t.id + '">Editar</button>' + (montagem ? '<button type="button" class="btn btn-p btn-perigo" data-ex-turma="' + t.id + '">Excluir</button>' : '') + '</div>' : '') + '</div>';
+          (podeTurma ? '<div class="acoes"><button type="button" class="btn btn-p" data-ed-turma="' + t.id + '">Editar</button>' + '<button type="button" class="btn btn-p btn-perigo" data-ex-turma="' + t.id + '">Excluir</button>' + '</div>' : '') + '</div>';
       }).join('') + '</div><span class="dica">As datas ficam travadas na agenda. Remarcar uma turma libera os dias antigos e trava os novos.</span></section>' : '') +
       (montagem ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Para <b>iniciar</b>: pelo menos 1 turma, 1 jovem e 1 teste. Ao iniciar, a configuração de testes fica guardada e a lista de jovens de cada turma vai para os avaliadores. </span></div>' : '') +
       (p.observacoes ? '<section class="card bloco"><span class="lbl">Observações</span><p style="white-space:pre-wrap">' + esc(p.observacoes) + '</p></section>' : '') +
@@ -170,8 +204,27 @@
     area.querySelectorAll('[data-ex-turma]').forEach(function (bt) {
       bt.addEventListener('click', async function () {
         var t = porId(ag.turmas, bt.getAttribute('data-ex-turma'));
-        if (!(await ui.confirmar('Excluir a ' + t.nome + '?', 'Os dias dela ficam livres na agenda.', 'Excluir turma', 'Cancelar'))) return;
-        try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); recarregarPainel(); } catch (x) { erro(x); }
+        var nJ = jovensP.filter(function (x) { return x.turma_id === t.id; }).length;
+        if (!nJ) {
+          if (!(await ui.confirmar('Excluir a ' + t.nome + '?', 'Os dias dela ficam livres na agenda.', 'Excluir turma', 'Cancelar'))) return;
+          try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); recarregarPainel(); } catch (x) { erro(x); }
+          return;
+        }
+        var outras = turmas.filter(function (x) { return x.id !== t.id; });
+        ui.janela({ titulo: 'Excluir a ' + t.nome + '?', confirmarDescarte: false,
+          corpo: '<p style="margin:0;color:var(--texto-2)">A turma tem <b>' + nJ + ' jovem(ns)</b>. O que fazer com eles?</p>' +
+            (outras.length ? '<label class="kit-op"><input type="radio" name="ex-op" value="mover" checked><span><b>Passar para outra turma</b><small>Os jovens mantêm o cadastro e o código.</small>' +
+              '<select class="entrada" id="ex-dest" style="margin-top:8px">' + outras.map(function (o) { var oc = jovensP.filter(function (x) { return x.turma_id === o.id; }).length; return '<option value="' + o.id + '">' + esc(o.nome + ' · ' + oc + ' de ' + o.vagas + ' vagas') + '</option>'; }).join('') + '</select></span></label>' : '') +
+            '<label class="kit-op"><input type="radio" name="ex-op" value="remover"' + (outras.length ? '' : ' checked') + '><span><b>Tirar os jovens do processo</b><small>Os cadastros continuam em Cadastros → Jovens.</small></span></label>' +
+            '<p class="dica" style="margin:0">Os dias da turma ficam livres na agenda. Turmas com presença ou notas lançadas não podem ser excluídas.</p>',
+          botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Excluir turma', principal: true, aoClicar: async function (f) {
+            var op = (f.querySelector('input[name=ex-op]:checked') || {}).value;
+            try {
+              if (op === 'mover') await dados.agenda.excluirTurma(t.id, f.querySelector('#ex-dest').value, false);
+              else await dados.agenda.excluirTurma(t.id, null, true);
+              ui.toast('Turma excluída.', 'ok'); recarregarPainel(); return true;
+            } catch (x) { erro(x); return false; }
+          } }] });
       });
     });
     if (q('#p-iniciar') && !falta.length) q('#p-iniciar').addEventListener('click', async function (ev) {

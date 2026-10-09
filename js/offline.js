@@ -19,7 +19,14 @@
   function guardarTurma(snap) {
     var t = turmas();
     // aplica por cima o que ainda está na fila (não perde marcações feitas sem internet)
-    fila().forEach(function (op) { if (op.tipo === 'presenca' && op.turma_id === snap.turma.id) snap.presencas[op.dados.participacao_id + '|' + op.dados.dia] = { presente: op.dados.presente, em: op.dados.em }; });
+    snap.notas = snap.notas || {}; snap.observacoes = snap.observacoes || {}; snap.sugestoes = snap.sugestoes || [];
+    fila().forEach(function (op) {
+      if (op.turma_id !== snap.turma.id) return;
+      if (op.tipo === 'presenca') snap.presencas[op.dados.participacao_id + '|' + op.dados.dia] = { presente: op.dados.presente, em: op.dados.em };
+      if (op.tipo === 'nota') snap.notas[op.dados.participacao_id + '|' + op.dados.criterio_id] = { valor: op.dados.valor, pontos: op.dados.pontos, av: usuario(), em: op.dados.em, pendente: true };
+      if (op.tipo === 'observacao') snap.observacoes[op.dados.participacao_id + '|' + op.dados.teste_id] = { texto: op.dados.texto, em: op.dados.em };
+      if (op.tipo === 'sugestao' && !snap.sugestoes.some(function (x) { return x.__op === op.id; })) snap.sugestoes.push(Object.assign({ __op: op.id, situacao: 'pendente', autor_id: usuario() }, op.dados));
+    });
     t[snap.turma.id] = snap; gravar('turmas', t); return snap;
   }
   function esquecerTurma(id) { var t = turmas(); delete t[id]; gravar('turmas', t); }
@@ -31,6 +38,8 @@
     var f = fila();
     // presença: só a marcação mais recente de cada jovem/dia precisa ir
     if (op.tipo === 'presenca') f = f.filter(function (x) { return !(x.tipo === 'presenca' && x.dados.participacao_id === op.dados.participacao_id && x.dados.dia === op.dados.dia); });
+    if (op.tipo === 'nota') f = f.filter(function (x) { return !(x.tipo === 'nota' && x.dados.participacao_id === op.dados.participacao_id && x.dados.criterio_id === op.dados.criterio_id); });
+    if (op.tipo === 'observacao') f = f.filter(function (x) { return !(x.tipo === 'observacao' && x.dados.participacao_id === op.dados.participacao_id && x.dados.teste_id === op.dados.teste_id); });
     op.id = Date.now() + '-' + Math.random().toString(36).slice(2, 7);
     f.push(op); gravar('fila', f); avisar(); enviar();
   }
@@ -39,12 +48,23 @@
     var f = fila(); if (!f.length) { avisar(); return; }
     estado.enviando = true; avisar();
     try {
-      var pres = f.filter(function (x) { return x.tipo === 'presenca'; });
-      if (pres.length) {
-        await window.CF.dados.avaliacao.salvarPresencas(pres.map(function (x) { return x.dados; }));
-        var ids = pres.map(function (x) { return x.id; });
+      var A = window.CF.dados.avaliacao;
+      async function lote(tipo, fn) {
+        var ops = fila().filter(function (x) { return x.tipo === tipo; });
+        if (!ops.length) return;
+        var r = await fn(ops.map(function (x) { return x.dados; }));
+        var ids = ops.map(function (x) { return x.id; });
         gravar('fila', fila().filter(function (x) { return ids.indexOf(x.id) < 0; }));
+        if (r && r.recusadas && r.recusadas.length) {
+          var rec = ler('recusadas', []).concat(r.recusadas.map(function (x) { return Object.assign({ em: new Date().toISOString() }, x); }));
+          gravar('recusadas', rec.slice(-50));
+          if (window.CF.ui) window.CF.ui.toast(r.recusadas.length + ' nota(s) não foram aceitas: ' + r.recusadas[0].motivo, 'erro');
+        }
       }
+      await lote('presenca', A.salvarPresencas);
+      await lote('nota', A.salvarNotas);
+      await lote('sugestao', A.sugerirNotas);
+      await lote('observacao', A.salvarObservacoes);
       estado.ultimoErro = null;
     } catch (e) { estado.ultimoErro = e; console.warn('Envio pendente:', e); }
     estado.enviando = false; avisar();
