@@ -81,7 +81,7 @@
       return '<div class="tgrid" role="tablist" aria-label="Testes">' + ts.map(function (x) {
         var feitos = ativos.filter(function (j) { return completo(snap, j, x); }).length, todos = feitos === ativos.length && ativos.length > 0, pct = ativos.length ? Math.round(feitos * 100 / ativos.length) : 0;
         return '<button type="button" role="tab" class="tc' + (x.teste_id === t.teste_id ? ' on' : '') + (todos ? ' ok' : '') + '" data-teste="' + x.teste_id + '" aria-selected="' + (x.teste_id === t.teste_id) + '">' +
-          '<b>' + esc(x.nome) + '</b><span class="pr">' + (todos ? '✓ ' : '') + feitos + '/' + ativos.length + '<span class="bar"><i style="width:' + pct + '%"></i></span></span></button>';
+          '<b>' + esc(x.nome) + '</b><span class="pr">' + (todos ? '✓ completo' : feitos + '/' + ativos.length + ' lançados') + '<span class="bar"><i style="width:' + pct + '%"></i></span></span></button>';
       }).join('') + '</div>';
     }
     var feitos = ativos.filter(function (j) { return completo(snap, j, t); }).length;
@@ -139,11 +139,10 @@
         t.criterios.map(function (c) {
           var n = nota(snap, j, c);
           if (c.entrada === 'pontuacao') return '<div class="crit"><span>' + esc(c.nome) + ' <small>(pontos)</small></span><input class="nt nt-p" data-j="' + j.id + '" data-c="' + c.id + '" inputmode="decimal" value="' + (n ? fmt(n.pontos) : '') + '" placeholder="pontos"' + (meu ? '' : ' disabled') + '><small class="conv">' + (n ? '= ' + fmt(n.valor) : '') + '</small></div>';
-          var base = n ? Math.floor(n.valor) : null, meio = n && n.valor % 1 !== 0;
-          return '<div class="crit"><span>' + esc(c.nome) + '</span><div class="chips5" role="group" aria-label="' + esc(c.nome) + '">' + [1, 2, 3, 4, 5].map(function (v) {
-            return '<button type="button" data-j="' + j.id + '" data-c="' + c.id + '" data-v="' + v + '" aria-pressed="' + (base === v) + '"' + (meu ? '' : ' disabled') + '>' + v + '</button>'; }).join('') +
-            '<button type="button" class="meio" data-j="' + j.id + '" data-c="' + c.id + '" data-meio="1" aria-pressed="' + !!meio + '"' + (meu && n && n.valor < 5 ? '' : ' disabled') + '>+½</button></div>' +
-            (n && n.valor % 0.5 !== 0 ? '<small class="conv">' + fmt(n.valor) + '</small>' : '') + '</div>';
+          var VAL = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+          return '<div class="crit c9"><span>' + esc(c.nome) + '</span><div class="n9" role="group" aria-label="' + esc(c.nome) + '">' + VAL.map(function (v) {
+            return '<button type="button" class="' + (v % 1 ? 'm' : '') + '" data-j="' + j.id + '" data-c="' + c.id + '" data-v="' + v + '" aria-pressed="' + (!!n && n.valor === v) + '"' + (meu ? '' : ' disabled') + '>' + fmt(v) + '</button>'; }).join('') + '</div>' +
+            (n && VAL.indexOf(n.valor) < 0 ? '<small class="conv">outro valor: ' + fmt(n.valor) + '</small>' : '') + '</div>';
         }).join('') +
         '<div class="cj-pe"><span class="dica">Média: <b>' + (m == null ? '—' : fmt(m.toFixed(2))) + '</b></span><span><button type="button" class="btn btn-p" data-obs="' + j.id + '">📝</button>' + (meu ? '<button type="button" class="btn btn-p" data-outro="' + j.id + '">Outro valor</button>' : '<button type="button" class="btn btn-p" data-sug="' + j.id + '">Sugerir</button>') + '</span></div>') + '</section>';
     }).join('') || '<div class="card vazio">Nenhum jovem nos seus grupos.</div>';
@@ -151,14 +150,6 @@
       b.addEventListener('click', function () {
         var j = porId(snap.jovens, b.getAttribute('data-j')), c = porId(t.criterios, b.getAttribute('data-c'));
         gravarNota(snap, j, t, c, Number(b.getAttribute('data-v')), null); cartoes(el, snap, t, lista);
-      });
-    });
-    el.querySelectorAll('[data-meio]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var j = porId(snap.jovens, b.getAttribute('data-j')), c = porId(t.criterios, b.getAttribute('data-c')), n = nota(snap, j, c);
-        if (!n) return;
-        var base = Math.floor(n.valor), v = n.valor % 1 !== 0 ? base : Math.min(5, base + 0.5);
-        gravarNota(snap, j, t, c, v, null); cartoes(el, snap, t, lista);
       });
     });
     el.querySelectorAll('.nt-p').forEach(function (inp) {
