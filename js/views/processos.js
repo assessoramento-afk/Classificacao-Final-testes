@@ -49,6 +49,8 @@
   window.CF.telas.processos = function (area, ctx) {
     var mj = (window.location.hash || '').match(/^#\/processos\/([0-9a-z-]{8,})\/jovens/i);
     if (mj) { window.CF.telas.jovensProcesso(area, ctx, mj[1]); return; }
+    var mc = (window.location.hash || '').match(/^#\/processos\/([0-9a-z-]{8,})\/(classificacao|revisao)/i);
+    if (mc) { window.CF.telas[mc[2]](area, ctx, mc[1]); return; }
     var id = idDaRota();
     if (id) painel(area, ctx, id); else lista(area, ctx);
   };
@@ -162,6 +164,7 @@
       '<header class="cabecalho"><div class="painel-tit">' + logoHTML(e, 'grande') + '<div><h1>' + esc(e.nome_fantasia || '') + ' · ' + esc(p.vaga) + '</h1>' +
         '<p>' + esc(p.identificacao) + ' · período ' + esc(periodoReal(ag, p)) + '</p></div></div>' +
         '<div class="painel-acoes">' + selo(p.situacao) +
+        (['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn btn-pri" href="#/processos/' + p.id + '/classificacao">🏆 Classificação</a>' : '') +
         (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><div class="iniciar-box"><button type="button" class="btn btn-pri btn-iniciar" id="p-iniciar"' + (falta.length ? ' disabled' : '') + '>Iniciar processo</button>' + (falta.length ? '<small>Falta: ' + esc(falta.join(' e ')) + '</small>' : '') + '</div>' : '') + '</div></header>' +
       '<div class="etapas" role="list">' + etapas.map(function (x, i) {
         return '<div role="listitem" class="' + (i < idxAtual ? 'feita' : (i === idxAtual ? 'atual' : '')) + '"' + (i === idxAtual ? ' aria-current="step"' : '') + '><b>' + (i + 1) + ' · ' + esc(x[1]) + '</b>' + esc(x[2]) + '</div>';

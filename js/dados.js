@@ -226,5 +226,15 @@
     marcarVistos: function (assinatura) { return q(sb.rpc('marcar_erros_vistos', { p_assinatura: assinatura || null })); }
   };
 
-  window.CF.dados = { saude: saude, avaliacao: avaliacao, jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  var classificacao = {
+    carregar: function (procId) { return q(sb.rpc('classificacao_processo', { p_proc: procId })); },
+    aplicarMotivo: function (part, motivo, obs) { return q(sb.rpc('aplicar_motivo', { p_part: part, p_motivo: motivo, p_obs: obs })); },
+    removerMotivo: function (part) { return q(sb.rpc('remover_motivo', { p_part: part })); },
+    pendencias: function (procId) { return q(sb.rpc('pendencias_revisao', { p_proc: procId })); },
+    enviarRevisao: function (procId) { return q(sb.rpc('enviar_revisao', { p_proc: procId })); },
+    liberar: function (procId) { return q(sb.rpc('liberar_processo', { p_proc: procId })); },
+    reabrir: function (procId, motivo) { return q(sb.rpc('reabrir_processo', { p_proc: procId, p_motivo: motivo })); }
+  };
+
+  window.CF.dados = { classificacao: classificacao, saude: saude, avaliacao: avaliacao, jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();
