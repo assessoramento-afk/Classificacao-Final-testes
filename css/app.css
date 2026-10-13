@@ -765,6 +765,7 @@ html[data-tema="claro"] .est-aguard { color: #8a6a00; } html[data-tema="claro"] 
 @media (max-width: 640px) { .ce-res { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .faixa-manut { background: #E9B500; color: #1b1111; font-weight: 700; font-size: 14px; padding: 10px 16px; text-align: center; }
 .alerta-saude { margin-left: auto; color: #E9B500; font-size: 14px; }
+#sd { display: flex; flex-direction: column; gap: 16px; }
 .sd-bloco { gap: 10px; }
 .uso-l { display: grid; grid-template-columns: 150px minmax(0, 1fr) 190px; gap: 12px; align-items: center; font-size: 14px; }
 .uso-barra { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; } .uso-barra i { display: block; height: 100%; }
