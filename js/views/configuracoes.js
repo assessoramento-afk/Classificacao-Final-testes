@@ -18,6 +18,7 @@
     notas: '<path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/>',
     prereserva: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     agradecimento: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7"/>',
+    saude: '<path d="M3 12h4l2-5 4 10 2-5h6"/>',
     modelos: '<rect x="4" y="3" width="12" height="16" rx="1.5"/><path d="M8 7h5M8 11h5"/><rect x="9" y="8" width="11" height="13" rx="1.5"/>',
     termo: '<path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 13h6M10 17h4"/>',
     materiais: '<path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>'
@@ -41,6 +42,7 @@
     if (sub === 'agradecimento') return paginaAgradecimento(area);
     if (sub === 'termo') return paginaTermo(area);
     if (sub === 'modelos') return paginaModelos(area);
+    if (sub === 'saude') return paginaSaude(area);
     paginaInicial(area);
   };
 
@@ -82,7 +84,9 @@
         card('prereserva', 'padrao', 'Pré-reserva da agenda', cfg ? 'Prazo ' + cfg.prazo_pre_reserva_dias + ' dias · aviso ' + cfg.aviso_pre_reserva_dias + ' dia' + (cfg.aviso_pre_reserva_dias === 1 ? '' : 's') + ' antes' : '') +
         '</div></section>' +
       '<section class="grupo"><h2>Documentos</h2><div class="cards-cfg">' +
-        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>';
+        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
+      '<section class="grupo"><h2>Sistema</h2><div class="cards-cfg">' +
+        card('saude', 'padrao', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
   /* ---------- Notas de corte ---------- */
@@ -157,6 +161,104 @@
       });
     });
     exemplo();
+  }
+
+  /* ---------- Saúde do sistema ---------- */
+  function mb(bytes) { var m = bytes / 1048576; return m >= 1024 ? (m / 1024).toFixed(2).replace('.', ',') + ' GB' : (m < 10 ? m.toFixed(1) : Math.round(m)).toString().replace('.', ',') + ' MB'; }
+  function barraUso(rotulo, bytes, limiteMb) {
+    var pct = limiteMb ? bytes * 100 / (limiteMb * 1048576) : 0, cls = pct >= 95 ? 'uso-verm' : (pct >= 80 ? 'uso-amar' : 'uso-verde');
+    return '<div class="uso-l"><b>' + rotulo + '</b><div class="uso-barra ' + cls + '"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></div><span class="' + cls + '-tx">' + mb(bytes) + ' de ' + mb(limiteMb * 1048576) + ' · ' + Math.round(pct) + '%</span></div>';
+  }
+  async function paginaSaude(area) {
+    area.innerHTML = cabecalho('Saúde do sistema', 'Só para administradores · atualizado ao abrir esta tela') + '<div id="sd"><div class="girando" style="margin:30px auto"></div></div>';
+    var cab = area.querySelector('.cabecalho');
+    cab.insertAdjacentHTML('beforeend', '<div class="botoes-topo"><button type="button" class="btn" id="sd-atual">⟳ Atualizar</button><button type="button" class="btn" id="sd-manut">🛠 Modo manutenção</button></div>');
+    var sd, cfg;
+    async function carregar() {
+      try { var r = await Promise.all([dados.saude.carregar(window.CF_CONFIG.versao), dados.config.carregar()]); sd = r[0]; cfg = r[1]; desenhar(); }
+      catch (e) { area.querySelector('#sd').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + ' (o script 24 já foi rodado no Supabase?)</span></div>'; }
+    }
+    function desenhar() {
+      var u = sd.uso || {}, c = sd.conferencia || {}, ref = (window.CF_CONFIG.supabaseUrl.match(/https:\/\/([a-z0-9]+)\./) || [])[1];
+      var pb = u.banco_bytes / (u.limite_banco_mb * 1048576), pa = u.arquivos_bytes / (u.limite_arquivos_mb * 1048576);
+      var m = sd.manutencao || {};
+      area.querySelector('#sd').innerHTML =
+        (m.ativo ? '<div class="aviso aviso-info">🛠<span><b>Modo manutenção ligado</b>' + (m.bloquear ? ' · lançamentos bloqueados para os avaliadores' : '') + ': “' + esc(m.mensagem || '') + '”</span></div>' : '') +
+        '<section class="card bloco sd-bloco"><span class="lbl">Uso do Supabase · plano gratuito</span>' +
+          barraUso('Banco de dados', u.banco_bytes, u.limite_banco_mb) + barraUso('Fotos e arquivos', u.arquivos_bytes, u.limite_arquivos_mb) +
+          ((pb >= 0.8 || pa >= 0.8) ? '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + (pb >= 0.8 ? 'O <b>banco de dados</b> passou de 80%: acima de 500 MB o plano gratuito fica somente leitura (o sistema para de gravar). ' : '') + (pa >= 0.8 ? 'As <b>fotos e arquivos</b> passaram de 80%: considere apagar fotos de processos antigos. ' : '') + 'Planeje a limpeza ou a troca de plano.</span></div>' : '') +
+          '<details><summary class="dica">O que mais ocupa espaço</summary><div class="sd-tab">' + (u.tabelas || []).map(function (t) { return '<span>' + esc(t.tabela) + '</span><b>' + mb(t.bytes) + '</b>'; }).join('') +
+            Object.keys(u.por_bucket || {}).map(function (b) { return '<span>arquivos · ' + esc(b) + '</span><b>' + mb(u.por_bucket[b]) + '</b>'; }).join('') + '</div></details>' +
+          '<p class="dica" style="margin:0">O tráfego de dados (5 GB por mês no plano gratuito) só aparece no painel do Supabase: ' + (ref ? '<a href="https://supabase.com/dashboard/project/' + ref + '" target="_blank" rel="noopener">abrir painel</a>' : 'abra o painel') + '. ' +
+          '<button type="button" class="btn-link" id="sd-lim">Ajustar limites do plano</button></p></section>' +
+        '<section class="card bloco sd-bloco"><span class="lbl">Erros · ' + sd.erros_hoje + ' hoje · ' + sd.erros_novos + ' novo(s)</span>' +
+          ((sd.erros || []).length ? (sd.erros || []).map(function (g, i) {
+            return '<div class="sd-item' + (g.novo ? ' novo' : '') + '"><div class="sd-tx"><b>' + esc(g.mensagem) + '</b><small>' + g.vezes + ' vez(es) · ' + g.aparelhos + ' aparelho(s)' + (g.tipos_aparelho ? ' (' + esc(g.tipos_aparelho) + ')' : '') + ' · tela ' + esc(g.tela || '?') + ' · versão ' + esc(g.versoes || '?') + ' · último ' + new Date(g.ultimo).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
+              '<div class="acoes"><button type="button" class="btn btn-p" data-det="' + i + '">Ver detalhes</button><button type="button" class="btn btn-pri btn-p" data-rel="' + i + '">📋 Copiar relatório para o Claude</button></div></div>';
+          }).join('') + (sd.erros_novos ? '<button type="button" class="btn-link" id="sd-vistos">Marcar todos como vistos</button>' : '') : '<p class="dica" style="margin:0">✓ Nenhum erro nos últimos 30 dias.</p>') + '</section>' +
+        '<section class="card bloco sd-bloco"><span class="lbl">Envios e aparelhos</span>' +
+          (sd.recusados_hoje ? '<div class="sd-item"><div class="sd-tx"><b>' + sd.recusados_hoje + ' lançamento(s) recusado(s) hoje</b><small>' + (sd.recusas_motivos || []).map(function (x) { return esc(x.motivo) + ' (' + x.vezes + ')'; }).join(' · ') + '</small></div></div>' : '') +
+          (sd.aparelhos_parados || []).map(function (a) { return '<div class="sd-item"><div class="sd-tx"><b>' + esc(a.pessoa) + ' · ' + esc(a.nome || 'aparelho') + ': ' + a.pendentes + ' item(ns) aguardando desde ' + new Date(a.desde).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</b><small>versão ' + esc(a.versao || '?') + ' · visto ' + new Date(a.visto_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' · peça para abrir o sistema com internet</small></div>' + ui.pill('⏳ parado', 'off') + '</div>'; }).join('') +
+          (sd.versoes_antigas || []).map(function (a) { return '<div class="sd-item"><div class="sd-tx"><b>' + esc(a.pessoa) + ' · ' + esc(a.nome || '') + ' · versão ' + esc(a.versao || '?') + '</b><small>precisa tocar em "Atualizar agora" (versão atual ' + esc(window.CF_CONFIG.versao) + ')</small></div>' + ui.pill('desatualizado', 'nao') + '</div>'; }).join('') +
+          (!sd.recusados_hoje && !(sd.aparelhos_parados || []).length && !(sd.versoes_antigas || []).length ? '<p class="dica" style="margin:0">✓ Todos os aparelhos em dia.</p>' : '') + '</section>' +
+        '<section class="card bloco sd-bloco"><span class="lbl">Conferência dos dados</span>' +
+          (c.jovens_sem_termo ? '<div class="sd-item"><div class="sd-tx"><b>' + c.jovens_sem_termo + ' jovem(ns) sem termo assinado</b><small>em processos em andamento</small></div><a class="btn btn-p" href="#/processos">Ver</a></div>' : '') +
+          (c.processos_sem_testes ? '<div class="sd-item"><div class="sd-tx"><b>' + c.processos_sem_testes + ' processo(s) em andamento sem testes guardados</b></div><a class="btn btn-p" href="#/processos">Ver</a></div>' : '') +
+          (c.turmas_sem_jovens ? '<div class="sd-item"><div class="sd-tx"><b>' + c.turmas_sem_jovens + ' turma(s) sem jovens</b><small>em processos em montagem ou andamento</small></div><a class="btn btn-p" href="#/processos">Ver</a></div>' : '') +
+          (c.turmas_passadas_abertas || []).map(function (t) { return '<div class="sd-item"><div class="sd-tx"><b>' + esc(t.turma + ' · ' + t.empresa) + ': turma já passou e não foi concluída</b><small>último dia ' + window.CF.datas.completa(t.ultimo_dia) + '</small></div><a class="btn btn-p" href="#/avaliar/' + t.turma_id + '/fechar">Abrir</a></div>'; }).join('') +
+          (c.sugestoes_antigas ? '<div class="sd-item"><div class="sd-tx"><b>' + c.sugestoes_antigas + ' sugestão(ões) paradas há mais de 2 dias</b></div><a class="btn btn-p" href="#/avaliar">Ver</a></div>' : '') +
+          (!c.jovens_sem_termo && !c.processos_sem_testes && !c.turmas_sem_jovens && !(c.turmas_passadas_abertas || []).length && !c.sugestoes_antigas ? '<p class="dica" style="margin:0">✓ Nada incompleto encontrado.</p>' : '') + '</section>';
+      var el = area.querySelector('#sd');
+      el.querySelectorAll('[data-det]').forEach(function (b) { b.addEventListener('click', function () { detalhes(sd.erros[+b.getAttribute('data-det')]); }); });
+      el.querySelectorAll('[data-rel]').forEach(function (b) { b.addEventListener('click', function () { copiarRelatorio(sd.erros[+b.getAttribute('data-rel')]); }); });
+      if (el.querySelector('#sd-vistos')) el.querySelector('#sd-vistos').addEventListener('click', async function () { try { await dados.saude.marcarVistos(null); if (window.CF.verificarMonitores) window.CF.verificarMonitores(); carregar(); } catch (e) { erro(e); } });
+      el.querySelector('#sd-lim').addEventListener('click', limites);
+    }
+    async function copiarRelatorio(g) {
+      try {
+        var det = await dados.saude.detalhes(g.assinatura), txt = window.CF.erros.relatorio(g, det);
+        try { await navigator.clipboard.writeText(txt); ui.toast('Relatório copiado. Cole na conversa com o Claude.', 'ok'); }
+        catch (e) { ui.janela({ titulo: 'Relatório para o Claude', confirmarDescarte: false, corpo: '<p class="dica" style="margin:0">Selecione tudo e copie:</p><textarea class="entrada" data-normal rows="14" readonly>' + esc(txt) + '</textarea>' }); }
+        await dados.saude.marcarVistos(g.assinatura);
+      } catch (e) { erro(e); }
+    }
+    async function detalhes(g) {
+      try {
+        var det = await dados.saude.detalhes(g.assinatura);
+        ui.janela({ titulo: 'Detalhes do erro', confirmarDescarte: false,
+          corpo: '<p style="margin:0"><b>' + esc(g.mensagem) + '</b></p>' + det.map(function (d) {
+            return '<div class="sd-det"><small>' + new Date(d.em).toLocaleString('pt-BR') + ' · ' + esc(d.perfil || '') + ' · ' + esc(d.aparelho || '') + ' · v' + esc(d.versao || '') + ' · ' + (d.online ? 'com internet' : 'sem internet') + ' · tela ' + esc(d.tela || '') + '</small>' +
+              '<div class="dica">Passos: ' + esc(((d.contexto || {}).passos || []).join(' → ')) + '</div><pre>' + esc(String(d.pilha || '').slice(0, 1200)) + '</pre></div>';
+          }).join(''),
+          botoes: [{ texto: 'Fechar', acao: 'fechar' }, { texto: '📋 Copiar relatório para o Claude', principal: true, aoClicar: function () { copiarRelatorio(g); return true; } }] });
+      } catch (e) { erro(e); }
+    }
+    function limites() {
+      ui.janela({ titulo: 'Limites do plano do Supabase', confirmarDescarte: false,
+        corpo: '<p class="dica" style="margin:0">No plano gratuito: banco 500 MB e arquivos 1 GB. Ajuste se mudarem de plano.</p><div class="form-grade">' +
+          '<label class="campo"><span>Banco de dados (MB)</span><input class="entrada" type="number" min="100" id="lm-b" value="' + cfg.limite_banco_mb + '"></label>' +
+          '<label class="campo"><span>Fotos e arquivos (MB)</span><input class="entrada" type="number" min="100" id="lm-a" value="' + cfg.limite_arquivos_mb + '"></label></div>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (f) {
+          var b = parseInt(f.querySelector('#lm-b').value, 10), a = parseInt(f.querySelector('#lm-a').value, 10);
+          if (!(b >= 100) || !(a >= 100)) { ui.toast('Informe valores a partir de 100 MB.', 'erro'); return false; }
+          try { await dados.config.salvar({ limite_banco_mb: b, limite_arquivos_mb: a }); ui.toast('Limites salvos.', 'ok'); carregar(); return true; } catch (e) { erro(e); return false; }
+        } }] });
+    }
+    function manutencao() {
+      var m = (cfg && cfg.manutencao) || {};
+      ui.janela({ titulo: 'Modo manutenção', confirmarDescarte: false,
+        corpo: '<p class="dica" style="margin:0">Mostra uma faixa no topo para toda a equipe. Se bloquear, os lançamentos dos avaliadores ficam guardados no aparelho e são enviados quando a manutenção terminar (nada se perde).</p>' +
+          '<label class="marcar"><input type="checkbox" id="mn-at"' + (m.ativo ? ' checked' : '') + '><span><b>Ligar o aviso de manutenção</b></span></label>' +
+          '<label class="campo"><span>Mensagem</span><input class="entrada" id="mn-msg" maxlength="160" value="' + esc(m.mensagem || 'MANUTENÇÃO PROGRAMADA HOJE ÀS 18H (5 MINUTOS). TERMINE OS LANÇAMENTOS ANTES DESSE HORÁRIO.') + '"></label>' +
+          '<label class="marcar"><input type="checkbox" id="mn-bl"' + (m.bloquear ? ' checked' : '') + '><span><b>Bloquear novos lançamentos dos avaliadores</b><small>Use só durante a atualização.</small></span></label>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (f) {
+          var nv = { ativo: f.querySelector('#mn-at').checked, mensagem: f.querySelector('#mn-msg').value.trim(), bloquear: f.querySelector('#mn-at').checked && f.querySelector('#mn-bl').checked, em: new Date().toISOString() };
+          try { await dados.config.salvar({ manutencao: nv }); ui.toast(nv.ativo ? 'Modo manutenção ligado.' : 'Modo manutenção desligado.', 'ok'); if (window.CF.verificarMonitores) window.CF.verificarMonitores(); carregar(); return true; } catch (e) { erro(e); return false; }
+        } }] });
+    }
+    area.querySelector('#sd-atual').addEventListener('click', carregar);
+    area.querySelector('#sd-manut').addEventListener('click', manutencao);
+    carregar();
   }
 
   /* ---------- Modelos de documentos ---------- */

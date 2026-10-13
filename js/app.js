@@ -65,6 +65,7 @@
                 '<div class="menu-flutuante card oculto" id="m-usuario" role="menu"><a href="#/conta">Minha conta</a><button type="button" id="b-sair">Sair</button></div>' +
               '</div></div>' +
           '</header>' +
+          '<div id="faixa-manut" class="faixa-manut oculto" role="status"></div>' +
           '<main class="conteudo" id="conteudo" tabindex="-1"></main>' +
         '</div>' +
       '</div>';
@@ -74,6 +75,7 @@
     window.CF.online.iniciar(p);
     window.CF.avisos.iniciar(p);
     if (window.CF.instalar) window.CF.instalar.colocar(p);
+    iniciarMonitores(p);
     if (p.perfil === 'empresa') {   // atividade da empresa: só o administrador enxerga
       var registrar = function () { if (document.hidden || !navigator.onLine) return; try { window.CF.dados.pessoas.registrarAtividade().catch(function () {}); } catch (e) { /* sem registro */ } };
       registrar(); clearInterval(window.__cfAtividade); window.__cfAtividade = setInterval(registrar, 60000);
@@ -143,6 +145,35 @@
   window.addEventListener('offline', atualizarConexao);
 
   /* ---------- Navegação ---------- */
+  /* Modo manutenção (faixa para todos) e alerta da Saúde do sistema (administrador) */
+  function iniciarMonitores(p) {
+    clearInterval(window.__cfMonitor);
+    async function verificar() {
+      if (!navigator.onLine || !estado.perfil) return;
+      try {
+        var cfg = await window.CF.dados.config.carregar(), m = cfg.manutencao || {}, faixa = document.getElementById('faixa-manut');
+        if (faixa) {
+          faixa.classList.toggle('oculto', !m.ativo);
+          faixa.innerHTML = m.ativo ? '🛠 ' + esc(m.mensagem || 'Sistema em manutenção.') + (m.bloquear && p.perfil !== 'admin' ? ' Os lançamentos ficam guardados no aparelho e serão enviados depois.' : '') : '';
+        }
+      } catch (e) { /* tenta depois */ }
+      if (p.perfil === 'admin') {
+        try {
+          var sd = await window.CF.dados.saude.carregar(window.CF_CONFIG.versao), u = sd.uso || {};
+          var pb = u.banco_bytes / (u.limite_banco_mb * 1048576), pa = u.arquivos_bytes / (u.limite_arquivos_mb * 1048576);
+          var alerta = pb >= 0.8 || pa >= 0.8 || sd.erros_novos > 0 || (sd.aparelhos_parados || []).length > 0;
+          window.CF.saudeAlerta = alerta;
+          var link = document.querySelector('.menu a[data-rota="config"]');
+          if (link) { var b = link.querySelector('.alerta-saude'); if (alerta && !b) { b = document.createElement('span'); b.className = 'alerta-saude'; b.title = 'Saúde do sistema pede atenção'; b.textContent = '⚠'; link.appendChild(b); } else if (!alerta && b) b.remove(); }
+        } catch (e) { /* sem script 24 ainda */ }
+      }
+    }
+    verificar(); window.__cfMonitor = setInterval(verificar, 120000);
+    if (window.CF.offline) { window.CF.offline.recuperar().then(function () { window.CF.offline.registrarAparelho(true); window.CF.offline.enviar(); }); }
+    if (window.CF.erros) window.CF.erros.enviarPendentes();
+  }
+  window.CF.verificarMonitores = function () { if (estado.perfil) iniciarMonitores(estado.perfil); };
+
   function rotaAtual() {
     var h = window.location.hash || '';
     if (h.indexOf('access_token') >= 0 || h.indexOf('error') >= 0) return null; // retorno de links de e-mail
@@ -155,7 +186,7 @@
     var p = estado.perfil;
     var conteudo = document.getElementById('conteudo');
     if (!p || !conteudo) return;
-    var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; }).concat(['conta']);
+    var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; }).concat(['conta']).concat(p.perfil === 'empresa' ? [] : ['envios']);
     var rota = rotaAtual();
     if (!rota || permitidas.indexOf(rota) < 0) {
       rota = permitidas[0];
@@ -165,11 +196,12 @@
       if (a.getAttribute('data-rota') === rota) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     var item = (MENUS[p.perfil] || []).filter(function (m) { return m[0] === rota; })[0];
-    document.getElementById('topo-titulo').textContent = item ? item[1] : 'Minha conta';
-    document.title = (item ? item[1] : 'Minha conta') + ' · ' + C.nomeSistema;
+    var tituloTela = item ? item[1] : (rota === 'envios' ? 'Central de envios' : 'Minha conta');
+    document.getElementById('topo-titulo').textContent = tituloTela;
+    document.title = tituloTela + ' · ' + C.nomeSistema;
     var tela = window.CF.telas[rota];
     // Sem internet, só o Avaliar (turmas baixadas) funciona: as outras telas mostram um aviso em vez de números zerados
-    if (!navigator.onLine && ['avaliar', 'painel'].indexOf(rota) < 0) {
+    if (!navigator.onLine && ['avaliar', 'painel', 'envios'].indexOf(rota) < 0) {
       conteudo.innerHTML = '<header class="cabecalho"><div><h1>' + esc(item ? item[1] : 'Minha conta') + '</h1></div></header>' +
         '<section class="card bloco sem-net"><span class="sem-net-ic" aria-hidden="true">📡</span><h2>Sem internet</h2>' +
         '<p>Esta tela precisa de internet para mostrar os dados. Sem internet, você pode usar o <b>Avaliar</b> nas turmas baixadas neste aparelho: presença, grupos e notas ficam salvos e são enviados quando a conexão voltar.</p>' +

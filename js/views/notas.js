@@ -34,6 +34,14 @@
     if (!vs.length || vs.some(function (v) { return v == null; })) return null;
     return vs.reduce(function (a, b) { return a + b; }, 0) / vs.length;
   }
+  // Situação do lançamento desta nota neste aparelho (para o indicador na célula)
+  function situacaoNota(j, c) {
+    var alvo = function (x) { return x.tipo === 'nota' && x.dados.participacao_id === j.id && x.dados.criterio_id === c.id; };
+    if (OFF.atencao().some(alvo)) return 'st-erro';
+    var f = OFF.fila().filter(alvo)[0];
+    if (!f) return '';
+    return f.estado === 'enviado' ? 'st-env' : 'st-aguard';
+  }
   function completo(snap, j, t) { return t.criterios.every(function (c) { return !!nota(snap, j, c); }); }
   function gravarNota(snap, j, t, c, valor, pontos) {
     var em = new Date().toISOString();
@@ -105,13 +113,22 @@
         return '<tr class="' + (des ? 'falta' : '') + (meu ? '' : ' outro') + '"><td class="num">' + (i + 1) + '</td><td class="nm"><b>' + esc(j.nome) + '</b> <small>' + esc(j.codigo) + (j.grupo ? ' · G' + j.grupo : '') + '</small></td>' +
           t.criterios.map(function (c) {
             var n = nota(snap, j, c), v = n ? (c.entrada === 'pontuacao' ? fmt(n.pontos) : fmt(n.valor)) : '';
-            return '<td><input class="nt' + (n && n.pendente ? ' pend' : '') + '" data-j="' + j.id + '" data-c="' + c.id + '" inputmode="decimal" value="' + v + '" placeholder="–" aria-label="' + esc(c.nome + ' de ' + j.nome) + '"' + (des || !meu ? ' disabled' : '') + '>' +
+            return '<td><input class="nt ' + situacaoNota(j, c) + '" data-j="' + j.id + '" data-c="' + c.id + '" inputmode="decimal" value="' + v + '" placeholder="–" aria-label="' + esc(c.nome + ' de ' + j.nome) + '"' + (des || !meu ? ' disabled' : '') + '>' +
               (c.entrada === 'pontuacao' && n ? '<small class="conv">= ' + fmt(n.valor) + '</small>' : '') + '</td>';
           }).join('') +
           '<td class="media">' + (des ? ui.pill('Faltou', 'nao') : (m == null ? '—' : fmt(m.toFixed(2)))) + '</td>' +
           '<td class="acoes-nt">' + (des ? '' : '<button type="button" class="btn btn-p" data-obs="' + j.id + '" title="Observação"' + (ob ? ' aria-pressed="true"' : '') + '>📝</button>' + (meu || snap.turma.concluida_em ? '' : '<button type="button" class="btn btn-p" data-sug="' + j.id + '">Sugerir</button>')) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
     var inputs = [].slice.call(el.querySelectorAll('input.nt:not([disabled])'));
+    // o indicador de cada célula acompanha o envio (aguardando → enviado → confirmado / conflito)
+    var pararSit = OFF.ouvir(function () {
+      if (!document.body.contains(el)) { if (pararSit) pararSit(); return; }
+      el.querySelectorAll('input.nt[data-c]').forEach(function (inp) {
+        var j = porId(snap.jovens, inp.getAttribute('data-j')), c = porId(t.criterios, inp.getAttribute('data-c'));
+        if (!j || !c) return;
+        inp.classList.remove('st-aguard', 'st-env', 'st-erro'); var cl = situacaoNota(j, c); if (cl) inp.classList.add(cl);
+      });
+    });
     inputs.forEach(function (inp, k) {
       function salvar() {
         var j = porId(snap.jovens, inp.getAttribute('data-j')), c = porId(t.criterios, inp.getAttribute('data-c'));
@@ -121,7 +138,7 @@
         if (r.erro) { ui.toast(r.erro, 'erro'); inp.value = atual ? fmt(c.entrada === 'pontuacao' ? atual.pontos : atual.valor) : ''; return; }
         if (atual && atual.valor === r.valor && (atual.pontos || null) === (r.pontos || null)) { inp.value = fmt(c.entrada === 'pontuacao' ? r.pontos : r.valor); return; }
         gravarNota(snap, j, t, c, r.valor, r.pontos);
-        inp.value = fmt(c.entrada === 'pontuacao' ? r.pontos : r.valor); inp.classList.add('pend');
+        inp.value = fmt(c.entrada === 'pontuacao' ? r.pontos : r.valor); inp.classList.remove('st-erro', 'st-env'); inp.classList.add('st-aguard');
         var tr = inp.closest('tr'), m = media(snap, j, t); tr.querySelector('.media').textContent = m == null ? '—' : fmt(m.toFixed(2));
         if (c.entrada === 'pontuacao') { var cv = inp.parentNode.querySelector('.conv'); if (!cv) { cv = document.createElement('small'); cv.className = 'conv'; inp.parentNode.appendChild(cv); } cv.textContent = '= ' + fmt(r.valor); }
       }

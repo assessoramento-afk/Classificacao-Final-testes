@@ -14,7 +14,7 @@
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
   function barraSync(area) {
     var velho = area.querySelector(':scope > .sync-bar'); if (velho) velho.remove();
-    var el = document.createElement('div'); el.className = 'sync-bar'; el.setAttribute('role', 'status');
+    var el = document.createElement('a'); el.className = 'sync-bar'; el.setAttribute('role', 'status'); el.href = '#/envios'; el.title = 'Abrir a Central de envios';
     area.insertBefore(el, area.firstChild);
     var parar = OFF.ouvir(function (s) { el.className = 'sync-bar sync-' + s.tipo; el.textContent = (s.tipo === 'ok' ? '✓ ' : (s.tipo === 'env' ? '⟳ ' : '⚠ ')) + s.texto; });
     window.addEventListener('hashchange', function x() { parar(); window.removeEventListener('hashchange', x); });

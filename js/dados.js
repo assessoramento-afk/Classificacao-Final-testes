@@ -206,6 +206,7 @@
     salvarPresencas: function (lista) { return q(sb.rpc('salvar_presencas', { p: lista })); },
     salvarGrupos: function (turmaId, lista) { return q(sb.rpc('salvar_grupos', { p_turma: turmaId, p: lista })); },
     escolherGrupos: function (turmaId, grupos) { return q(sb.rpc('escolher_grupos', { p_turma: turmaId, p_grupos: grupos })); },
+    salvarLote: function (lista, aparelho) { return q(sb.rpc('salvar_lote', { p: lista, p_aparelho: aparelho || null })); },
     salvarNotas: function (lista) { return q(sb.rpc('salvar_notas', { p: lista })); },
     sugerirNotas: function (lista) { return q(sb.rpc('sugerir_notas', { p: lista })); },
     salvarObservacoes: function (lista) { return q(sb.rpc('salvar_observacoes', { p: lista })); },
@@ -219,5 +220,11 @@
     definirAvaliador: function (turmaId, grupo, avaliador) { return q(sb.rpc('definir_avaliador_grupo', { p_turma: turmaId, p_grupo: grupo, p_avaliador: avaliador })); }
   };
 
-  window.CF.dados = { avaliacao: avaliacao, jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  var saude = {
+    carregar: function (versao) { return q(sb.rpc('saude_sistema', { p_versao_atual: versao || null })); },
+    detalhes: function (assinatura) { return q(sb.rpc('detalhes_erro', { p_assinatura: assinatura })); },
+    marcarVistos: function (assinatura) { return q(sb.rpc('marcar_erros_vistos', { p_assinatura: assinatura || null })); }
+  };
+
+  window.CF.dados = { saude: saude, avaliacao: avaliacao, jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();
