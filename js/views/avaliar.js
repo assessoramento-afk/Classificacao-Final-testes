@@ -21,6 +21,15 @@
   }
   function hora(iso) { try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
   function diaAtual(snap) { var h = D.hoje(); return snap.dias.indexOf(h) >= 0 ? h : (snap.dias.filter(function (d) { return d >= h; })[0] || snap.dias[snap.dias.length - 1]); }
+  function listaDesist(snap) {
+    var r = [];
+    snap.jovens.forEach(function (j) {
+      var man = (snap.desistencias || []).filter(function (d) { return d.participacao_id === j.id; })[0];
+      var falta = snap.dias.filter(function (d) { var x = snap.presencas[j.id + '|' + d]; return x && x.presente === false; })[0];
+      if (man || falta) r.push({ j: j, man: man, falta: falta });
+    });
+    return r;
+  }
   function presente(snap, pid, dia) { var x = snap.presencas[pid + '|' + dia]; return x ? x.presente : null; }
   function meuId() { return (window.CF.perfilAtual || {}).id; }
 
@@ -39,7 +48,7 @@
   window.CF.telas.avaliar = function (area, ctx) {
     var m = (window.location.hash || '').match(/^#\/avaliar\/([0-9a-z-]{8,})(?:\/([a-z]+))?/i);
     if (!m) return inicio(area, ctx);
-    var tela = { presenca: presenca, grupos: grupos, avaliadores: avaliadores, notas: function (a, c, sn) { window.CF.avaliarNotas(a, c, sn); }, sugestoes: function (a, c, sn) { window.CF.avaliarSugestoes(a, c, sn); } }[m[2]] || turmaPassos;
+    var tela = { presenca: presenca, grupos: grupos, avaliadores: avaliadores, notas: function (a, c, sn) { window.CF.avaliarNotas(a, c, sn); }, sugestoes: function (a, c, sn) { window.CF.avaliarSugestoes(a, c, sn); }, fechar: fechar, desistencias: desistencias }[m[2]] || turmaPassos;
     area.innerHTML = '<div class="girando" style="margin:30px auto"></div>';
     obterTurma(m[1]).then(function (snap) { area.innerHTML = ''; tela(area, ctx, snap); barraSync(area); })
       .catch(function (e) { area.innerHTML = '<a class="voltar" href="#/avaliar">← Avaliar</a><div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; });
@@ -122,8 +131,10 @@
         passo(1, ok1, !ok1, 'Presença', marc ? pres + ' presente(s) · ' + (marc - pres) + ' falta(s)' + (marc < snap.jovens.length ? ' · ' + (snap.jovens.length - marc) + ' a marcar' : '') : snap.jovens.length + ' jovens a marcar', '#/avaliar/' + snap.turma.id + '/presenca') +
         passo(2, ok2, ok1 && !ok2, 'Grupos', ok2 ? listaG.length + ' grupo(s) (' + listaG.map(function (g) { return nGrupos[g]; }).join(', ') + ')' : 'Montar os grupos com os presentes do 1º dia', '#/avaliar/' + snap.turma.id + '/grupos') +
         passo(3, ok3, ok2 && !ok3, 'Avaliadores dos grupos', !ok2 ? 'Depois de montar os grupos' : (meus.length ? 'Você: grupo' + (meus.length > 1 ? 's ' : ' ') + meus.join(' e ') : 'Você ainda não escolheu grupos') + (livres.length ? ' · falta escolher: ' + livres.join(', ') : ' · todos os grupos têm avaliador'), ok2 ? '#/avaliar/' + snap.turma.id + '/avaliadores' : null) +
-        passo(4, false, ok3, 'Lançar notas', ok3 ? notasResumo(snap) : 'Liberado quando todos os grupos tiverem avaliador', ok3 ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
-      '</div>';
+        passo(4, !!snap.turma.concluida_em, ok3 && !snap.turma.concluida_em, 'Lançar notas', ok3 ? notasResumo(snap) : 'Liberado quando todos os grupos tiverem avaliador', ok3 ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
+        passo(5, !!snap.turma.concluida_em, false, 'Fechar turma', snap.turma.concluida_em ? 'Concluída em ' + D.completa(snap.turma.concluida_em.slice(0, 10)) + (ctx.perfil.perfil === 'admin' ? ' · o administrador pode reabrir' : '') : 'Conferir pendências e concluir', '#/avaliar/' + snap.turma.id + '/fechar') +
+      '</div>' +
+      '<div class="bloco-botoes"><a class="btn btn-p" href="#/avaliar/' + snap.turma.id + '/desistencias">Desistências (' + listaDesist(snap).length + ')</a></div>';
     var at = area.querySelector('#tp-atual');
     if (at) at.addEventListener('click', function () { ui.executar(at, 'Atualizando…', async function () { try { var s = await obterTurma(snap.turma.id, true); turmaPassos(area, ctx, s); barraSync(area); ui.toast('Turma atualizada.', 'ok'); } catch (e) { erro(e); } }); });
   }
@@ -153,8 +164,9 @@
       var itens = snap.jovens.filter(function (j) { return !busca || ui.normalizar(j.nome + ' ' + j.codigo).indexOf(busca) >= 0; });
       area.querySelector('#pr-lista').innerHTML = itens.map(function (j) {
         var v = presente(snap, j.id, dia);
-        return '<div class="pres" id="pj-' + j.id + '"><span class="ft">' + esc(ui.iniciais(j.nome)) + '</span><div class="tx"><b>' + esc(j.nome) + '</b><small>' + esc(j.codigo) + (v === false ? ' · desistência' : '') + '</small></div>' +
-          '<div class="tg" role="group" aria-label="Presença de ' + esc(j.nome) + '"><button type="button" data-p="' + j.id + '" data-v="1" aria-pressed="' + (v === true) + '">Presente</button><button type="button" data-p="' + j.id + '" data-v="0" aria-pressed="' + (v === false) + '">Faltou</button></div></div>';
+        var man = (snap.desistencias || []).some(function (d) { return d.participacao_id === j.id; }), fech = !!snap.turma.concluida_em;
+        return '<div class="pres" id="pj-' + j.id + '"><span class="ft">' + esc(ui.iniciais(j.nome)) + '</span><div class="tx"><b>' + esc(j.nome) + '</b><small>' + esc(j.codigo) + (v === false ? ' · desistência' : (man ? ' · desistência registrada' : '')) + '</small></div>' +
+          '<div class="tg" role="group" aria-label="Presença de ' + esc(j.nome) + '"><button type="button" data-p="' + j.id + '" data-v="1" aria-pressed="' + (v === true) + '"' + (fech ? ' disabled' : '') + '>Presente</button><button type="button" data-p="' + j.id + '" data-v="0" aria-pressed="' + (v === false) + '"' + (fech ? ' disabled' : '') + '>Faltou</button></div></div>';
       }).join('') || '<div class="card vazio">Ninguém encontrado.</div>';
       area.querySelectorAll('[data-p]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -315,6 +327,97 @@
     })();
     window.CF.__lerCodigo = mostrar;   // usado nos testes automáticos
   }
+  /* ================================================================
+     DESISTÊNCIAS
+     ================================================================ */
+  var MOTIVOS = ['SAIU DURANTE O PROCESSO', 'PROBLEMA DE SAÚDE', 'CONSEGUIU OUTRO EMPREGO', 'NÃO QUIS CONTINUAR', 'OUTRO MOTIVO'];
+  function desistencias(area, ctx, snap) {
+    var admin = ctx.perfil.perfil === 'admin', fech = !!snap.turma.concluida_em, l = listaDesist(snap);
+    area.innerHTML = '<a class="voltar" href="#/avaliar/' + snap.turma.id + '">← ' + esc(snap.turma.nome) + '</a>' +
+      '<header class="cabecalho"><div><h1>Desistências · ' + esc(snap.turma.nome) + '</h1><p>Automáticas pela presença' + (admin ? ' · o administrador pode registrar outros casos' : '') + '</p></div></header>' +
+      (l.length ? l.map(function (x) {
+        var sub = x.falta ? 'Faltou no dia ' + (snap.dias.indexOf(x.falta) + 1) + ' (' + D.curta(x.falta) + ') · automática' : 'Registrada por ' + esc((snap.equipe[x.man.registrado_por] || 'administrador').split(' ')[0]) + (x.man.dia ? ' · ' + D.curta(x.man.dia) : '');
+        return '<div class="des"><div class="tx"><b>' + esc(x.j.nome) + '</b><small>' + sub + (x.man ? ' · ' + esc(x.man.motivo) + (x.man.observacao ? ' · ' + esc(x.man.observacao) : '') : '') + '</small></div>' +
+          (x.man && admin && !fech ? '<button type="button" class="btn btn-p" data-desfaz="' + x.j.id + '">Desfazer</button>' : '') + ui.pill('Desistência', 'nao') + '</div>';
+      }).join('') : '<div class="card vazio">Nenhuma desistência.</div>') +
+      (admin && !fech ? '<button type="button" class="btn" id="ds-novo" style="align-self:flex-start">+ Registrar desistência</button>' : '') +
+      '<p class="dica">Quem desistiu fica bloqueado no lançamento e aparece como "Desistência" na classificação. Se o jovem faltou num dia mas estava presente, corrija a presença na tela de Presença.</p>';
+    async function recarregar() { try { var sn = OFF.guardarTurma(await dados.avaliacao.baixarTurma(snap.turma.id)); desistencias(area, ctx, sn); barraSync(area); } catch (e) { erro(e); } }
+    area.querySelectorAll('[data-desfaz]').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        if (!navigator.onLine) { ui.toast('Conecte-se à internet.', 'erro'); return; }
+        if (!(await ui.confirmar('Desfazer a desistência?', 'O jovem volta a ficar ativo no lançamento das notas.', 'Desfazer', 'Cancelar'))) return;
+        try { await dados.avaliacao.removerDesistencia(b.getAttribute('data-desfaz')); ui.toast('Desistência desfeita.', 'ok'); recarregar(); } catch (e) { erro(e); }
+      });
+    });
+    var nv = area.querySelector('#ds-novo');
+    if (nv) nv.addEventListener('click', function () {
+      if (!navigator.onLine) { ui.toast('Conecte-se à internet para registrar.', 'erro'); return; }
+      var ativos = snap.jovens.filter(function (j) { return !l.some(function (x) { return x.j.id === j.id; }); });
+      ui.janela({ titulo: 'Registrar desistência', confirmarDescarte: false,
+        corpo: '<label class="campo"><span>Jovem</span><select class="entrada" id="ds-j">' + ativos.map(function (j) { return '<option value="' + j.id + '">' + esc(j.nome) + '</option>'; }).join('') + '</select></label>' +
+          '<div class="form-grade"><label class="campo"><span>Motivo</span><select class="entrada" id="ds-m">' + MOTIVOS.map(function (m) { return '<option>' + m + '</option>'; }).join('') + '</select></label>' +
+          '<label class="campo"><span>Dia</span><select class="entrada" id="ds-d">' + snap.dias.map(function (d, i) { return '<option value="' + d + '"' + (d === diaAtual(snap) ? ' selected' : '') + '>Dia ' + (i + 1) + ' · ' + D.curta(d) + '</option>'; }).join('') + '</select></label></div>' +
+          '<label class="campo"><span>Observação (opcional)</span><input class="entrada" id="ds-o" maxlength="200"></label>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Registrar', principal: true, aoClicar: async function (f) {
+          try { await dados.avaliacao.registrarDesistencia(f.querySelector('#ds-j').value, f.querySelector('#ds-m').value, f.querySelector('#ds-d').value, ui.maiusculas(f.querySelector('#ds-o').value.trim())); ui.toast('Desistência registrada.', 'ok'); recarregar(); return true; }
+          catch (e) { erro(e); return false; }
+        } }] });
+    });
+  }
+
+  /* ================================================================
+     FECHAR TURMA (com internet)
+     ================================================================ */
+  async function fechar(area, ctx, snap) {
+    var admin = ctx.perfil.perfil === 'admin';
+    var fila = OFF.fila().filter(function (o) { return o.turma_id === snap.turma.id; }).length;
+    area.innerHTML = '<a class="voltar" href="#/avaliar/' + snap.turma.id + '">← ' + esc(snap.turma.nome) + '</a>' +
+      '<header class="cabecalho"><div><h1>Fechar turma · ' + esc(snap.turma.nome) + '</h1><p>' + esc(snap.empresa.nome + ' · ' + snap.processo.vaga) + ' · ' + snap.dias.length + ' dia(s)</p></div></header><div id="fc"><div class="girando" style="margin:30px auto"></div></div>';
+    barraSync(area);
+    var box = area.querySelector('#fc');
+    if (snap.turma.concluida_em) {
+      box.innerHTML = '<div class="aviso aviso-ok">' + ui.icone('ok', 18) + '<span>Turma <b>concluída</b> em ' + D.completa(snap.turma.concluida_em.slice(0, 10)) + '. As notas e a presença estão travadas.</span></div>' +
+        (admin ? '<button type="button" class="btn" id="fc-reabrir" style="align-self:flex-start">Reabrir turma</button>' : '<p class="dica">Só o administrador pode reabrir a turma.</p>');
+      var rb = box.querySelector('#fc-reabrir');
+      if (rb) rb.addEventListener('click', function () {
+        ui.janela({ titulo: 'Reabrir a turma?', confirmarDescarte: false,
+          corpo: '<p style="margin:0;color:var(--texto-2)">As notas voltam a poder ser alteradas. O motivo fica registrado no histórico.</p><label class="campo"><span>Motivo <span class="obrig">*</span></span><input class="entrada" id="rb-m" maxlength="200"></label>',
+          botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Reabrir', principal: true, aoClicar: async function (f) {
+            var mot = ui.maiusculas(f.querySelector('#rb-m').value.trim());
+            if (mot.length < 5) { ui.toast('Informe o motivo.', 'erro'); return false; }
+            try { await dados.avaliacao.reabrirTurma(snap.turma.id, mot); var sn = OFF.guardarTurma(await dados.avaliacao.baixarTurma(snap.turma.id)); ui.toast('Turma reaberta.', 'ok'); fechar(area, ctx, sn); return true; } catch (e) { erro(e); return false; }
+          } }] });
+      });
+      return;
+    }
+    if (!navigator.onLine) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Para conferir as pendências e concluir a turma é preciso internet.</span></div>'; return; }
+    var pend;
+    try { if (fila) await OFF.enviar(); pend = await dados.avaliacao.pendencias(snap.turma.id); } catch (e) { erro(e); box.innerHTML = ''; return; }
+    fila = OFF.fila().filter(function (o) { return o.turma_id === snap.turma.id; }).length;
+    var nP = snap.dias.length, l = listaDesist(snap);
+    var pres = snap.dias.map(function (d, i) { return 'Dia ' + (i + 1) + ': ' + snap.jovens.filter(function (j) { return presente(snap, j.id, d) === true; }).length + ' presentes'; }).join(' · ');
+    var itens = [];
+    pend.presenca.forEach(function (x) { itens.push('<b>Presença não marcada</b> · ' + D.curta(x.dia) + ': ' + x.faltam + ' jovem(ns) <a href="#/avaliar/' + snap.turma.id + '/presenca">marcar</a>'); });
+    if (pend.sem_grupo.length) itens.push('<b>' + pend.sem_grupo.length + ' jovem(ns) sem grupo</b> <a href="#/avaliar/' + snap.turma.id + '/grupos">ver</a>');
+    if (pend.grupos_sem_avaliador.length) itens.push('<b>Grupo(s) sem avaliador:</b> ' + pend.grupos_sem_avaliador.join(', ') + ' <a href="#/avaliar/' + snap.turma.id + '/avaliadores">escolher</a>');
+    pend.notas.forEach(function (x) { itens.push('<b>' + x.notas + ' nota(s) faltando</b> · Grupo ' + (x.grupo || '?') + (x.avaliador ? ' (' + esc(String(x.avaliador).split(' ')[0]) + ')' : '') + ': ' + esc(x.teste) + ' · ' + x.jovens + ' jovem(ns) <a href="#/avaliar/' + snap.turma.id + '/notas">ver</a>'); });
+    if (pend.sugestoes.length) itens.push('<b>' + pend.sugestoes.length + ' sugestão(ões) aguardando decisão</b> <a href="#/avaliar/' + snap.turma.id + '/sugestoes">decidir</a>');
+    if (fila) itens.push('<b>' + fila + ' item(ns) deste aparelho ainda não enviados</b> · conecte-se e aguarde o envio');
+    var livre = !itens.length;
+    box.innerHTML = '<div class="pd ok"><span class="n">✓</span><div class="pd-txt"><b>Presença</b><small>' + pres + '</small></div></div>' +
+      '<div class="pd ok"><span class="n">✓</span><div class="pd-txt"><b>Desistências</b><small>' + l.length + ' jovem(ns)' + (l.length ? ' · <a href="#/avaliar/' + snap.turma.id + '/desistencias">ver</a>' : '') + '</small></div></div>' +
+      '<div class="pd ' + (livre ? 'ok' : 'on') + '"><span class="n">' + (livre ? '✓' : '!') + '</span><div class="pd-txt"><b>' + (livre ? 'Nenhuma pendência' : 'Pendências para fechar') + '</b><small>' + (livre ? 'A turma pode ser concluída.' : 'Resolva antes de concluir a turma.') + '</small></div></div>' +
+      (livre ? '' : '<div class="pend-l">' + itens.map(function (t) { return '<div><span class="x">✕</span><span>' + t + '</span></div>'; }).join('') + '</div>') +
+      '<button type="button" class="btn btn-pri" id="fc-ok"' + (livre ? '' : ' disabled') + '>Concluir turma</button>' +
+      '<p class="dica">Ao concluir, as notas e a presença da turma ficam travadas. Só o administrador pode reabrir (com motivo registrado no histórico).</p>';
+    var ok = box.querySelector('#fc-ok');
+    if (livre) ok.addEventListener('click', async function () {
+      if (!(await ui.confirmar('Concluir a turma?', 'As notas e a presença ficam travadas.', 'Concluir turma', 'Cancelar'))) return;
+      try { await dados.avaliacao.concluirTurma(snap.turma.id); var sn = OFF.guardarTurma(await dados.avaliacao.baixarTurma(snap.turma.id)); ui.toast('Turma concluída.', 'ok'); fechar(area, ctx, sn); } catch (e) { erro(e); }
+    });
+  }
+
   window.CF.lerCracha = lerCracha;
   window.CF.barraSync = barraSync;
   function notasResumo(snap) {

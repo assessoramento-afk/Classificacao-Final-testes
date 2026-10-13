@@ -735,6 +735,12 @@ tr.falta td { opacity: .45; } tr.outro td.nm b { color: var(--texto-2); }
 .tlin-tx { flex: 1; min-width: 200px; } .tlin-tx b { display: block; font-size: 14px; } .tlin-tx small { color: var(--texto-3); font-size: 12.5px; }
 .tlin .acoes { display: flex; gap: 6px; }
 
+.des { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 12px; background: var(--entrada); flex-wrap: wrap; }
+.des .tx { flex: 1; min-width: 200px; } .des small { display: block; color: var(--texto-3); font-size: 12px; }
+.pend-l { display: flex; flex-direction: column; gap: 6px; }
+.pend-l div { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--entrada); border: 1px solid var(--borda); }
+.pend-l .x { color: #ef8582; font-weight: 700; }
+
 /* ---------- Processos finalizados ---------- */
 .abas-proc { align-self: flex-start; }
 .emp-bloco { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }

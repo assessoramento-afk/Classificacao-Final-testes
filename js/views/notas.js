@@ -17,15 +17,15 @@
   function numero(v) { var n = parseFloat(String(v || '').trim().replace(',', '.')); return isNaN(n) ? null : n; }
   function testes(snap) { return ((snap.processo.configuracao || {}).testes || []).slice().sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); }); }
   function resp(snap, j) { return j.grupo ? snap.grupos[j.grupo] : null; }
-  function pode(snap, j) { return ehAdmin() || resp(snap, j) === eu(); }
-  function desistiu(snap, j) { return snap.dias.some(function (d) { var x = snap.presencas[j.id + '|' + d]; return x && x.presente === false; }); }
+  function pode(snap, j) { return !snap.turma.concluida_em && (ehAdmin() || resp(snap, j) === eu()); }
+  function desistiu(snap, j) { return (snap.desistencias || []).some(function (d) { return d.participacao_id === j.id; }) || snap.dias.some(function (d) { var x = snap.presencas[j.id + '|' + d]; return x && x.presente === false; }); }
   function nota(snap, j, c) { return snap.notas[j.id + '|' + c.id]; }
   function converter(t, pontos) {
     var linha = (t.conversao || []).filter(function (l) { return pontos >= Number(l.min) && pontos <= Number(l.max); })[0];
     return linha ? Number(linha.nota) : null;
   }
   function visiveis(snap) {
-    var meus = snap.jovens.filter(function (j) { return pode(snap, j); });
+    var meus = snap.jovens.filter(function (j) { return ehAdmin() || resp(snap, j) === eu(); });
     var lista = estado.todos || !meus.length ? snap.jovens.filter(function (j) { return j.grupo || ehAdmin(); }) : meus;
     return lista.slice().sort(function (a, b) { var ma = pode(snap, a) ? 0 : 1, mb = pode(snap, b) ? 0 : 1; return ma - mb || String(a.nome).localeCompare(String(b.nome), 'pt-BR'); });
   }
@@ -59,12 +59,13 @@
     if (!estado.teste || !ts.some(function (t) { return t.teste_id === estado.teste; })) estado.teste = ts[0].teste_id;
     var largo = window.matchMedia('(min-width: 760px)').matches;
     var lista = visiveis(snap);
-    var meus = snap.jovens.filter(function (j) { return pode(snap, j); }).length;
+    var meus = snap.jovens.filter(function (j) { return ehAdmin() || resp(snap, j) === eu(); }).length;
     var pend = (snap.sugestoes || []).filter(function (s) { var j = snap.jovens.filter(function (x) { return x.id === s.participacao_id; })[0]; return s.situacao === 'pendente' && j && pode(snap, j) && s.autor_id !== eu(); }).length;
 
     area.innerHTML = '<a class="voltar" href="#/avaliar/' + snap.turma.id + '">← ' + esc(snap.turma.nome) + '</a>' +
       '<header class="cabecalho"><div><h1>Lançar notas · ' + esc(snap.turma.nome) + '</h1><p>' + esc(snap.empresa.nome + ' · ' + snap.processo.vaga) + ' · ' + (ehAdmin() ? 'administrador: todos os grupos' : meus + ' jovem(ns) nos seus grupos') + '</p></div>' +
         '<div class="segmentos" role="group" aria-label="Modo de lançamento"><button type="button" data-modo="teste" aria-pressed="' + (estado.modo === 'teste') + '">Por teste</button><button type="button" data-modo="jovem" aria-pressed="' + (estado.modo === 'jovem') + '">Por jovem</button></div></header>' +
+      (snap.turma.concluida_em ? '<div class="aviso aviso-ok">' + ui.icone('ok', 18) + '<span>Turma <b>concluída</b> em ' + D.completa(snap.turma.concluida_em.slice(0, 10)) + '. As notas estão travadas' + (ehAdmin() ? '; para corrigir, reabra a turma em "Fechar turma".' : '.') + '</span></div>' : '') +
       (pend ? '<a class="aviso aviso-info link-aviso" href="#/avaliar/' + snap.turma.id + '/sugestoes">' + ui.icone('alerta', 18) + '<span><b>' + pend + ' sugestão(ões)</b> de outros avaliadores aguardando sua decisão. Toque para ver.</span></a>' : '') +
       '<div id="nt-corpo"></div>';
     area.querySelectorAll('[data-modo]').forEach(function (b) { b.addEventListener('click', function () { estado.modo = b.getAttribute('data-modo'); window.CF.avaliarNotas(area, ctx, snap); }); });
@@ -108,7 +109,7 @@
               (c.entrada === 'pontuacao' && n ? '<small class="conv">= ' + fmt(n.valor) + '</small>' : '') + '</td>';
           }).join('') +
           '<td class="media">' + (des ? ui.pill('Faltou', 'nao') : (m == null ? '—' : fmt(m.toFixed(2)))) + '</td>' +
-          '<td class="acoes-nt">' + (des ? '' : '<button type="button" class="btn btn-p" data-obs="' + j.id + '" title="Observação"' + (ob ? ' aria-pressed="true"' : '') + '>📝</button>' + (meu ? '' : '<button type="button" class="btn btn-p" data-sug="' + j.id + '">Sugerir</button>')) + '</td></tr>';
+          '<td class="acoes-nt">' + (des ? '' : '<button type="button" class="btn btn-p" data-obs="' + j.id + '" title="Observação"' + (ob ? ' aria-pressed="true"' : '') + '>📝</button>' + (meu || snap.turma.concluida_em ? '' : '<button type="button" class="btn btn-p" data-sug="' + j.id + '">Sugerir</button>')) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
     var inputs = [].slice.call(el.querySelectorAll('input.nt:not([disabled])'));
     inputs.forEach(function (inp, k) {
@@ -144,7 +145,7 @@
             return '<button type="button" class="' + (v % 1 ? 'm' : '') + '" data-j="' + j.id + '" data-c="' + c.id + '" data-v="' + v + '" aria-pressed="' + (!!n && n.valor === v) + '"' + (meu ? '' : ' disabled') + '>' + fmt(v) + '</button>'; }).join('') + '</div>' +
             (n && VAL.indexOf(n.valor) < 0 ? '<small class="conv">outro valor: ' + fmt(n.valor) + '</small>' : '') + '</div>';
         }).join('') +
-        '<div class="cj-pe"><span class="dica">Média: <b>' + (m == null ? '—' : fmt(m.toFixed(2))) + '</b></span><span><button type="button" class="btn btn-p" data-obs="' + j.id + '">📝</button>' + (meu ? '<button type="button" class="btn btn-p" data-outro="' + j.id + '">Outro valor</button>' : '<button type="button" class="btn btn-p" data-sug="' + j.id + '">Sugerir</button>') + '</span></div>') + '</section>';
+        '<div class="cj-pe"><span class="dica">Média: <b>' + (m == null ? '—' : fmt(m.toFixed(2))) + '</b></span><span><button type="button" class="btn btn-p" data-obs="' + j.id + '">📝</button>' + (meu ? '<button type="button" class="btn btn-p" data-outro="' + j.id + '">Outro valor</button>' : (snap.turma.concluida_em ? '' : '<button type="button" class="btn btn-p" data-sug="' + j.id + '">Sugerir</button>')) + '</span></div>') + '</section>';
     }).join('') || '<div class="card vazio">Nenhum jovem nos seus grupos.</div>';
     el.querySelectorAll('[data-v]').forEach(function (b) {
       b.addEventListener('click', function () {
