@@ -44,7 +44,7 @@
   window.CF.telas.jovensProcesso = async function (area, ctx, procId) {
     var admin = ctx.perfil.perfil === 'admin';
     area.innerHTML = '<a class="voltar" href="#/processos/' + esc(procId) + '">← Processo</a><div id="jv"><div class="girando" style="margin:30px auto"></div></div>';
-    var st = { turma: null, busca: '' };
+    var st = { turma: null, busca: '', incompletos: /[?&]incompletos/.test(window.location.hash) };
     var p, ag, emp, parts, cfg, contagem = {};
     async function carregar() {
       var r = await Promise.all([dados.processos.obter(procId), dados.agenda.carregarTudo(), dados.jovens.doProcesso(procId), dados.config.carregar(), dados.jovens.todasParticipacoes()]);
@@ -73,7 +73,8 @@
       }
       var t = porId(ts, st.turma);
       var daTurma = alfabetica(parts.filter(function (x) { return x.turma_id === t.id; }));
-      var lista = daTurma.filter(function (x) { return !st.busca || ui.normalizar(x.jovem.nome + ' ' + x.codigo).indexOf(st.busca) >= 0; });
+      if (st.incompletos && st.primeira !== false) { var tIn = ts.filter(function (x) { return parts.some(function (y) { return y.turma_id === x.id && faltas(y).length; }); })[0]; if (tIn) { st.turma = tIn.id; t = tIn; daTurma = alfabetica(parts.filter(function (x) { return x.turma_id === t.id; })); } st.primeira = false; }
+      var lista = daTurma.filter(function (x) { return (!st.busca || ui.normalizar(x.jovem.nome + ' ' + x.codigo).indexOf(st.busca) >= 0) && (!st.incompletos || faltas(x).length); });
       var incompletos = parts.filter(function (x) { return x.turma_id === t.id && faltas(x).length; }).length;
       box.innerHTML = '<header class="cabecalho"><div><h1>Jovens do processo</h1><p>' + ts.length + ' turma' + (ts.length > 1 ? 's' : '') + ' · ' + tot + ' jove' + (tot === 1 ? 'm' : 'ns') + ' cadastrado' + (tot === 1 ? '' : 's') + ' de ' + vagas + ' vagas</p></div>' +
         '<div class="botoes-topo">' + (daTurma.length ? '<button type="button" class="btn" id="jv-kit">🖨 Kit da turma</button>' : '') +
@@ -83,7 +84,7 @@
           return '<button type="button" data-turma="' + x.id + '" aria-pressed="' + (x.id === t.id) + '">' + esc(x.nome + ' · ' + x.dias.map(D.curta).join(' e ') + ' · ' + n + ' de ' + x.vagas) + '</button>';
         }).join('') + '</div>' +
         '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="jv-busca" placeholder="Buscar por nome ou código" value="' + esc(st.busca) + '"></label>' +
-          (incompletos ? '<span class="dica">' + incompletos + ' cadastro' + (incompletos > 1 ? 's' : '') + ' incompleto' + (incompletos > 1 ? 's' : '') + '</span>' : '') + '</div>' +
+          '<label class="marcar-linha"><input type="checkbox" id="jv-inc"' + (st.incompletos ? ' checked' : '') + '> Só incompletos' + (incompletos ? ' (' + incompletos + ')' : '') + '</label></div>' +
         (lista.length ? '<div class="card tabela-card"><table class="tabela tabela-jovens"><thead><tr><th>Nº</th><th>Jovem</th><th>Código</th><th>Convocação</th><th>Cadastro</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
           lista.map(function (x) {
             var i = idade(x.jovem.nascimento), f = faltas(x);
@@ -95,6 +96,7 @@
           }).join('') + '</tbody></table></div>' : '<div class="card vazio">' + (st.busca ? 'Nenhum jovem encontrado.' : 'Nenhum jovem nesta turma ainda.' + (aberto ? ' Use "Novo jovem" ou "Importar lista".' : '')) + '</div>');
       carregarFotos(box);
       box.querySelectorAll('[data-turma]').forEach(function (b) { b.addEventListener('click', function () { st.turma = b.getAttribute('data-turma'); desenhar(); }); });
+      box.querySelector('#jv-inc').addEventListener('change', function (e) { st.incompletos = e.target.checked; desenhar(); });
       var bb = box.querySelector('#jv-busca');
       bb.addEventListener('input', function () { st.busca = ui.normalizar(bb.value); var pos = bb.selectionStart; desenhar(); var n = area.querySelector('#jv-busca'); n.focus(); n.setSelectionRange(pos, pos); });
       if (box.querySelector('#jv-novo')) box.querySelector('#jv-novo').addEventListener('click', function () { formJovem(null); });
