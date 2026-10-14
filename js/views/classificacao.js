@@ -42,6 +42,9 @@
     return '<div class="etapas">' + et.map(function (e, i) { return '<div class="etapa' + (i === idx ? ' atual' : '') + (i < idx ? ' feita' : '') + '"><b>' + e[1] + '</b><small>' + e[2] + '</small></div>'; }).join('') + '</div>';
   }
 
+  // usados também pela ficha do candidato (views/ficha.js)
+  window.CF.classif = { COR: COR, textoMotivo: textoMotivo, textoSituacao: textoSituacao, n2: n2, corteTxt: corteTxt };
+
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.classificacao = async function (area, ctx, procId) {
     var admin = ctx.perfil.perfil === 'admin', st = { busca: '', turma: '', sit: '' };
@@ -81,7 +84,7 @@
               '<td><div class="nf"><span>' + notaHTML(j, js) + '</span>' + (j.empate ? '<span class="empate">empate</span>' : '') + (j.nota != null ? '<i><em style="width:' + Math.round(j.nota * 20) + '%"></em></i>' : '') + '</div>' + (j.situacao === 'incompleto' ? '<small class="dica">' + j.lancadas + ' de ' + j.total + ' notas</small>' : '') + '</td>' +
               '<td class="ar">' + areas.map(function (a) { var v = (j.areas || {})[a]; return v == null ? '' : '<span><b>' + esc(a.slice(0, 3)) + '</b> ' + n2(v) + '</span>'; }).join(' ') + '</td>' +
               '<td><span class="sit">' + textoSituacao(j.situacao, j.genero) + '</span>' + (mot ? '<span class="mot">' + esc(mot + det) + (j.motivo_por ? ' · por ' + esc(j.motivo_por.split(' ')[0]) : '') + '</span>' : '') + '</td>' +
-              '<td class="ac"><button type="button" class="btn btn-p" disabled title="Chega na Fase 5">Ficha</button>' + (podeMotivo && j.situacao !== 'desistencia' || (podeMotivo && j.motivo === 'desistiu') ? '<button type="button" class="btn btn-p" data-mot="' + j.participacao_id + '">Motivo</button>' : '') + '</td></tr>';
+              '<td class="ac"><a class="btn btn-p" href="#/processos/' + procId + '/ficha/' + j.participacao_id + '">Ficha</a>' + (podeMotivo && j.situacao !== 'desistencia' || (podeMotivo && j.motivo === 'desistiu') ? '<button type="button" class="btn btn-p" data-mot="' + j.participacao_id + '">Motivo</button>' : '') + '</td></tr>';
           }).join('') + '</tbody></table></div>' : '<div class="card vazio">Nenhum jovem nesse filtro.</div>') +
         '<p class="dica">Ordem: aprovados, backups, reprovados e desistências; em cada faixa, da maior para a menor nota. Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.</p>';
       ligar();

@@ -1012,3 +1012,62 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   .acesso-card { margin-top: -64px; padding: 22px 18px 22px 30px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- Ficha do candidato (Fase 5) ---------- */
+.fc-barra-topo { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin: 10px 0 14px; }
+.fc-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fc-seg { display: inline-flex; border: 1px solid var(--borda); border-radius: 10px; overflow: hidden; background: var(--entrada); }
+.fc-seg button { border: 0; background: none; color: var(--texto-2); padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer; min-height: 36px; }
+.fc-seg button.on { background: var(--ativo); color: var(--texto); font-weight: 700; box-shadow: inset 0 -2px 0 var(--laranja); }
+.fc-foto { border-radius: 50%; background: linear-gradient(160deg, #5a4d4a, #3a3232); color: #eadcd6; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 3px solid var(--borda); overflow: hidden; flex: none; }
+.fc-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fc-mono, .fc-cod { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .06em; }
+.fc-radar { width: 100%; max-width: 400px; display: block; margin: 0 auto; }
+.fc-tit { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fc-lat, .fc-dir, .fc-des > div { min-width: 0; }
+.fc-des { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.fc-des h2, .fc-blk h2, .fc-sec h2 { font-size: 15px; margin: 0 0 8px; }
+.fc-barra { display: grid; grid-template-columns: minmax(0, 130px) 1fr 44px; gap: 10px; align-items: center; margin: 9px 0; }
+.fc-barra span { font-size: 13px; color: var(--texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-barra i { height: 9px; border-radius: 9px; background: var(--surface-2); overflow: hidden; display: block; }
+.fc-barra em { display: block; height: 100%; background: var(--laranja); border-radius: 9px; }
+.fc-barra b { text-align: right; }
+.fc-faixas { border-top: 1px solid var(--borda); margin-top: 14px; padding-top: 12px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.fc-faixas span:first-child { color: var(--texto-2); }
+table.fc-tt { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.fc-tt th { text-align: left; font-size: 11.5px; color: var(--texto-3); text-transform: uppercase; letter-spacing: .05em; padding: 8px 6px; border-bottom: 1px solid var(--borda); }
+table.fc-tt td { padding: 10px 6px; border-bottom: 1px solid var(--borda-2); }
+table.fc-tt .num { text-align: right; white-space: nowrap; } table.fc-tt td.num b { font-size: 16px; }
+.fc-obs { border-left: 3px solid var(--c-teste); border-radius: 0; padding: 8px 14px; margin: 10px 0; background: var(--entrada); }
+.fc-obs p { margin: 4px 0 0; }
+.fc-motivo { border: 1px solid var(--c); border-left: 5px solid var(--c); border-radius: 0 10px 10px 0; padding: 10px 14px; margin-bottom: 20px; background: color-mix(in srgb, var(--c) 10%, transparent); }
+.fc-motivo p { margin: 4px 0 0; } .fc-motivo small { display: block; margin-top: 4px; color: var(--texto-3); }
+/* modelo lateral (D) */
+.fc-lay { display: grid; grid-template-columns: 300px minmax(0, 1fr); padding: 0; overflow: hidden; }
+.fc-lat { position: relative; padding: 28px 24px 26px 34px; background: var(--surface-2); border-right: 1px solid var(--borda); text-align: center; display: flex; flex-direction: column; align-items: center; }
+.fc-lat::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 8px; background: var(--preto-marca); border-right: 4px solid var(--laranja); }
+.fc-lat .fc-foto { margin-bottom: 14px; }
+.fc-lat h1 { font-size: 20px; line-height: 1.25; }
+.fc-lat .fc-cod { margin: 6px 0 14px; }
+.fc-sit { margin-top: 14px; width: 100%; border-radius: 10px; padding: 10px; font-weight: 700; border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.fc-dl { width: 100%; text-align: left; margin: 18px 0 0; border-top: 1px solid var(--borda); padding-top: 8px; }
+.fc-dl div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid var(--borda-2); }
+.fc-dl dt { color: var(--texto-3); flex: none; } .fc-dl dd { margin: 0; text-align: right; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.fc-dir { padding: 22px 26px; }
+.fc-blk { margin-top: 22px; }
+/* modelo cards */
+.fc-cab { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 22px; align-items: center; padding: 20px 24px; border-left: 5px solid var(--c); }
+.fc-cab h1 { font-size: 26px; } .fc-cab p { margin: 4px 0 0; color: var(--texto-2); }
+.fc-nome { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.fc-pill { display: inline-flex; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.fc-pos { margin-top: 10px !important; } .fc-pos b { font-size: 20px; margin-left: 6px; color: var(--texto); }
+.fc-sec { padding: 18px 22px; margin-top: 18px; }
+@media (max-width: 900px) {
+  .fc-lay { grid-template-columns: minmax(0, 1fr); }
+  .fc-lat { border-right: 0; border-bottom: 1px solid var(--borda); }
+  .fc-des { grid-template-columns: minmax(0, 1fr); }
+  .fc-cab { grid-template-columns: auto minmax(0, 1fr); } .fc-cab > div:last-child { grid-column: 1 / -1; justify-self: center; }
+}
+@media (max-width: 560px) {
+  .fc-dir, .fc-sec { padding: 16px; } .fc-cab { grid-template-columns: 1fr; justify-items: center; text-align: center; } .fc-nome { justify-content: center; }
+}

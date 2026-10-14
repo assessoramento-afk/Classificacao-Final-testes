@@ -49,6 +49,8 @@
   window.CF.telas.processos = function (area, ctx) {
     var mj = (window.location.hash || '').match(/^#\/processos\/([0-9a-z-]{8,})\/jovens/i);
     if (mj) { window.CF.telas.jovensProcesso(area, ctx, mj[1]); return; }
+    var mf = (window.location.hash || '').match(/^#\/processos\/([0-9a-z-]{8,})\/ficha\/([0-9a-z-]{8,})/i);
+    if (mf) { window.CF.telas.ficha(area, ctx, mf[1], mf[2]); return; }
     var mc = (window.location.hash || '').match(/^#\/processos\/([0-9a-z-]{8,})\/(classificacao|revisao)/i);
     if (mc) { window.CF.telas[mc[2]](area, ctx, mc[1]); return; }
     var id = idDaRota();

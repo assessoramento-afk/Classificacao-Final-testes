@@ -269,6 +269,7 @@
     { k: 'presenca', nome: 'Lista de presença', det: 'folha deitada · 1 por dia · telefone e assinatura', opcoes: [['padrao', 'Com logos, código, telefone e assinatura']] },
     { k: 'termo', nome: 'Termo de consentimento', det: '1 página por jovem', opcoes: [['padrao', 'Jovem + responsável (menores de 18)']] },
     { k: 'materiais', nome: 'Lista de materiais', det: 'por turma, com conferência', opcoes: [['padrao', 'Com caixas de conferência e observações']] },
+    { k: 'ficha_tela', nome: 'Ficha do candidato (tela)', det: 'como a ficha abre no sistema', opcoes: [['lateral', 'Coluna lateral (modelo D)'], ['cards', 'Cards']] },
     { k: 'ficha', nome: 'Ficha do candidato (PDF)', det: 'Fase 5' }, { k: 'relatorio', nome: 'Classificação e relatório (PDF)', det: 'Fase 5' },
     { k: 'excel', nome: 'Planilha Excel do processo', det: 'Fase 5' }, { k: 'certificado', nome: 'Certificado de participação', det: 'Fase 5' }];
   async function paginaModelos(area) {
