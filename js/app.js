@@ -212,11 +212,17 @@
       conteudo.focus({ preventScroll: true }); window.scrollTo(0, 0);
       return;
     }
+    // Cada tela ganha um espaço próprio: se a tela anterior ainda estiver carregando quando o usuário
+    // troca de tela, ela termina no espaço dela (já fora da página) e não procura elementos da tela nova.
+    var espaco = document.createElement('div');
+    espaco.className = 'tela';
+    conteudo.innerHTML = '';
+    conteudo.appendChild(espaco);
     try {
-      tela(conteudo, { perfil: p, atualizarUsuario: atualizarUsuario });
+      tela(espaco, { perfil: p, atualizarUsuario: atualizarUsuario });
     } catch (e) {
       console.error(e);
-      conteudo.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível abrir esta tela. Recarregue a página.</span></div>';
+      espaco.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível abrir esta tela. Recarregue a página.</span></div>';
     }
     conteudo.focus({ preventScroll: true });
     window.scrollTo(0, 0);
