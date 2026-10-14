@@ -474,7 +474,8 @@
      ================================================================ */
   window.CF.telas.jovensTodos = async function (area) {
     area.innerHTML = '<a class="voltar" href="#/cadastros">← Cadastros</a><header class="cabecalho"><div><h1>Jovens</h1><p>Todos os jovens cadastrados e o histórico de cada um</p></div>' +
-      '<button type="button" class="btn btn-pri" id="tj-novo">' + ui.icone('mais', 17) + 'Novo jovem</button></header>' +
+      '<div class="botoes-topo"><button type="button" class="btn" id="tj-hx">⬇ Histórico geral (Excel)</button><button type="button" class="btn" id="tj-hp">⬇ Histórico geral (PDF)</button>' +
+      '<button type="button" class="btn btn-pri" id="tj-novo">' + ui.icone('mais', 17) + 'Novo jovem</button></div></header>' +
       '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="tj-busca" placeholder="Buscar por nome"></label></div><div id="tj"><div class="girando" style="margin:30px auto"></div></div>';
     var js = [], parts = [], ag = null;
     try { var r = await Promise.all([dados.jovens.todos(), dados.jovens.todasParticipacoes(), dados.agenda.carregarTudo()]); js = r[0]; parts = r[1]; ag = r[2]; }
@@ -488,7 +489,7 @@
         itens.slice(0, 300).map(function (j) {
           var n = parts.filter(function (x) { return x.jovem_id === j.id; }).length, i = idade(j.nascimento);
           return '<tr><td><div class="cel-j">' + fotoHTML(j) + '<div><b>' + esc(j.nome) + '</b><small>' + esc(NOME_G[j.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '</small></div></div></td>' +
-            '<td>' + (j.nascimento ? D.completa(j.nascimento) : '—') + '</td><td class="num">' + (n ? n : '0 · ainda sem processo') + '</td><td><div class="acoes"><button type="button" class="btn btn-p" data-ed="' + j.id + '">Editar</button><button type="button" class="btn btn-p" data-hist="' + j.id + '">Histórico</button></div></td></tr>';
+            '<td>' + (j.nascimento ? D.completa(j.nascimento) : '—') + '</td><td class="num">' + (n ? n : '0 · ainda sem processo') + '</td><td><div class="acoes"><button type="button" class="btn btn-p" data-ed="' + j.id + '">Editar</button><button type="button" class="btn btn-p" data-hist="' + j.id + '">Histórico</button><button type="button" class="btn btn-p" data-hpdf="' + j.id + '" title="Histórico deste jovem em PDF">⬇ PDF</button></div></td></tr>';
         }).join('') + '</tbody></table></div>' + (itens.length > 300 ? '<p class="dica">Mostrando os 300 primeiros. Use a busca para encontrar outros.</p>' : '');
       carregarFotos(box);
       box.querySelectorAll('[data-hist]').forEach(function (b) {
@@ -504,6 +505,9 @@
     }
     area.querySelector('#tj-busca').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
     area.querySelector('#tj-novo').addEventListener('click', function () { formPessoa(null); });
+    area.querySelector('#tj-hx').addEventListener('click', function () { window.CF.historico.baixar('xlsx', js, parts, ag, this); });
+    area.querySelector('#tj-hp').addEventListener('click', function () { window.CF.historico.baixar('pdf', js, parts, ag, this); });
+    area.querySelector('#tj').addEventListener('click', function (e) { var b = e.target.closest('[data-hpdf]'); if (b) window.CF.historico.baixar('pdf', [porId(js, b.getAttribute('data-hpdf'))], parts, ag, b); });
     area.querySelector('#tj').addEventListener('click', function (e) { var b = e.target.closest('[data-ed]'); if (b) formPessoa(porId(js, b.getAttribute('data-ed'))); });
     async function recarregar() { try { js = await dados.jovens.todos(); desenhar(); } catch (e) { erro(e); } }
     desenhar();

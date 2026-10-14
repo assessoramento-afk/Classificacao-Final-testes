@@ -432,6 +432,65 @@
     return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 
+
+  /* ---------- Histórico geral dos candidatos (todos os processos) ----------
+     h = { linhas: [{ nome, genero, nascimento, telefone, codigo, empresa, vaga, processo, inicio, turma,
+                      situacaoProc, nota, posicao, situacao ('Aprovado'...), cor ('aprovado'...), motivo,
+                      naEmpresa ('Aprovado em 02/12/2026' | 'Não aprovado' | ''), contratado ('Sim' | 'Não' | '') }] } */
+  async function historico(h) {
+    if (!window.ExcelJS) throw new Error('Recurso de planilha indisponível. Recarregue a página.');
+    var wb = new window.ExcelJS.Workbook(); wb.creator = 'Classificação Final · Kolping Estadual de São Paulo'; wb.created = new Date();
+    var BRANCO = 'FFFFFFFF', rod = { oddFooter: '&L&7Kolping Estadual de São Paulo · Histórico geral dos candidatos · gerado em ' + new Date().toLocaleDateString('pt-BR') + '&R&7Página &P de &N' };
+    var pag = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.5, header: 0.2, footer: 0.25 } };
+    function cab(ws, tit, larg) {
+      ws.addRow(tit); ws.getRow(1).height = 32;
+      ws.getRow(1).eachCell(function (c) { fonte(c, 10, true, BRANCO); preencher(c, PRETO); c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; c.border = { bottom: { style: 'medium', color: { argb: LARANJA } } }; });
+      larg.forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+    }
+    var linhas = (h.linhas || []).slice().sort(function (a, b) { return a.nome.localeCompare(b.nome) || String(b.inicio || '').localeCompare(String(a.inicio || '')); });
+
+    /* Aba Jovens: um jovem por linha, com o resumo */
+    var porJ = {};
+    linhas.forEach(function (l) { (porJ[l.nome + '|' + (l.nascimento || '')] = porJ[l.nome + '|' + (l.nascimento || '')] || []).push(l); });
+    var wj = wb.addWorksheet('Jovens', { pageSetup: pag, headerFooter: rod, views: [{ state: 'frozen', ySplit: 1, xSplit: 1 }] });
+    cab(wj, ['Jovem', 'Gênero', 'Nascimento', 'Telefone', 'Processos', 'Aprovado', 'Backup', 'Reprovado', 'Desistência', 'Último processo', 'Último resultado', 'Aprovado por empresa', 'Contratado'],
+      [36, 13, 13, 16, 11, 11, 10, 11, 12, 40, 18, 22, 13]);
+    Object.keys(porJ).sort().forEach(function (k) {
+      var ls = porJ[k], u = ls[0], c = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0 };
+      ls.forEach(function (l) { if (c[l.cor] != null) c[l.cor]++; });
+      var emp = ls.filter(function (l) { return /^Aprovad/.test(l.naEmpresa || ''); }), ct = ls.filter(function (l) { return l.contratado === 'Sim'; });
+      var row = wj.addRow([u.nome, u.genero || '', u.nascimento ? dataBR(u.nascimento) : '', u.telefone || '', ls.length, c.aprovado, c.backup, c.reprovado, c.desistencia,
+        (u.empresa || '') + ' · ' + (u.vaga || '') + (u.inicio ? ' · ' + dataBR(u.inicio) : ''), u.situacao || '', emp.length ? emp.map(function (l) { return l.empresa; }).join(', ') : '', ct.length ? 'Sim' : (ls.some(function (l) { return l.contratado === 'Não'; }) ? 'Não' : '')]);
+      row.eachCell({ includeEmpty: true }, function (cc, col) {
+        fonte(cc, 10, col === 1 || col === 13); cc.border = { bottom: { style: 'thin', color: { argb: 'FFE3DEDD' } } }; cc.alignment = { vertical: 'middle', horizontal: col >= 5 && col <= 9 ? 'center' : 'left' };
+      });
+      var cu = wj.getCell(row.number, 11), cor = COR[u.cor];
+      if (cor) { fonte(cu, 10, true, 'FF' + (COR_TX[u.cor] || '5F5A5B')); preencher(cu, clarear(cor, 0.82)); cu.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      if (ct.length) { var cc2 = wj.getCell(row.number, 13); fonte(cc2, 10, true, 'FF1F6B40'); preencher(cc2, clarear('3FA66B', 0.82)); }
+    });
+    wj.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 13 } };
+
+    /* Aba Participações: uma linha por jovem em cada processo */
+    var wp = wb.addWorksheet('Participações', { pageSetup: pag, headerFooter: rod, views: [{ state: 'frozen', ySplit: 1, xSplit: 1 }] });
+    cab(wp, ['Jovem', 'Código', 'Empresa', 'Vaga', 'Processo', 'Início', 'Turma', 'Situação do processo', 'Nota final', 'Posição', 'Resultado', 'Motivo', 'Na empresa', 'Contratado'],
+      [36, 11, 22, 26, 18, 12, 13, 18, 10, 9, 15, 42, 24, 12]);
+    linhas.forEach(function (l) {
+      var row = wp.addRow([l.nome, l.codigo || '', l.empresa || '', l.vaga || '', l.processo || '', l.inicio ? dataBR(l.inicio) : '', l.turma || '', l.situacaoProc || '',
+        l.nota == null ? null : Number(Number(l.nota).toFixed(2)), l.posicao ? l.posicao + 'º' : '', l.situacao || '', l.motivo || '', l.naEmpresa || '', l.contratado || '']);
+      row.eachCell({ includeEmpty: true }, function (cc, col) {
+        fonte(cc, 10, col === 1 || col === 9); cc.border = { bottom: { style: 'thin', color: { argb: 'FFE3DEDD' } } }; cc.alignment = { vertical: 'middle', wrapText: col === 12 };
+        if (col === 9) cc.numFmt = '0.00';
+      });
+      var cs = wp.getCell(row.number, 11), cor = COR[l.cor];
+      if (cor) { fonte(cs, 10, true, 'FF' + (COR_TX[l.cor] || '5F5A5B')); preencher(cs, clarear(cor, 0.82)); cs.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      wp.getCell(row.number, 1).border = { left: { style: 'thick', color: { argb: 'FF' + (cor || 'D9D3D2') } }, bottom: { style: 'thin', color: { argb: 'FFE3DEDD' } } };
+    });
+    wp.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 14 } };
+
+    var buf = await wb.xlsx.writeBuffer();
+    return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
   window.CF = window.CF || {};
-  window.CF.excel = { ficha: ficha, processo: processo };
+  window.CF.excel = { ficha: ficha, processo: processo, historico: historico };
 })();

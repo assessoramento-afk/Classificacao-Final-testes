@@ -524,6 +524,159 @@
     return doc.output('blob');
   }
 
+
+  /* ---------- Histórico do candidato (mesmo modelo da ficha: coluna lateral escura) ----------
+     j = { nome, iniciais, genero, nascimento, idade, telefone, fotoUrl, foto,
+           participacoes: [{ empresa, vaga, processo, datasTxt, turma, codigo, situacaoProc, nota, posicaoTxt,
+                             situacao ('aprovado'...|null), situacaoTxt, motivo, naEmpresa, contratado }] }  (mais recente primeiro) */
+  function desenharHistorico(doc, j, logoKolping) {
+    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+    var paginas = [doc.getCurrentPageInfo().pageNumber], LIM = H - 24, cx = 37;
+    var ps = j.participacoes || [], cont = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0 };
+    ps.forEach(function (p) { if (cont[p.situacao] != null) cont[p.situacao]++; });
+    function coluna(primeira) {
+      doc.setFillColor(PRETO); doc.rect(0, 0, 63, H, 'F');
+      doc.setFillColor(LARANJA); doc.rect(9.6, 7, 1.1, H - 14, 'F');
+      if (!primeira) { fonte(doc, 'b', 9, '#ffffff'); doc.text(doc.splitTextToSize(j.nome, 40), cx, 20, { align: 'center' }); return; }
+      var fx = 20, fy = 16, fw = 34, fh = 42.5;
+      if (j.foto) {
+        doc.saveGraphicsState(); doc.roundedRect(fx, fy, fw, fh, 2.4, 2.4, null); doc.clip(); doc.discardPath();
+        doc.addImage(j.foto.url, 'JPEG', fx, fy, fw, fh, undefined, 'FAST'); doc.restoreGraphicsState();
+      } else {
+        doc.setFillColor('#4a4242'); doc.roundedRect(fx, fy, fw, fh, 2.4, 2.4, 'F');
+        fonte(doc, 'b', 16, '#a49b9b'); doc.text(j.iniciais || 'FOTO', cx, fy + fh / 2 + 2.5, { align: 'center' });
+      }
+      var y = fy + fh + 6.5;
+      fonte(doc, 'b', 11, '#ffffff'); var ln = doc.splitTextToSize(j.nome, 40); doc.text(ln, cx, y, { align: 'center' }); y += ln.length * 4.5 + 5;
+      // número de processos em destaque
+      fonte(doc, 'b', 26, '#ffffff'); doc.text(String(ps.length), cx, y + 7, { align: 'center' });
+      fonte(doc, 'n', 7.8, '#cfc8c8'); doc.text(ps.length === 1 ? 'processo seletivo' : 'processos seletivos', cx, y + 12.5, { align: 'center' }); y += 20;
+      [['aprovado', 'Aprovado'], ['backup', 'Backup'], ['reprovado', 'Reprovado'], ['desistencia', 'Desistência']].forEach(function (x) {
+        doc.setFillColor(COR[x[0]]); doc.roundedRect(19, y - 3, 3.2, 3.2, 0.8, 0.8, 'F');
+        fonte(doc, 'n', 7.6, '#e8e2e2'); doc.text(x[1], 24.5, y - 0.4);
+        fonte(doc, 'b', 8, '#ffffff'); doc.text(String(cont[x[0]]), 55, y - 0.4, { align: 'right' });
+        y += 5.6;
+      });
+      y += 6;
+      [['Gênero', j.genero], ['Nascimento', j.nascimento ? dataBR(j.nascimento) + (j.idade != null ? ' · ' + j.idade + ' anos' : '') : null], ['Telefone', j.telefone]].forEach(function (x) {
+        if (!x[1]) return;
+        fonte(doc, 'n', 7, '#9d9596'); doc.text(x[0], 19, y);
+        fonte(doc, 'b', 7.4, '#ffffff'); var l = doc.splitTextToSize(String(x[1]), 40); doc.text(l, 19, y + 3.4);
+        y += 3.4 + l.length * 3.2 + 2.6;
+      });
+    }
+    var x0 = 71, x1 = W - 8.5, wd = x1 - x0;
+    function cabecalho() {
+      imgCaber(doc, logoKolping, x0, 13, 40, 9, 'esq');
+      fonte(doc, 'n', 7.2, CINZA); doc.text('Histórico do candidato · Projeto Gol Jovens Talentos', x1, 18.5, { align: 'right' });
+      doc.setDrawColor(PRETO); doc.setLineWidth(0.6); doc.line(x0, 27, x1, 27);
+    }
+    coluna(true); cabecalho();
+    var y = 36;
+    fonte(doc, 'b', 15, PRETO); doc.text('Histórico do candidato', x0, y);
+    fonte(doc, 'n', 8, CINZA); doc.text('Todos os processos seletivos de que participou, do mais recente ao mais antigo.', x0, y + 5); y += 11;
+    if (!ps.length) { fonte(doc, 'n', 9, CINZA); doc.text('Nenhuma participação registrada.', x0, y + 4); }
+    ps.forEach(function (p) {
+      var cor = COR[p.situacao] || '#b9b3b3', linhasMot = [], extra = [];
+      fonte(doc, 'n', 7.6, PRETO);
+      if (p.motivo) linhasMot = doc.splitTextToSize(p.motivo, wd - 44);
+      if (p.naEmpresa) extra.push(['Na empresa: ', p.naEmpresa]);
+      if (p.contratado) extra.push(['Contratado: ', p.contratado]);
+      var h = 21 + linhasMot.length * 3.6 + (extra.length ? 5 : 0);
+      if (y + h > LIM) { doc.addPage(); paginas.push(doc.getCurrentPageInfo().pageNumber); coluna(false); cabecalho(); y = 33; }
+      cartao(doc, x0, y, wd, h);
+      doc.setFillColor(cor); doc.roundedRect(x0, y, 1.6, h, 0.8, 0.8, 'F');
+      fonte(doc, 'b', 9, PRETO); doc.text(doc.splitTextToSize((p.empresa || '') + ' · ' + (p.vaga || ''), wd - 46)[0], x0 + 5, y + 6);
+      fonte(doc, 'n', 7.2, CINZA);
+      doc.text(doc.splitTextToSize(['Processo ' + (p.processo || ''), p.datasTxt].filter(Boolean).join(' · '), wd - 46)[0], x0 + 5, y + 10.5);
+      fonte(doc, 'n', 7, CINZA); doc.text(doc.splitTextToSize([p.turma, p.codigo ? 'código ' + p.codigo : null, 'processo ' + String(p.situacaoProc || '—').toLowerCase()].filter(Boolean).join(' · '), wd - 46)[0], x0 + 5, y + 14.8);
+      // nota e resultado à direita
+      fonte(doc, 'b', 15, PRETO); doc.text(p.nota == null ? '—' : n2(p.nota), x1 - 4, y + 9, { align: 'right' });
+      fonte(doc, 'n', 6.4, CINZA); doc.text(p.posicaoTxt || 'nota final', x1 - 4, y + 12.6, { align: 'right' });
+      var st = String(p.situacaoTxt || '').toUpperCase();
+      if (st) { fonte(doc, 'b', 6.8, '#ffffff'); var pw = doc.getTextWidth(st) + 6; doc.setFillColor(cor); doc.roundedRect(x1 - 4 - pw, y + 14.6, pw, 4.6, 2.3, 2.3, 'F'); doc.text(st, x1 - 4 - pw / 2, y + 17.8, { align: 'center' }); }
+      var yy = y + 19;
+      if (linhasMot.length) { fonte(doc, 'n', 7.6, PRETO); doc.text(linhasMot, x0 + 5, yy + 1); yy += linhasMot.length * 3.6; }
+      if (extra.length) {
+        var xx = x0 + 5; yy += 2.5;
+        extra.forEach(function (e) { fonte(doc, 'b', 7.4, PRETO); doc.text(e[0], xx, yy); xx += doc.getTextWidth(e[0]); fonte(doc, 'n', 7.4, PRETO); doc.text(e[1], xx, yy); xx += doc.getTextWidth(e[1]) + 6; });
+      }
+      y += h + 3;
+    });
+    fonte(doc, 'n', 6.6, CINZA);
+    var conf = doc.splitTextToSize('Documento confidencial. Uso interno da Kolping Estadual de São Paulo.', wd);
+    if (y + 8 > LIM) { doc.addPage(); paginas.push(doc.getCurrentPageInfo().pageNumber); coluna(false); cabecalho(); y = 33; }
+    doc.text(conf, x0, y + 3);
+    if (j.paginaVoltar) {
+      var yv = y + 3 + conf.length * 3.2 + 4;
+      setaVoltar(doc, x0, yv + 1.1, LARANJA);
+      fonte(doc, 'n', 7.4, LARANJA); doc.text('voltar à lista', x0 + 3.6, yv + 1.1);
+      doc.link(x0, yv - 2.5, 28, 4.8, { pageNumber: j.paginaVoltar });
+    }
+    return paginas;
+  }
+  /* Lista dos candidatos (primeiras páginas do histórico geral): nome clicável leva ao histórico */
+  var LISTA_LINHAS = 18;
+  function paginaLista(doc, jovens, im, ini, fim, primeira) {
+    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 10, wd = x1 - x0;
+    faixa(doc);
+    imgCaber(doc, im.kolping, x0, 15.5, 40, 9, 'esq');
+    fonte(doc, 'n', 7.4, CINZA); doc.text('Histórico geral dos candidatos · Projeto Gol Jovens Talentos', x1, 21, { align: 'right' });
+    doc.setDrawColor(PRETO); doc.setLineWidth(0.6); doc.line(x0, 29, x1, 29);
+    fonte(doc, 'b', 15, PRETO); doc.text(primeira ? 'Lista dos candidatos' : 'Lista dos candidatos (continuação)', x0, 39);
+    if (primeira) { fonte(doc, 'n', 8, CINZA); doc.text(jovens.length + ' jovens em ordem alfabética. Clique no nome para abrir o histórico do jovem.', x0, 44); }
+    var cN = x0 + 3, cP = x0 + wd * 0.47, cU = x0 + wd * 0.58, y = 48;
+    doc.setFillColor('#f0eeed'); doc.rect(x0, y, wd, 7.5, 'F');
+    fonte(doc, 'b', 7.6, PRETO); doc.text('Jovem', cN, y + 4.9); doc.text('Processos', cP, y + 4.9); doc.text('Último resultado', cU, y + 4.9);
+    y += 7.5;
+    var links = [];
+    for (var i = ini; i < fim; i++) {
+      var j = jovens[i], u = (j.participacoes || [])[0] || {}, cor = COR[u.situacao] || '#b9b3b3', h = 11.6, yc = y + h / 2;
+      doc.setFillColor(cor); doc.rect(x0, y, 0.9, h, 'F');
+      fonte(doc, 'b', 8.4, PRETO); var nome = doc.splitTextToSize(j.nome, cP - cN - 8)[0]; doc.text(nome, cN, yc - 0.6);
+      var wn = doc.getTextWidth(nome); fonte(doc, 'b', 8.4, LARANJA); doc.text('›', cN + wn + 0.8, yc - 0.6);
+      fonte(doc, 'n', 6.6, CINZA); doc.text([j.genero, j.idade != null ? j.idade + ' anos' : null, j.telefone].filter(Boolean).join(' · '), cN, yc + 3.2);
+      fonte(doc, 'b', 9, PRETO); doc.text(String((j.participacoes || []).length), cP + 6, yc + 1, { align: 'center' });
+      var st = String(u.situacaoTxt || '—');
+      if (u.situacaoTxt) { fonte(doc, 'b', 7, '#ffffff'); var pw = doc.getTextWidth(st) + 7; doc.setFillColor(cor); doc.roundedRect(cU, yc - 4.6, pw, 4.8, 2.4, 2.4, 'F'); doc.text(st, cU + 3.5, yc - 1.3); }
+      fonte(doc, 'n', 6.4, CINZA); doc.text(doc.splitTextToSize(((u.empresa || '') + (u.vaga ? ' · ' + u.vaga : '')) || 'sem processo', x1 - cU)[0], cU, yc + 3.6);
+      links.push({ i: i, x: cN, y: yc - 4, w: wn + 4, h: 8.5 });
+      y += h; doc.setDrawColor('#e3dedd'); doc.setLineWidth(0.25); doc.line(x0, y, x1, y);
+    }
+    return links;
+  }
+  async function historico(jovens) {   // um jovem ou vários (um após o outro, cada um começando em página nova)
+    var doc = await novo(), kol = await imagem('assets/img/kolping_light.png');
+    for (var k = 0; k < jovens.length; k += 8) {
+      await Promise.all(jovens.slice(k, k + 8).map(async function (j) { j.foto = await imagemRetrato(j.fotoUrl); }));
+    }
+    var rot = {}, comLista = jovens.length > 1, pagLista = [], links = [], inicio = [];
+    if (comLista) {   // lista com links para o histórico de cada jovem
+      for (var i = 0; i < jovens.length; i += LISTA_LINHAS) {
+        if (i) doc.addPage(); var pl = doc.getCurrentPageInfo().pageNumber; pagLista.push(pl); rot[pl] = ['Histórico geral dos candidatos', 21];
+        paginaLista(doc, jovens, { kolping: kol }, i, Math.min(jovens.length, i + LISTA_LINHAS), i === 0).forEach(function (l) { l.pagina = pl; links.push(l); });
+      }
+    }
+    jovens.forEach(function (j, i) {
+      if (i || comLista) doc.addPage();
+      inicio[i] = doc.getCurrentPageInfo().pageNumber;
+      if (comLista) j.paginaVoltar = pagLista[Math.floor(i / LISTA_LINHAS)];
+      desenharHistorico(doc, j, kol).forEach(function (pg) { rot[pg] = ['Histórico do candidato', 67]; });
+    });
+    links.forEach(function (l) { doc.setPage(l.pagina); doc.link(l.x, l.y, l.w, l.h, { pageNumber: inicio[l.i] }); });
+    var total = doc.getNumberOfPages();
+    for (var pg = 1; pg <= total; pg++) { doc.setPage(pg); var ro = rot[pg] || ['Histórico do candidato', 67]; rodape(doc, ro[0], pg, total, ro[1]); }
+    try {
+      if (comLista && doc.outline) {
+        doc.outline.add(null, 'Lista dos candidatos', { pageNumber: pagLista[0] });
+        var ox = doc.outline.add(null, 'Históricos', { pageNumber: inicio[0] });
+        jovens.forEach(function (j, i) { doc.outline.add(ox, j.nome, { pageNumber: inicio[i] }); });
+      }
+    } catch (e) { /* marcadores são opcionais */ }
+    doc.setProperties({ title: jovens.length === 1 ? 'Histórico · ' + jovens[0].nome : 'Histórico geral dos candidatos', subject: 'Projeto Gol Jovens Talentos', author: 'Kolping Estadual de São Paulo', creator: 'Classificação Final' });
+    return doc.output('blob');
+  }
+
   /* ---------- Documento: ficha avulsa ---------- */
   async function ficha(d) {
     var doc = await novo();
@@ -544,5 +697,5 @@
   }
 
   window.CF = window.CF || {};
-  window.CF.pdf = { novo: novo, faixa: faixa, rodape: rodape, imagem: imagem, desenharFicha: desenharFicha, ficha: ficha, processo: processo, certificado: certificado, dataExtenso: dataExtenso, baixar: baixar, nomeArquivo: nomeArquivo, COR: COR };
+  window.CF.pdf = { novo: novo, faixa: faixa, rodape: rodape, imagem: imagem, desenharFicha: desenharFicha, ficha: ficha, processo: processo, certificado: certificado, historico: historico, dataExtenso: dataExtenso, baixar: baixar, nomeArquivo: nomeArquivo, COR: COR };
 })();
