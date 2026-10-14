@@ -126,7 +126,7 @@
       var bb = box.querySelector('#cl-busca'); bb.addEventListener('input', function () { st.busca = ui.normalizar(bb.value); var pos = bb.selectionStart; desenhar(); var n = area.querySelector('#cl-busca'); n.focus(); n.setSelectionRange(pos, pos); });
       box.querySelector('#cl-turma').addEventListener('change', function (e) { st.turma = e.target.value; desenhar(); });
       box.querySelectorAll('[data-mot]').forEach(function (b) { b.addEventListener('click', function () { motivo(c.jovens.filter(function (j) { return j.participacao_id === b.getAttribute('data-mot'); })[0]); }); });
-      box.querySelector('#cl-xls').addEventListener('click', excel);
+      box.querySelector('#cl-xls').addEventListener('click', function () { excelCompleto(this); });
       box.querySelector('#cl-pdf').addEventListener('click', function () { pdfProcesso(this); });
     }
     function motivo(j) {
@@ -156,6 +156,20 @@
         window.CF.ui.toast('Montando o PDF com ' + c.jovens.length + ' fichas. Pode levar alguns segundos.', 'info');
         window.CF.pdf.baixar(await gerarPdfProcesso(r.data, c), window.CF.pdf.nomeArquivo(['Processo seletivo', (r.data.empresa || {}).nome, c.processo.vaga, c.processo.situacao === 'liberado' ? '' : 'PREVIA'], 'pdf'));
       } catch (e) { console.error(e); ui.toast(e && e.message ? api.traduzErro(e) : 'Não foi possível gerar o PDF.', 'erro'); }
+      botao.disabled = false; botao.innerHTML = texto;
+    }
+    // Planilha completa do processo (precisa de internet); sem internet, sai a planilha simples do ranking
+    async function excelCompleto(botao) {
+      if (!navigator.onLine || !window.CF.excel || !window.CF.excel.processo) { excel(); return; }
+      var texto = botao.innerHTML; botao.disabled = true; botao.innerHTML = 'Gerando…';
+      try {
+        var r = await window.CF.sb.rpc('dados_processo_pdf', { p_proc: procId });
+        if (r.error) throw r.error;
+        var emp2 = r.data.empresa || {};
+        var logo = emp2.logo_path ? await dados.empresas.urlLogo(emp2.logo_path).catch(function () { return null; }) : null;
+        var blob = await window.CF.excel.processo(r.data, c, logo);
+        window.CF.pdf.baixar(blob, window.CF.pdf.nomeArquivo(['Processo seletivo', emp2.nome, c.processo.vaga, c.processo.situacao === 'liberado' ? '' : 'PREVIA'], 'xlsx'));
+      } catch (e) { console.error(e); ui.toast(e && e.message ? api.traduzErro(e) : 'Não foi possível gerar a planilha.', 'erro'); }
       botao.disabled = false; botao.innerHTML = texto;
     }
     function excel() {

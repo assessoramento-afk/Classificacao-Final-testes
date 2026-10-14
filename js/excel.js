@@ -270,6 +270,168 @@
     return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 
+
+  /* ---------- Planilha do processo (arquivo completo) ----------
+     dp = dados_processo_pdf · cl = classificacao_processo · logoUrl = logo da empresa (opcional)
+     Abas: Processo · Classificação · Notas por teste · Competências · Observações · Presença */
+  function dataBR(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  async function processo(dp, cl, logoUrl) {
+    if (!window.ExcelJS) throw new Error('Recurso de planilha indisponível. Recarregue a página.');
+    var K = window.CF.classif, P = window.CF.pdf, emp = dp.empresa || {}, pr = dp.processo || {};
+    var im = await Promise.all([P.imagem('assets/img/kolping_light.png'), P.imagem(logoUrl)]);
+    var porId = {}; (dp.fichas || []).forEach(function (f) { porId[f.participacao_id] = f; });
+    var wb = new window.ExcelJS.Workbook(); wb.creator = 'Classificação Final · Kolping Estadual de São Paulo'; wb.created = new Date();
+    var BRANCO = 'FFFFFFFF';
+    function cab(ws, titulos, larguras) {
+      ws.addRow(titulos);
+      ws.getRow(1).height = 30;
+      ws.getRow(1).eachCell(function (c) { fonte(c, 10, true, BRANCO); preencher(c, PRETO); c.alignment = { vertical: 'middle', wrapText: true, horizontal: 'center' };
+        c.border = { bottom: { style: 'medium', color: { argb: LARANJA } } }; });
+      larguras.forEach(function (w, i) { ws.getColumn(i + 1).width = w; });
+      ws.views = [{ state: 'frozen', ySplit: 1, xSplit: 2, showGridLines: true }];
+    }
+    function linhaFina(ws, r) { ws.getRow(r).eachCell({ includeEmpty: true }, function (c) { c.border = { bottom: { style: 'thin', color: { argb: 'FFE3DEDD' } } }; if (!c.font) fonte(c, 10); }); }
+    var paisagem = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.5, header: 0.2, footer: 0.25 } };
+    var rodape = { oddFooter: '&L&7Kolping Estadual de São Paulo · ' + (emp.nome || '') + ' · ' + (pr.vaga || '') + '&R&7Página &P de &N' };
+    var jovens = cl.jovens || [], cont = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0, incompleto: 0 };
+    jovens.forEach(function (j) { cont[j.situacao] = (cont[j.situacao] || 0) + 1; });
+
+    /* ===== Aba Processo ===== */
+    var ws = wb.addWorksheet('Processo', { views: [{ showGridLines: false }], pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }, headerFooter: rodape });
+    ws.columns = [{ width: 1.6 }, { width: 0.8 }, { width: 3 }, { width: 24 }, { width: 22 }, { width: 22 }, { width: 22 }, { width: 22 }];
+    for (var i = 1; i <= 40; i++) { preencher(ws.getCell(i, 1), PRETO); preencher(ws.getCell(i, 2), LARANJA); }
+    ws.getRow(2).height = 40;
+    var imgs = [];
+    if (im[0]) imgs.push([im[0], 3, 1, 160, 36]);
+    if (im[1]) imgs.push([im[1], 7, 1, 150, 46]);
+    ws.mergeCells('E2:F2'); var c = ws.getCell('E2'); c.value = 'Resultado do processo seletivo · Projeto Gol Jovens Talentos'; fonte(c, 9, false, CINZA); c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    if (!im[1]) { ws.mergeCells('G2:H2'); c = ws.getCell('G2'); c.value = String(emp.nome || '').toUpperCase(); fonte(c, 10, true, 'FFB4501A'); c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      c.border = { top: { style: 'thin', color: { argb: 'FFD3CDCC' } }, bottom: { style: 'thin', color: { argb: 'FFD3CDCC' } }, left: { style: 'thin', color: { argb: 'FFD3CDCC' } }, right: { style: 'thin', color: { argb: 'FFD3CDCC' } } }; }
+    ['D', 'E', 'F', 'G', 'H'].forEach(function (L) { var cc = ws.getCell(L + '3'); cc.border = { top: { style: 'medium', color: { argb: PRETO } } }; });
+    ws.getRow(4).height = 30; ws.mergeCells('D4:H4'); c = ws.getCell('D4'); c.value = 'Informações do processo'; fonte(c, 16, true); c.alignment = { vertical: 'middle' };
+    var datas = []; (dp.turmas || []).forEach(function (t) { (t.datas || []).forEach(function (x) { datas.push(String(x).slice(0, 10)); }); }); datas.sort();
+    var info = [['Empresa', emp.razao_social || emp.nome], ['Vaga', pr.vaga], ['Processo', pr.identificacao],
+      ['Período', datas.length ? dataBR(datas[0]) + (datas[0] !== datas[datas.length - 1] ? ' a ' + dataBR(datas[datas.length - 1]) : '') : ''],
+      ['Jovens avaliados', jovens.length], ['Liberado em', pr.liberado_em ? dataBR(pr.liberado_em) : 'ainda não liberado'], ['Gerado em', new Date().toLocaleDateString('pt-BR')]];
+    var r = 5;
+    info.forEach(function (x) {
+      c = ws.getCell('D' + r); c.value = x[0]; fonte(c, 10, false, CINZA);
+      ws.mergeCells('E' + r + ':H' + r); c = ws.getCell('E' + r); c.value = x[1] == null ? '' : x[1]; fonte(c, 10.5, true); c.alignment = { horizontal: 'left' };
+      ws.getRow(r).height = 18; r++;
+    });
+    r++;
+    [['aprovado', 'Aprovados', 'D'], ['backup', 'Backup', 'E'], ['reprovado', 'Reprovados', 'F'], ['desistencia', 'Desistências', 'G']].forEach(function (x) {
+      var cn = ws.getCell(x[2] + r), cl2 = ws.getCell(x[2] + (r + 1));
+      cn.value = cont[x[0]] || 0; fonte(cn, 20, true); cn.alignment = { horizontal: 'center', vertical: 'middle' };
+      cl2.value = x[1]; fonte(cl2, 10); cl2.alignment = { horizontal: 'center', vertical: 'top' };
+      var b = { style: 'thin', color: { argb: 'FFD9D3D2' } };
+      cn.border = { top: b, left: b, right: b }; cl2.border = { left: b, right: b, bottom: { style: 'thick', color: { argb: 'FF' + COR[x[0]] } } };
+    });
+    ws.getRow(r).height = 32; ws.getRow(r + 1).height = 22; r += 3;
+    ws.getCell('D' + r).value = 'Turmas'; fonte(ws.getCell('D' + r), 12, true); r++;
+    ['Turma', 'Datas', 'Candidatos'].forEach(function (t, k) { c = ws.getCell(r, 4 + k); c.value = t; fonte(c, 9.5, true, CINZA); preencher(c, 'FFF0EEED'); });
+    r++;
+    (dp.turmas || []).forEach(function (t) {
+      ws.getCell('D' + r).value = t.nome; fonte(ws.getCell('D' + r), 10, true);
+      ws.getCell('E' + r).value = (t.datas || []).map(dataBR).join(' e '); fonte(ws.getCell('E' + r), 10);
+      ws.getCell('F' + r).value = t.candidatos || 0; fonte(ws.getCell('F' + r), 10); ws.getCell('F' + r).alignment = { horizontal: 'left' };
+      ['D', 'E', 'F'].forEach(function (L) { ws.getCell(L + r).border = { bottom: { style: 'thin', color: { argb: 'FFE3DEDD' } } }; }); r++;
+    });
+    r += 1; ws.mergeCells('D' + r + ':H' + r); c = ws.getCell('D' + r);
+    c.value = 'As outras abas trazem a classificação completa, as notas de cada teste, as competências, as observações dos avaliadores e a presença por dia.'; fonte(c, 9, false, CINZA); c.alignment = { wrapText: true }; ws.getRow(r).height = 28;
+    imgs.forEach(function (m) {
+      var id = wb.addImage({ base64: m[0].url, extension: 'png' }), k = Math.min(m[3] / m[0].w, m[4] / m[0].h);
+      ws.addImage(id, { tl: { col: m[1], row: m[2] }, ext: { width: Math.round(m[0].w * k), height: Math.round(m[0].h * k) } });
+    });
+
+    /* ===== Aba Classificação ===== */
+    var areas = cl.areas || [];
+    var wc = wb.addWorksheet('Classificação', { pageSetup: paisagem, headerFooter: rodape });
+    cab(wc, ['Pos.', 'Jovem', 'Código', 'Turma', 'Nota final'].concat(areas).concat(['Situação', 'Motivo', 'Observação do motivo']),
+      [7, 34, 11, 12, 10].concat(areas.map(function () { return 12; })).concat([14, 40, 46]));
+    jovens.forEach(function (j) {
+      var mot = j.motivo && j.situacao !== 'incompleto' ? K.textoMotivo(j.motivo, j.genero) : (j.situacao === 'reprovado' ? 'Nota final abaixo de ' + K.corteTxt(cl.processo.corte_backup) : '');
+      var row = wc.addRow([j.posicao ? j.posicao + 'º' + (j.empate ? ' (empate)' : '') : '—', j.nome, j.codigo, j.turma, j.nota == null ? null : Number(Number(j.nota).toFixed(3))]
+        .concat(areas.map(function (a) { var v = (j.areas || {})[a]; return v == null ? null : Number(v); }))
+        .concat([K.textoSituacao(j.situacao, j.genero), mot, j.observacao || '']));
+      var n = row.number, cor = COR[j.situacao] || COR.desistencia;
+      linhaFina(wc, n); row.height = 18;
+      row.eachCell({ includeEmpty: true }, function (cc, col) { if (!cc.font || !cc.font.name) fonte(cc, 10); cc.alignment = { vertical: 'middle', wrapText: col > 5 + areas.length }; });
+      fonte(wc.getCell(n, 1), 10, true); wc.getCell(n, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+      wc.getCell(n, 1).border = { left: { style: 'thick', color: { argb: 'FF' + cor } }, bottom: { style: 'thin', color: { argb: 'FFE3DEDD' } } };
+      fonte(wc.getCell(n, 2), 10, true);
+      for (var k = 5; k <= 5 + areas.length; k++) { wc.getCell(n, k).numFmt = '0.00'; }
+      fonte(wc.getCell(n, 5), 10.5, true);
+      var cs = wc.getCell(n, 6 + areas.length); fonte(cs, 10, true, 'FF' + (COR_TX[j.situacao] || COR_TX.desistencia)); preencher(cs, clarear(cor, 0.82)); cs.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    wc.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 8 + areas.length } };
+
+    /* ===== Aba Notas por teste ===== */
+    var testes = []; jovens.forEach(function (j) { var f = porId[j.participacao_id]; (f && f.testes || []).forEach(function (t) { if (testes.indexOf(t.nome) < 0) testes.push(t.nome); }); });
+    var wt = wb.addWorksheet('Notas por teste', { pageSetup: paisagem, headerFooter: rodape });
+    var tit = ['Pos.', 'Jovem', 'Código', 'Turma']; testes.forEach(function (t) { tit.push(t); tit.push('Avaliador'); });
+    cab(wt, tit, [7, 34, 11, 12].concat(testes.reduce(function (a) { return a.concat([13, 16]); }, [])));
+    jovens.forEach(function (j) {
+      var f = porId[j.participacao_id] || {}, pt = {}; (f.testes || []).forEach(function (t) { pt[t.nome] = t; });
+      var v = [j.posicao ? j.posicao + 'º' : '—', j.nome, j.codigo, j.turma];
+      testes.forEach(function (t) { var x = pt[t]; v.push(x && x.nota != null ? Number(x.nota) : null); v.push(x && x.avaliador ? x.avaliador : ''); });
+      var row = wt.addRow(v); linhaFina(wt, row.number);
+      row.eachCell({ includeEmpty: true }, function (cc, col) {
+        var nota = col > 4 && (col - 5) % 2 === 0; fonte(cc, 10, col === 2 || nota);
+        if (nota) cc.numFmt = '0.00'; else if (col > 4) cc.alignment = { indent: 1 };
+      });
+    });
+
+    /* ===== Aba Competências ===== */
+    var comps = []; jovens.forEach(function (j) { var f = porId[j.participacao_id]; (f && f.competencias || []).forEach(function (x) { if (comps.indexOf(x.nome) < 0) comps.push(x.nome); }); });
+    var wco = wb.addWorksheet('Competências', { pageSetup: paisagem, headerFooter: rodape });
+    cab(wco, ['Pos.', 'Jovem', 'Código', 'Turma'].concat(comps), [7, 34, 11, 12].concat(comps.map(function () { return 16; })));
+    jovens.forEach(function (j) {
+      var f = porId[j.participacao_id] || {}, pc = {}; (f.competencias || []).forEach(function (x) { pc[x.nome] = x.nota; });
+      var row = wco.addRow([j.posicao ? j.posicao + 'º' : '—', j.nome, j.codigo, j.turma].concat(comps.map(function (n) { return pc[n] == null ? null : Number(pc[n]); })));
+      linhaFina(wco, row.number); row.eachCell({ includeEmpty: true }, function (cc, col) { fonte(cc, 10, col === 2); if (col > 4) cc.numFmt = '0.00'; });
+    });
+    wco.getRow(1).height = 46;
+
+    /* ===== Aba Observações ===== */
+    var wo = wb.addWorksheet('Observações', { pageSetup: paisagem, headerFooter: rodape });
+    cab(wo, ['Jovem', 'Código', 'Teste', 'Avaliador', 'Data', 'Observação'], [34, 11, 28, 20, 12, 80]);
+    wo.views = [{ state: 'frozen', ySplit: 1 }];
+    jovens.forEach(function (j) {
+      var f = porId[j.participacao_id] || {};
+      (f.observacoes || []).forEach(function (o) {
+        var row = wo.addRow([j.nome, j.codigo, o.teste || '', o.autor || '', o.em ? dataBR(o.em) : '', o.texto || '']);
+        linhaFina(wo, row.number); row.eachCell({ includeEmpty: true }, function (cc, col) { fonte(cc, 10, col === 1); cc.alignment = { vertical: 'top', wrapText: col === 6 }; });
+      });
+    });
+
+    /* ===== Aba Presença ===== */
+    var wp = wb.addWorksheet('Presença', { pageSetup: paisagem, headerFooter: rodape });
+    var maxDias = 0; (dp.turmas || []).forEach(function (t) { maxDias = Math.max(maxDias, (t.datas || []).length); });
+    var tp = ['Jovem', 'Código', 'Turma']; for (i = 1; i <= maxDias; i++) tp.push('Dia ' + i);
+    cab(wp, tp, [34, 11, 12].concat(Array.apply(null, Array(maxDias)).map(function () { return 18; })));
+    wp.views = [{ state: 'frozen', ySplit: 1, xSplit: 1 }];
+    jovens.forEach(function (j) {
+      var f = porId[j.participacao_id] || {}, ds = (f.turma_datas || []).map(function (x) { return String(x).slice(0, 10); }), fs = (f.faltas || []).map(function (x) { return String(x).slice(0, 10); });
+      var v = [j.nome, j.codigo, j.turma];
+      var desistiu = j.situacao === 'desistencia', jaFaltou = false;
+      for (var k = 0; k < maxDias; k++) {
+        if (!ds[k]) { v.push(''); continue; }
+        var faltou = fs.indexOf(ds[k]) >= 0;
+        v.push(dataBR(ds[k]) + (faltou ? ' · faltou' : (desistiu && jaFaltou ? ' · —' : ' · presente')));
+        if (faltou) jaFaltou = true;
+      }
+      var row = wp.addRow(v); linhaFina(wp, row.number);
+      row.eachCell({ includeEmpty: true }, function (cc, col) {
+        var falta = typeof cc.value === 'string' && cc.value.indexOf('faltou') >= 0;
+        fonte(cc, 10, col === 1, falta ? 'FF' + COR_TX.reprovado : PRETO); if (falta) preencher(cc, clarear(COR.reprovado, 0.88));
+      });
+    });
+
+    var buf = await wb.xlsx.writeBuffer();
+    return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
   window.CF = window.CF || {};
-  window.CF.excel = { ficha: ficha };
+  window.CF.excel = { ficha: ficha, processo: processo };
 })();

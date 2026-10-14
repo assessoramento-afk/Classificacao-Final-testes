@@ -273,7 +273,7 @@
     { k: 'ficha', nome: 'Ficha do candidato (PDF)', det: 'A4 · 1 página por candidato (mais, se houver muitas observações)', opcoes: [['lateral', 'Coluna lateral (modelo D)']] },
     { k: 'ficha_excel', nome: 'Ficha do candidato (Excel)', det: 'abas Ficha e Dados', opcoes: [['formatada', 'Formatada como o PDF · abas Ficha e Dados']] },
     { k: 'relatorio', nome: 'Classificação e relatório (PDF)', det: 'capa, agradecimento, informações, ranking com links e fichas', opcoes: [['padrao', 'Capa só com logos, ranking clicável e fichas no modelo D']] },
-    { k: 'excel', nome: 'Planilha Excel do processo', det: 'Fase 5' }, { k: 'certificado', nome: 'Certificado de participação', det: 'Fase 5' }];
+    { k: 'excel', nome: 'Planilha Excel do processo', det: 'arquivo completo do processo', opcoes: [['completa', 'Abas Processo, Classificação, Notas por teste, Competências, Observações e Presença']] }, { k: 'certificado', nome: 'Certificado de participação', det: 'Fase 5' }];
   async function paginaModelos(area) {
     var cfg = await dados.config.carregar(), atual = Object.assign({}, cfg.modelos_documento || {});
     area.innerHTML = cabecalho('Modelos de documentos', 'Escolha qual modelo cada documento usa como padrão') +
