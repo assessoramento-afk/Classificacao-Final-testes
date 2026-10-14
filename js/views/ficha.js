@@ -134,6 +134,7 @@
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.ficha = async function (area, ctx, procId, partId) {
     var st = { eixo: 'areas', modelo: null };
+    var empresa = ctx.perfil.perfil === 'empresa', base = (empresa ? '#/portal/' : '#/processos/') + procId;   // a empresa navega dentro do portal
     area.innerHTML = '<div id="fc"><div class="girando" style="margin:40px auto"></div></div>';
     var cl, f, fotoUrl = null, padrao = 'lateral';
     try {
@@ -147,7 +148,7 @@
       fotoUrl = f.jovem && f.jovem.foto_path ? await dados.jovens.urlFoto(f.jovem.foto_path).catch(function () { return null; }) : null;
     } catch (e) {
       console.error(e);
-      area.innerHTML = '<a class="voltar" href="#/processos/' + esc(procId) + '/classificacao">← Classificação</a>' +
+      area.innerHTML = '<a class="voltar" href="' + (ctx.perfil.perfil === 'empresa' ? '#/portal/' + esc(procId) : '#/processos/' + esc(procId) + '/classificacao') + '">← ' + (ctx.perfil.perfil === 'empresa' ? 'Resultado' : 'Classificação') + '</a>' +
         '<div class="aviso aviso-erro" style="margin-top:12px">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>';
       return;
     }
@@ -165,9 +166,9 @@
       var ant = lista[idx - 1], prox = lista[idx + 1];
       function rot(j) { return j.posicao ? j.posicao + 'º' : (j.situacao === 'desistencia' ? 'desist.' : '—'); }
       return '<div class="fc-nav">' +
-        (ant ? '<a class="btn" href="#/processos/' + procId + '/ficha/' + ant.participacao_id + '" title="' + esc(ant.nome) + '">‹ ' + rot(ant) + ' anterior</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">‹ anterior</span>') +
+        (ant ? '<a class="btn" href="' + base + '/ficha/' + ant.participacao_id + '" title="' + esc(ant.nome) + '">‹ ' + rot(ant) + ' anterior</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">‹ anterior</span>') +
         '<span class="dica">' + (idx + 1) + ' de ' + lista.length + '</span>' +
-        (prox ? '<a class="btn" href="#/processos/' + procId + '/ficha/' + prox.participacao_id + '" title="' + esc(prox.nome) + '">' + rot(prox) + ' próximo ›</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">próximo ›</span>') +
+        (prox ? '<a class="btn" href="' + base + '/ficha/' + prox.participacao_id + '" title="' + esc(prox.nome) + '">' + rot(prox) + ' próximo ›</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">próximo ›</span>') +
       '</div>';
     }
     function situacaoTxt() {
@@ -223,10 +224,10 @@
     }
 
     function desenhar() {
-      var topo = '<a class="voltar" href="#/processos/' + procId + '/classificacao">← Classificação · ' + esc(nomeEmp + ' · ' + f.processo.vaga) + '</a>' +
+      var topo = '<a class="voltar" href="' + (empresa ? base : base + '/classificacao') + '">← ' + (empresa ? 'Resultado' : 'Classificação') + ' · ' + esc(nomeEmp + ' · ' + f.processo.vaga) + '</a>' +
         '<div class="fc-barra-topo">' + navegacao() +
           '<div class="fc-nav"><div class="fc-seg" role="tablist" aria-label="Modelo da ficha"><button type="button" data-modelo="lateral" class="' + (st.modelo === 'lateral' ? 'on' : '') + '">Lateral</button><button type="button" data-modelo="cards" class="' + (st.modelo === 'cards' ? 'on' : '') + '">Cards</button></div>' +
-          '<button type="button" class="btn" id="fc-xls">⬇ Excel</button><button type="button" class="btn btn-pri" id="fc-pdf">⬇ PDF da ficha</button></div></div>';
+          (empresa ? '' : '<button type="button" class="btn" id="fc-xls">⬇ Excel</button>') + '<button type="button" class="btn btn-pri" id="fc-pdf">⬇ PDF da ficha</button></div></div>';
       var corpo;
       if (st.modelo === 'lateral') {
         // Mesmo desenho do PDF aprovado: coluna escura + cartões
@@ -285,7 +286,7 @@
     function ligar() {
       var box = area.querySelector('#fc');
       box.querySelector('#fc-pdf').addEventListener('click', function () { gerar('pdf', this); });
-      box.querySelector('#fc-xls').addEventListener('click', function () { gerar('xlsx', this); });
+      if (box.querySelector('#fc-xls')) box.querySelector('#fc-xls').addEventListener('click', function () { gerar('xlsx', this); });
       box.querySelectorAll('[data-eixo]').forEach(function (b) { b.addEventListener('click', function () { st.eixo = b.getAttribute('data-eixo'); desenhar(); }); });
       box.querySelectorAll('[data-modelo]').forEach(function (b) {
         b.addEventListener('click', function () {

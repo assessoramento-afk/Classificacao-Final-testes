@@ -470,6 +470,60 @@
     return doc.output('blob');
   }
 
+
+  /* ---------- Certificado de participação (A4 deitado, 1 por jovem) ----------
+     c = { empresa, logoEmpresaUrl, vaga, identificacao, cidadeData ('Carapicuíba, 30 de novembro de 2026'),
+           assinatura: { nome, cargo }, jovens:[{ nome, codigo, turma, datasTxt ('17 e 18/11/2026') }] } */
+  function dataExtenso(d) {
+    var m = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    return d.getDate() + ' de ' + m[d.getMonth()] + ' de ' + d.getFullYear();
+  }
+  async function certificado(c) {
+    if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Recurso de PDF indisponível. Recarregue a página.');
+    var f = await fontes();
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape', compress: true });
+    doc.addFileToVFS('Poppins-Regular.ttf', f.regular); doc.addFont('Poppins-Regular.ttf', 'P', 'normal');
+    doc.addFileToVFS('Poppins-Medium.ttf', f.medium); doc.addFont('Poppins-Medium.ttf', 'PM', 'normal');
+    doc.addFileToVFS('Poppins-Bold.ttf', f.bold); doc.addFont('Poppins-Bold.ttf', 'P', 'bold');
+    var r = await Promise.all([imagem('assets/img/gol_light.png'), imagem('assets/img/kolping_light.png'), imagem(c.logoEmpresaUrl)]);
+    var im = { gol: r[0], kolping: r[1], empresa: r[2] };
+    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), cx = W / 2 + 4;
+    (c.jovens || []).forEach(function (j, idx) {
+      if (idx) doc.addPage();
+      faixa(doc);
+      // moldura fina
+      doc.setDrawColor('#d9d3d2'); doc.setLineWidth(0.4); doc.rect(18, 10, W - 28, H - 20, 'S');
+      doc.setDrawColor(LARANJA); doc.setLineWidth(0.25); doc.rect(20, 12, W - 32, H - 24, 'S');
+      imgCaber(doc, im.gol, cx - 17, 20, 34, 34, 'centro');
+      fonte(doc, 'b', 30, PRETO); doc.text('Certificado de Participação', cx, 70, { align: 'center' });
+      doc.setFillColor(LARANJA); doc.rect(cx - 14, 74, 28, 1.1, 'F');
+      fonte(doc, 'n', 12.5, CINZA); doc.text('Certificamos que', cx, 88, { align: 'center' });
+      fonte(doc, 'b', 22, PRETO); doc.text(j.nome, cx, 101, { align: 'center' });
+      doc.setDrawColor('#cfc8c8'); doc.setLineWidth(0.3); doc.line(cx - 85, 105, cx + 85, 105);
+      var texto = 'participou do processo seletivo do Projeto Gol Jovens Talentos para a vaga de ' + (c.vaga || '') +
+        (c.empresa ? ', em parceria com a ' + c.empresa : '') + ', realizado pela Kolping Estadual de São Paulo' +
+        (j.datasTxt ? ' nos dias ' + j.datasTxt : '') + '.';
+      fonte(doc, 'n', 12.5, PRETO);
+      var ls = doc.splitTextToSize(texto, 190); doc.text(ls, cx, 115, { align: 'center', lineHeightFactor: 1.5 });
+      var y = 115 + ls.length * 6.6 + 8;
+      fonte(doc, 'n', 10.5, CINZA); doc.text(c.cidadeData || ('Carapicuíba, ' + dataExtenso(new Date())), cx, y, { align: 'center' });
+      // assinatura
+      var ya = H - 42;
+      doc.setDrawColor(PRETO); doc.setLineWidth(0.3); doc.line(cx - 40, ya, cx + 40, ya);
+      fonte(doc, 'b', 10, PRETO); doc.text((c.assinatura && c.assinatura.nome) || 'Coordenação', cx, ya + 5, { align: 'center' });
+      fonte(doc, 'n', 8.5, CINZA); doc.text((c.assinatura && c.assinatura.cargo) || 'Kolping Estadual de São Paulo', cx, ya + 9.5, { align: 'center' });
+      // logos embaixo
+      imgCaber(doc, im.kolping, 32, H - 38, 52, 14, 'esq');
+      if (im.empresa || c.empresa) caixaEmpresa(doc, im.empresa, c.empresa, W - 64, H - 38, 40, 14);
+      // código e rodapé discreto
+      fonte(doc, 'n', 7, CINZA_CL);
+      doc.text('Código ' + (j.codigo || '') + (j.turma ? ' · ' + j.turma : '') + (c.identificacao ? ' · Processo ' + c.identificacao : ''), cx, H - 15.5, { align: 'center' });
+      doc.text(INST, cx, H - 12.8 + 0.1, { align: 'center' });
+    });
+    doc.setProperties({ title: 'Certificados · ' + (c.empresa || '') + ' · ' + (c.vaga || ''), subject: 'Projeto Gol Jovens Talentos', author: 'Kolping Estadual de São Paulo', creator: 'Classificação Final' });
+    return doc.output('blob');
+  }
+
   /* ---------- Documento: ficha avulsa ---------- */
   async function ficha(d) {
     var doc = await novo();
@@ -490,5 +544,5 @@
   }
 
   window.CF = window.CF || {};
-  window.CF.pdf = { novo: novo, faixa: faixa, rodape: rodape, imagem: imagem, desenharFicha: desenharFicha, ficha: ficha, processo: processo, baixar: baixar, nomeArquivo: nomeArquivo, COR: COR };
+  window.CF.pdf = { novo: novo, faixa: faixa, rodape: rodape, imagem: imagem, desenharFicha: desenharFicha, ficha: ficha, processo: processo, certificado: certificado, dataExtenso: dataExtenso, baixar: baixar, nomeArquivo: nomeArquivo, COR: COR };
 })();

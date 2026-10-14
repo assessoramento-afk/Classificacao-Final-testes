@@ -11,7 +11,7 @@
   // Menu de cada perfil: [rota, texto, ícone]
   var esc = ui.esc;
   var MENUS = {
-    admin: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
+    admin: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'],
             ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
     avaliador: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
                 ['banco', 'Banco de testes', 'banco']],
@@ -74,6 +74,7 @@
     atualizarConexao();
     window.CF.online.iniciar(p);
     window.CF.avisos.iniciar(p);
+    if (window.CF.acomp) window.CF.acomp.atualizarBadge(p);   // pendências do acompanhamento no menu
     if (window.CF.instalar) window.CF.instalar.colocar(p);
     iniciarMonitores(p);
     if (p.perfil === 'empresa') {   // atividade da empresa: só o administrador enxerga

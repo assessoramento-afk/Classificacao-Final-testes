@@ -53,6 +53,4 @@
         '<div class="cfg em-breve-cfg" style="--cor:var(--c-area)"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div><b>Turmas</b><small>Crachás, lista de presença por dia e termos: use o <b>Kit da turma</b> na tela de jovens de cada processo.</small></div></div>' +
       '</div>';
   };
-  window.CF.telas.portal = emConstrucao('Resultados', 'Processos seletivos liberados para a sua empresa.', 'Fase 5',
-    ['Ranking final de cada processo liberado', 'Fichas dos candidatos', 'Download em PDF e Excel']);
 })();
