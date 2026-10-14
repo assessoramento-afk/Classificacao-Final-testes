@@ -162,7 +162,7 @@
       var topo = '<a class="voltar" href="#/processos/' + procId + '/classificacao">← Classificação · ' + esc(nomeEmp + ' · ' + f.processo.vaga) + '</a>' +
         '<div class="fc-barra-topo">' + navegacao() +
           '<div class="fc-nav"><div class="fc-seg" role="tablist" aria-label="Modelo da ficha"><button type="button" data-modelo="lateral" class="' + (st.modelo === 'lateral' ? 'on' : '') + '">Lateral</button><button type="button" data-modelo="cards" class="' + (st.modelo === 'cards' ? 'on' : '') + '">Cards</button></div>' +
-          '<button type="button" class="btn" disabled title="Chega na próxima etapa">⬇ Excel</button><button type="button" class="btn btn-pri" disabled title="Chega na próxima etapa">⬇ PDF da ficha</button></div></div>';
+          '<button type="button" class="btn" id="fc-xls">⬇ Excel</button><button type="button" class="btn btn-pri" id="fc-pdf">⬇ PDF da ficha</button></div></div>';
       var corpo;
       if (st.modelo === 'lateral') {
         corpo = '<section class="card fc-lay" style="--c:' + cor + '"><aside class="fc-lat">' + foto(132) +
@@ -188,8 +188,40 @@
       area.querySelector('#fc').innerHTML = topo + corpo;
       ligar();
     }
+    /* ---------- Dados para o PDF e o Excel (mesmo formato) ---------- */
+    async function dadosDocumento() {
+      var logoUrl = f.empresa && f.empresa.logo_path ? await dados.empresas.urlLogo(f.empresa.logo_path).catch(function () { return null; }) : null;
+      var mot = eu.motivo ? c().textoMotivo(eu.motivo, f.jovem.genero) : (eu.situacao === 'reprovado' ? 'Nota final abaixo de ' + c().corteTxt(f.processo.corte_backup) : null);
+      var det = eu.situacao === 'desistencia' && eu.desistencia && eu.desistencia !== 'FALTOU' ? ' · ' + eu.desistencia.toLowerCase() : (eu.situacao === 'desistencia' && !eu.observacao ? ' · faltou' : '');
+      var areas = (cl.areas || []).map(function (a) { return { nome: a, nota: (eu.areas || {})[a] == null ? null : Number(eu.areas[a]) }; });
+      return {
+        nome: f.jovem.nome, iniciais: iniciais(f.jovem.nome), codigo: f.codigo, idade: idade(f.jovem.nascimento), turma: f.turma,
+        vaga: f.processo.vaga, empresa: nomeEmp, avaliador: f.avaliador_responsavel,
+        nota: eu.nota == null ? null : Number(eu.nota), situacao: eu.situacao, situacaoTxt: c().textoSituacao(eu.situacao, f.jovem.genero),
+        posicaoTxt: eu.posicao ? eu.posicao + 'º de ' + classificados + ' candidatos' + (eu.empate ? ' (empate)' : '') : null,
+        motivoTxt: mot ? mot + det : null, motivoObs: eu.observacao || null, motivoPor: eu.motivo_por ? String(eu.motivo_por).toUpperCase() : null,
+        eixoTitulo: st.eixo === 'competencias' ? 'competências' : 'áreas', itens: itensEixo(),
+        areas: areas, competencias: (f.competencias || []).map(function (x) { return { nome: x.nome, nota: x.nota }; }),
+        testes: f.testes || [], observacoes: f.observacoes || [],
+        corteAprovado: Number(f.processo.corte_aprovado), corteBackup: Number(f.processo.corte_backup),
+        processoTxt: 'Projeto Gol Jovens Talentos · Processo seletivo' + (f.processo.identificacao ? ' ' + f.processo.identificacao : '') + ' · ' + nomeEmp + ' · ' + f.processo.vaga,
+        fotoUrl: fotoUrl, logoEmpresaUrl: logoUrl
+      };
+    }
+    async function gerar(tipo, botao) {
+      var texto = botao.innerHTML; botao.disabled = true; botao.innerHTML = 'Gerando…';
+      try {
+        var d = await dadosDocumento(), blob, ext;
+        if (tipo === 'pdf') { blob = await window.CF.pdf.ficha(d); ext = 'pdf'; }
+        else { blob = await window.CF.excel.ficha(d); ext = 'xlsx'; }
+        window.CF.pdf.baixar(blob, window.CF.pdf.nomeArquivo(['Ficha', f.jovem.nome, f.codigo], ext));
+      } catch (e) { console.error(e); ui.toast(e && e.message ? e.message : 'Não foi possível gerar o arquivo.', 'erro'); }
+      botao.disabled = false; botao.innerHTML = texto;
+    }
     function ligar() {
       var box = area.querySelector('#fc');
+      box.querySelector('#fc-pdf').addEventListener('click', function () { gerar('pdf', this); });
+      box.querySelector('#fc-xls').addEventListener('click', function () { gerar('xlsx', this); });
       box.querySelectorAll('[data-eixo]').forEach(function (b) { b.addEventListener('click', function () { st.eixo = b.getAttribute('data-eixo'); desenhar(); }); });
       box.querySelectorAll('[data-modelo]').forEach(function (b) {
         b.addEventListener('click', function () {
