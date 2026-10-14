@@ -205,6 +205,10 @@
     var x0 = cx0 + cw + 7, x1 = W - 14, wd = x1 - x0;
     y = 15;
     fonte(doc, 'b', 15, PRETO); doc.text('Ficha do candidato', x0, y);
+    if (d.paginaVoltar) {
+      fonte(doc, 'medio', 7.5, '#b4501a'); var tv = 'Voltar à classificação', wv = doc.getTextWidth(tv);
+      doc.text(tv, x1, y - 1, { align: 'right' }); doc.link(x1 - wv, y - 4.5, wv, 5, { pageNumber: d.paginaVoltar });
+    }
     fonte(doc, 'n', 8, CINZA); var lp = doc.splitTextToSize(d.processoTxt || '', wd); doc.text(lp, x0, y + 5);
     y += 5 + lp.length * 3.5; doc.setDrawColor(PRETO); doc.setLineWidth(0.5); doc.line(x0, y, x1, y); y += 6;
 
@@ -299,6 +303,183 @@
     return '#' + [m(r), m(g), m(b)].map(function (c) { return ('0' + c.toString(16)).slice(-2); }).join('');
   }
 
+
+  /* ---------- PDF do processo ----------
+     p = { empresa, logoEmpresaUrl, vaga, identificacao, agradecimento (texto já com as variáveis trocadas),
+           turmas:[{nome, datas:['2026-10-01',...]}], contagem:{aprovado,backup,reprovado,desistencia,incompleto},
+           total, liberadoEm, previa (true se ainda não liberado),
+           ranking:[{posicao, empate, nome, codigo, turma, nota, situacao, situacaoTxt, detalhe}], fichas:[d da ficha, na ordem do ranking] }
+     Páginas: 1 capa (só logos) · 2 agradecimento · 3 informações · ranking (nomes com link para a ficha) · fichas. */
+  function dataBR(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function capa(doc, im) {
+    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+    faixa(doc);
+    imgCaber(doc, im.gol, 21, 62, W - 35, 98, 'centro');
+    var y = H - 78;
+    doc.setDrawColor(LINHA); doc.setLineWidth(0.3); doc.line(48, y - 12, W - 41, y - 12);
+    if (im.empresa) {
+      imgCaber(doc, im.kolping, 30, y, 70, 26, 'centro');
+      doc.setDrawColor(LINHA); doc.line(W / 2 + 3.5, y + 2, W / 2 + 3.5, y + 24);
+      imgCaber(doc, im.empresa, W / 2 + 13, y, 70, 26, 'centro');
+    } else {
+      imgCaber(doc, im.kolping, 50, y, W - 85, 26, 'centro');
+    }
+  }
+  function paginaAgradecimento(doc, texto, im) {
+    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), x0 = 36, x1 = W - 28, wd = x1 - x0;
+    faixa(doc);
+    imgCaber(doc, im.gol, (W - 30) / 2 + 3.5, 30, 30, 30, 'centro');
+    var pars = String(texto || '').split(/\n\s*\n/), linhas = [];
+    fonte(doc, 'n', 13, PRETO);
+    pars.forEach(function (par, i) { if (i) linhas.push(''); doc.splitTextToSize(par.replace(/\n/g, ' '), wd).forEach(function (l) { linhas.push(l); }); });
+    var alt = linhas.length * 6.6, y = Math.max(82, (H - alt) / 2 - 8);
+    fonte(doc, 'b', 18, PRETO); doc.text('Agradecimento', W / 2 + 3.5, y - 16, { align: 'center' });
+    doc.setFillColor(LARANJA); doc.rect(W / 2 + 3.5 - 10, y - 11, 20, 0.9, 'F');
+    fonte(doc, 'n', 13, PRETO);
+    linhas.forEach(function (l, i) { doc.text(l, W / 2 + 3.5, y + i * 6.6, { align: 'center' }); });
+    y += alt + 16;
+    fonte(doc, 'b', 10.5, PRETO); doc.text('Coordenação · Kolping Estadual de São Paulo', W / 2 + 3.5, y, { align: 'center' });
+    imgCaber(doc, im.kolping, (W - 60) / 2 + 3.5, H - 52, 60, 18, 'centro');
+  }
+  function cabecalhoDoc(doc, im, titulo, sub) {
+    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 14;
+    faixa(doc);
+    imgCaber(doc, im.kolping, x0, 11, 48, 12, 'esq');
+    if (im.empresa) imgCaber(doc, im.empresa, x1 - 48, 10, 48, 14, 'direita');
+    else imgCaber(doc, im.gol, x1 - 14, 9, 14, 15, 'direita');
+    doc.setDrawColor(PRETO); doc.setLineWidth(0.5); doc.line(x0, 27, x1, 27);
+    fonte(doc, 'b', 16, PRETO); doc.text(titulo, x0, 37);
+    if (sub) { fonte(doc, 'n', 8.5, CINZA); doc.text(sub, x0, 42.5); }
+    return sub ? 50 : 45;
+  }
+  function paginaInfo(doc, p, im) {
+    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 14, wd = x1 - x0;
+    var y = cabecalhoDoc(doc, im, 'Processo seletivo', 'Projeto Gol Jovens Talentos');
+    var datas = [];
+    (p.turmas || []).forEach(function (t) { (t.datas || []).forEach(function (d) { datas.push(String(d).slice(0, 10)); }); });
+    datas.sort();
+    var linhas = [['Empresa', p.empresa], ['Vaga', p.vaga], ['Processo', p.identificacao],
+      ['Período', datas.length ? (datas[0] === datas[datas.length - 1] ? dataBR(datas[0]) : dataBR(datas[0]) + ' a ' + dataBR(datas[datas.length - 1])) : null],
+      ['Turmas', (p.turmas || []).length ? String(p.turmas.length) : null], ['Candidatos', String(p.total)],
+      ['Resultado liberado em', p.liberadoEm ? dataBR(p.liberadoEm) : null]].filter(function (x) { return x[1]; });
+    linhas.forEach(function (x) {
+      fonte(doc, 'n', 9, CINZA); doc.text(x[0], x0, y);
+      fonte(doc, 'b', 10.5, PRETO); var l = doc.splitTextToSize(String(x[1]), wd - 52); doc.text(l, x0 + 50, y);
+      y += Math.max(1, l.length) * 4.6 + 2.2;
+      doc.setDrawColor('#ebe6e5'); doc.setLineWidth(0.2); doc.line(x0, y - 3.6, x1, y - 3.6);
+    });
+    y += 6;
+    // resultado em números
+    fonte(doc, 'b', 11, PRETO); doc.text('Resultado', x0, y); y += 4;
+    var itens = [['aprovado', 'Aprovados'], ['backup', 'Backup'], ['reprovado', 'Reprovados'], ['desistencia', 'Desistências']];
+    var gw = (wd - 3 * 4) / 4;
+    itens.forEach(function (it, i) {
+      var x = x0 + i * (gw + 4), c = COR[it[0]];
+      doc.setFillColor(clarear(c, 0.86)); doc.roundedRect(x, y, gw, 22, 2.5, 2.5, 'F');
+      doc.setFillColor(c); doc.rect(x, y + 20.2, gw, 1.8, 'F');
+      fonte(doc, 'b', 20, COR_TX[it[0]]); doc.text(String(p.contagem[it[0]] || 0), x + gw / 2, y + 11, { align: 'center' });
+      fonte(doc, 'medio', 8, COR_TX[it[0]]); doc.text(it[1], x + gw / 2, y + 16.5, { align: 'center' });
+    });
+    y += 32;
+    // turmas
+    if ((p.turmas || []).length) {
+      fonte(doc, 'b', 11, PRETO); doc.text('Turmas', x0, y); y += 5;
+      p.turmas.forEach(function (t) {
+        fonte(doc, 'b', 9, PRETO); doc.text(t.nome, x0, y);
+        fonte(doc, 'n', 9, CINZA); doc.text((t.datas || []).map(dataBR).join(' e ') || '—', x0 + 50, y);
+        fonte(doc, 'n', 9, CINZA); doc.text((t.candidatos || 0) + ' candidato' + (t.candidatos === 1 ? '' : 's'), x1, y, { align: 'right' });
+        y += 6;
+      });
+      y += 4;
+    }
+    fonte(doc, 'n', 8.5, CINZA);
+    doc.text(doc.splitTextToSize('A classificação a seguir reúne em um único ranking os candidatos de todas as turmas. Clique no nome de um candidato para abrir a ficha dele neste mesmo documento.', wd), x0, y);
+  }
+  var RK_LINHAS = 30;
+  function paginaRanking(doc, p, im, ini, fim, primeira) {
+    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 14, wd = x1 - x0;
+    var y = cabecalhoDoc(doc, im, primeira ? 'Classificação final' : 'Classificação final (continuação)', p.empresa + ' · ' + p.vaga);
+    var cP = x0, cN = x0 + 16, cT = x0 + wd * 0.58, cNo = x0 + wd * 0.77, cS = x0 + wd * 0.81;
+    doc.setFillColor('#f1eeee'); doc.rect(x0, y - 4, wd, 6, 'F');
+    fonte(doc, 'b', 6.6, CINZA); doc.text('POSIÇÃO', cP + 2, y); doc.text('CANDIDATO', cN, y); doc.text('TURMA', cT, y); doc.text('NOTA', cNo, y, { align: 'right' }); doc.text('SITUAÇÃO', cS, y);
+    y += 5.6;
+    var links = [];
+    for (var i = ini; i < fim; i++) {
+      var r = p.ranking[i], c = COR[r.situacao] || COR.desistencia, h = 7.3;
+      doc.setFillColor(c); doc.rect(x0, y - 4.4, 1.2, h - 0.8, 'F');
+      fonte(doc, 'b', 9.5, PRETO); doc.text(r.posicao ? r.posicao + 'º' : '—', cP + 4, y);
+      fonte(doc, 'b', 8.6, '#b4501a'); var nome = doc.splitTextToSize(r.nome, cT - cN - 4)[0]; doc.text(nome, cN, y - 0.3);
+      var wn = doc.getTextWidth(nome);
+      doc.setDrawColor('#e8b89c'); doc.setLineWidth(0.15); doc.line(cN, y + 0.5, cN + wn, y + 0.5);
+      doc.setFont('courier', 'bold'); doc.setFontSize(7); doc.setTextColor(CINZA); doc.text(r.codigo || '', cN, y + 3);
+      fonte(doc, 'n', 8, PRETO); doc.text(doc.splitTextToSize(r.turma || '', cNo - cT - 14)[0], cT, y);
+      fonte(doc, 'b', 9.5, PRETO); doc.text(r.nota == null ? '—' : n2(r.nota), cNo, y, { align: 'right' });
+      if (r.empate) { fonte(doc, 'n', 6, CINZA); doc.text('empate', cNo, y + 3, { align: 'right' }); }
+      fonte(doc, 'b', 8, COR_TX[r.situacao] || CINZA); doc.text(r.situacaoTxt, cS, y);
+      if (r.detalhe) { fonte(doc, 'n', 6.4, CINZA); doc.text(doc.splitTextToSize(r.detalhe, x1 - cS)[0], cS, y + 3); }
+      links.push({ i: i, x: cN, y: y - 3.6, w: Math.max(wn, 30), h: 7 });
+      y += h; doc.setDrawColor('#ebe6e5'); doc.setLineWidth(0.2); doc.line(x0, y - 3.9, x1, y - 3.9);
+    }
+    // legenda
+    if (fim === p.ranking.length) {
+      y += 3; fonte(doc, 'n', 7, CINZA);
+      var lx = x0;
+      [['aprovado', 'Aprovado'], ['backup', 'Backup'], ['reprovado', 'Reprovado'], ['desistencia', 'Desistência']].forEach(function (x) {
+        doc.setFillColor(COR[x[0]]); doc.rect(lx, y - 2.4, 2.6, 2.6, 'F'); doc.text(x[1], lx + 4, y); lx += doc.getTextWidth(x[1]) + 11;
+      });
+      doc.text('· Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.', lx - 4, y);
+    }
+    return links;
+  }
+  async function processo(p) {
+    var doc = await novo();
+    var r = await Promise.all([imagem('assets/img/gol_light.png'), imagem('assets/img/kolping_light.png'), imagem(p.logoEmpresaUrl)]);
+    var im = { gol: r[0], kolping: r[1], empresa: r[2] };
+    // fotos de todos (em paralelo, com limite simples)
+    var fichas = p.fichas || [];   // mesma ordem do ranking (posição sem ficha = null)
+    for (var k = 0; k < fichas.length; k += 8) {
+      await Promise.all(fichas.slice(k, k + 8).map(async function (d) { if (d) d.foto = await imagem(d.fotoUrl, true); }));
+    }
+    fichas.forEach(function (d) { if (!d) return; d.logoEmpresa = im.empresa; d.logoKolping = im.kolping; d.logoGol = im.gol; });
+
+    capa(doc, im);                                   // página 1
+    doc.addPage(); paginaAgradecimento(doc, p.agradecimento, im);   // página 2
+    doc.addPage(); paginaInfo(doc, p, im);           // página 3
+    var pagInfo = 3, pagRanking = [], linksRk = [];
+    for (var i = 0; i < p.ranking.length || i === 0; i += RK_LINHAS) {
+      doc.addPage(); pagRanking.push(doc.getCurrentPageInfo().pageNumber);
+      var ls = paginaRanking(doc, p, im, i, Math.min(p.ranking.length, i + RK_LINHAS), i === 0);
+      ls.forEach(function (l) { l.pagina = doc.getCurrentPageInfo().pageNumber; linksRk.push(l); });
+      if (!p.ranking.length) break;
+    }
+    var inicioFicha = [], paginasFicha = [];
+    fichas.forEach(function (d, idx) {
+      if (!d) return;
+      doc.addPage();
+      d.paginaVoltar = pagRanking[Math.floor(idx / RK_LINHAS)] || pagRanking[0];
+      inicioFicha[idx] = doc.getCurrentPageInfo().pageNumber;
+      desenharFicha(doc, d).forEach(function (pg) { paginasFicha.push(pg); });
+    });
+    // links do ranking para as fichas
+    linksRk.forEach(function (l) { if (inicioFicha[l.i]) { doc.setPage(l.pagina); doc.link(l.x, l.y, l.w, l.h, { pageNumber: inicioFicha[l.i] }); } });
+    // rodapés (capa e agradecimento sem rodapé)
+    var total = doc.getNumberOfPages(), tipo = 'Processo seletivo · ' + p.empresa + ' · ' + p.vaga + (p.previa ? ' · PRÉVIA (processo ainda não liberado)' : '');
+    for (var pg = 3; pg <= total; pg++) { doc.setPage(pg); rodape(doc, tipo, pg, total, paginasFicha.indexOf(pg) >= 0); }
+    // marcadores (índice lateral do leitor de PDF)
+    try {
+      if (doc.outline) {
+        doc.outline.add(null, 'Capa', { pageNumber: 1 });
+        doc.outline.add(null, 'Agradecimento', { pageNumber: 2 });
+        doc.outline.add(null, 'Informações do processo', { pageNumber: pagInfo });
+        doc.outline.add(null, 'Classificação final', { pageNumber: pagRanking[0] });
+        var fx = doc.outline.add(null, 'Fichas dos candidatos', { pageNumber: inicioFicha.filter(Boolean)[0] || pagRanking[0] });
+        fichas.forEach(function (d, idx) { if (!d) return; doc.outline.add(fx, (p.ranking[idx] && p.ranking[idx].posicao ? p.ranking[idx].posicao + 'º · ' : '') + d.nome, { pageNumber: inicioFicha[idx] }); });
+      }
+    } catch (e) { /* marcadores são opcionais */ }
+    doc.setProperties({ title: 'Processo seletivo · ' + p.empresa + ' · ' + p.vaga, subject: 'Projeto Gol Jovens Talentos', author: 'Kolping Estadual de São Paulo', creator: 'Classificação Final' });
+    return doc.output('blob');
+  }
+
   /* ---------- Documento: ficha avulsa ---------- */
   async function ficha(d) {
     var doc = await novo();
@@ -319,5 +500,5 @@
   }
 
   window.CF = window.CF || {};
-  window.CF.pdf = { novo: novo, faixa: faixa, rodape: rodape, imagem: imagem, desenharFicha: desenharFicha, ficha: ficha, baixar: baixar, nomeArquivo: nomeArquivo, COR: COR };
+  window.CF.pdf = { novo: novo, faixa: faixa, rodape: rodape, imagem: imagem, desenharFicha: desenharFicha, ficha: ficha, processo: processo, baixar: baixar, nomeArquivo: nomeArquivo, COR: COR };
 })();

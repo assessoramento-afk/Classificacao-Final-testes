@@ -42,6 +42,37 @@
     return '<div class="etapas">' + et.map(function (e, i) { return '<div class="etapa' + (i === idx ? ' atual' : '') + (i < idx ? ' feita' : '') + '"><b>' + e[1] + '</b><small>' + e[2] + '</small></div>'; }).join('') + '</div>';
   }
 
+  /* Monta e gera o PDF do processo. dp = dados_processo_pdf · cl = classificacao_processo (ordem do ranking) */
+  async function gerarPdfProcesso(dp, cl) {
+    var sb = window.CF.sb, emp = dp.empresa || {}, porId = {};
+    (dp.fichas || []).forEach(function (f) { porId[f.participacao_id] = f; });
+    var caminhos = (dp.fichas || []).map(function (f) { return f.jovem && f.jovem.foto_path; }).filter(Boolean), urls = {};
+    if (caminhos.length) {
+      var rs = await sb.storage.from('fotos').createSignedUrls(caminhos, 3600);
+      (rs.data || []).forEach(function (x) { if (x.signedUrl) urls[x.path] = x.signedUrl; });
+    }
+    var logoUrl = emp.logo_path ? await dados.empresas.urlLogo(emp.logo_path).catch(function () { return null; }) : null;
+    var cont = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0, incompleto: 0 }, ranking = [], fichas = [];
+    cl.jovens.forEach(function (j) {
+      cont[j.situacao] = (cont[j.situacao] || 0) + 1;
+      var mot = j.motivo && j.situacao !== 'incompleto' ? textoMotivo(j.motivo, j.genero) : (j.situacao === 'reprovado' ? 'Nota final abaixo de ' + corteTxt(cl.processo.corte_backup) : '');
+      var det = j.situacao === 'desistencia' && j.desistencia && j.desistencia !== 'FALTOU' ? ' · ' + j.desistencia.toLowerCase() : (j.situacao === 'desistencia' && !j.observacao ? ' · faltou' : '');
+      ranking.push({ posicao: j.posicao, empate: j.empate, nome: j.nome, codigo: j.codigo, turma: j.turma, nota: j.nota == null ? null : Number(j.nota),
+                     situacao: j.situacao, situacaoTxt: textoSituacao(j.situacao, j.genero), detalhe: mot ? mot + det : '' });
+      var f = porId[j.participacao_id];
+      fichas.push(f ? window.CF.fichaDados(f, j, cl, 'areas', f.jovem.foto_path ? urls[f.jovem.foto_path] || null : null, logoUrl) : null);
+    });
+    var pr = dp.processo || {}, quando = pr.liberado_em || new Date().toISOString();
+    var vars = { empresa: emp.nome || '', vaga: pr.vaga || '', processo: pr.identificacao || '', data: new Date(quando).toLocaleDateString('pt-BR') };
+    var agr = String(dp.agradecimento || '').replace(/\{(empresa|vaga|processo|data)\}/g, function (m, k) { return vars[k]; });
+    return window.CF.pdf.processo({
+      empresa: emp.nome || '', logoEmpresaUrl: logoUrl, vaga: pr.vaga, identificacao: pr.identificacao, agradecimento: agr,
+      turmas: dp.turmas || [], contagem: cont, total: cl.jovens.length, liberadoEm: pr.liberado_em, previa: pr.situacao !== 'liberado',
+      ranking: ranking, fichas: fichas
+    });
+  }
+  window.CF.gerarPdfProcesso = gerarPdfProcesso;
+
   // usados também pela ficha do candidato (views/ficha.js)
   window.CF.classif = { COR: COR, textoMotivo: textoMotivo, textoSituacao: textoSituacao, n2: n2, corteTxt: corteTxt };
 
@@ -69,7 +100,7 @@
         : p.situacao === 'liberado' ? '<a class="btn" href="#/processos/' + procId + '/revisao">Liberado · ver</a>' : '') : '';
       area.querySelector('#cl').innerHTML =
         '<header class="cabecalho"><div><h1>Classificação</h1><p>' + Object.keys(turmas).length + ' turma(s) · ' + js.length + ' jovens · ranking único do processo</p></div>' +
-          '<div class="botoes-topo"><button type="button" class="btn" id="cl-xls">⬇ Excel</button>' + acao + '</div></header>' + etapas(p.situacao) +
+          '<div class="botoes-topo"><button type="button" class="btn" id="cl-xls">⬇ Excel</button><button type="button" class="btn" id="cl-pdf">⬇ PDF do processo</button>' + acao + '</div></header>' + etapas(p.situacao) +
         '<div class="rk-res">' + [['aprovado', 'Aprovados · a partir de ' + corteTxt(p.corte_aprovado)], ['backup', 'Backup · ' + corteTxt(p.corte_backup) + ' a ' + corteTxt(p.corte_aprovado - 0.01)], ['reprovado', 'Reprovados'], ['desistencia', 'Desistências']].concat(cont.incompleto ? [['incompleto', 'Notas incompletas']] : []).map(function (x) {
           return '<button type="button" class="rk-c' + (st.sit === x[0] ? ' on' : '') + '" data-sit="' + x[0] + '" style="--c:' + COR[x[0]] + '"><b>' + cont[x[0]] + '</b><span>' + x[1] + '</span></button>';
         }).join('') + '</div>' +
@@ -96,6 +127,7 @@
       box.querySelector('#cl-turma').addEventListener('change', function (e) { st.turma = e.target.value; desenhar(); });
       box.querySelectorAll('[data-mot]').forEach(function (b) { b.addEventListener('click', function () { motivo(c.jovens.filter(function (j) { return j.participacao_id === b.getAttribute('data-mot'); })[0]); }); });
       box.querySelector('#cl-xls').addEventListener('click', excel);
+      box.querySelector('#cl-pdf').addEventListener('click', function () { pdfProcesso(this); });
     }
     function motivo(j) {
       var jn = ui.janela({ titulo: 'Motivo de reprovação · ' + j.nome,
@@ -113,6 +145,18 @@
             try { await dados.classificacao.aplicarMotivo(j.participacao_id, m, obs); ui.toast('Motivo aplicado.', 'ok'); await carregar(); desenhar(); return true; } catch (e) { erro(e); return false; }
           } }]) });
       jn.elemento.querySelectorAll('input[name=mt]').forEach(function (r) { r.addEventListener('change', function () { jn.elemento.querySelectorAll('.mt label').forEach(function (l) { l.classList.toggle('s', l.contains(r) && r.checked); }); }); });
+    }
+    async function pdfProcesso(botao) {
+      if (!navigator.onLine) { ui.toast('Para gerar o PDF do processo é preciso internet.', 'erro'); return; }
+      var texto = botao.innerHTML; botao.disabled = true; botao.innerHTML = 'Gerando…';
+      try {
+        var r = await window.CF.sb.rpc('dados_processo_pdf', { p_proc: procId });
+        if (r.error) throw r.error;
+        botao.innerHTML = 'Montando o PDF…';
+        window.CF.ui.toast('Montando o PDF com ' + c.jovens.length + ' fichas. Pode levar alguns segundos.', 'info');
+        window.CF.pdf.baixar(await gerarPdfProcesso(r.data, c), window.CF.pdf.nomeArquivo(['Processo seletivo', (r.data.empresa || {}).nome, c.processo.vaga, c.processo.situacao === 'liberado' ? '' : 'PREVIA'], 'pdf'));
+      } catch (e) { console.error(e); ui.toast(e && e.message ? api.traduzErro(e) : 'Não foi possível gerar o PDF.', 'erro'); }
+      botao.disabled = false; botao.innerHTML = texto;
     }
     function excel() {
       if (!window.XLSX) { ui.toast('Recurso de planilha indisponível.', 'erro'); return; }

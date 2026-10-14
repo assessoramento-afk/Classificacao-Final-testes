@@ -67,6 +67,30 @@
     }).join('');
   }
 
+  /* Monta os dados de um candidato no formato usado por CF.pdf.ficha, CF.excel.ficha e CF.pdf.processo.
+     f = resultado de ficha_candidato · eu = linha do jovem em classificacao_processo · cl = classificacao_processo */
+  function montarDados(f, eu, cl, eixo, fotoUrl, logoUrl) {
+    var K = window.CF.classif, g = f.jovem.genero, nomeEmp = (f.empresa && f.empresa.nome) || '';
+    var classificados = (cl.jovens || []).filter(function (j) { return j.posicao; }).length;
+    var mot = eu.motivo ? K.textoMotivo(eu.motivo, g) : (eu.situacao === 'reprovado' ? 'Nota final abaixo de ' + K.corteTxt(f.processo.corte_backup) : null);
+    var det = eu.situacao === 'desistencia' && eu.desistencia && eu.desistencia !== 'FALTOU' ? ' · ' + eu.desistencia.toLowerCase() : (eu.situacao === 'desistencia' && !eu.observacao ? ' · faltou' : '');
+    var areas = (cl.areas || []).map(function (a) { return { nome: a, nota: (eu.areas || {})[a] == null ? null : Number(eu.areas[a]) }; });
+    var comps = (f.competencias || []).map(function (x) { return { nome: x.nome, nota: x.nota == null ? null : Number(x.nota) }; });
+    return {
+      nome: f.jovem.nome, iniciais: iniciais(f.jovem.nome), codigo: f.codigo, idade: idade(f.jovem.nascimento), turma: f.turma,
+      vaga: f.processo.vaga, empresa: nomeEmp, avaliador: f.avaliador_responsavel,
+      nota: eu.nota == null ? null : Number(eu.nota), situacao: eu.situacao, situacaoTxt: K.textoSituacao(eu.situacao, g),
+      posicaoTxt: eu.posicao ? eu.posicao + 'º de ' + classificados + ' candidatos' + (eu.empate ? ' (empate)' : '') : null,
+      motivoTxt: mot ? mot + det : null, motivoObs: eu.observacao || null, motivoPor: eu.motivo_por ? String(eu.motivo_por).toUpperCase() : null,
+      eixoTitulo: eixo === 'competencias' ? 'competências' : 'áreas', itens: eixo === 'competencias' ? comps : areas,
+      areas: areas, competencias: comps, testes: f.testes || [], observacoes: f.observacoes || [],
+      corteAprovado: Number(f.processo.corte_aprovado), corteBackup: Number(f.processo.corte_backup),
+      processoTxt: 'Projeto Gol Jovens Talentos · Processo seletivo' + (f.processo.identificacao ? ' ' + f.processo.identificacao : '') + ' · ' + nomeEmp + ' · ' + f.processo.vaga,
+      fotoUrl: fotoUrl, logoEmpresaUrl: logoUrl
+    };
+  }
+  window.CF.fichaDados = montarDados;
+
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.ficha = async function (area, ctx, procId, partId) {
     var st = { eixo: 'areas', modelo: null };
@@ -191,22 +215,7 @@
     /* ---------- Dados para o PDF e o Excel (mesmo formato) ---------- */
     async function dadosDocumento() {
       var logoUrl = f.empresa && f.empresa.logo_path ? await dados.empresas.urlLogo(f.empresa.logo_path).catch(function () { return null; }) : null;
-      var mot = eu.motivo ? c().textoMotivo(eu.motivo, f.jovem.genero) : (eu.situacao === 'reprovado' ? 'Nota final abaixo de ' + c().corteTxt(f.processo.corte_backup) : null);
-      var det = eu.situacao === 'desistencia' && eu.desistencia && eu.desistencia !== 'FALTOU' ? ' · ' + eu.desistencia.toLowerCase() : (eu.situacao === 'desistencia' && !eu.observacao ? ' · faltou' : '');
-      var areas = (cl.areas || []).map(function (a) { return { nome: a, nota: (eu.areas || {})[a] == null ? null : Number(eu.areas[a]) }; });
-      return {
-        nome: f.jovem.nome, iniciais: iniciais(f.jovem.nome), codigo: f.codigo, idade: idade(f.jovem.nascimento), turma: f.turma,
-        vaga: f.processo.vaga, empresa: nomeEmp, avaliador: f.avaliador_responsavel,
-        nota: eu.nota == null ? null : Number(eu.nota), situacao: eu.situacao, situacaoTxt: c().textoSituacao(eu.situacao, f.jovem.genero),
-        posicaoTxt: eu.posicao ? eu.posicao + 'º de ' + classificados + ' candidatos' + (eu.empate ? ' (empate)' : '') : null,
-        motivoTxt: mot ? mot + det : null, motivoObs: eu.observacao || null, motivoPor: eu.motivo_por ? String(eu.motivo_por).toUpperCase() : null,
-        eixoTitulo: st.eixo === 'competencias' ? 'competências' : 'áreas', itens: itensEixo(),
-        areas: areas, competencias: (f.competencias || []).map(function (x) { return { nome: x.nome, nota: x.nota }; }),
-        testes: f.testes || [], observacoes: f.observacoes || [],
-        corteAprovado: Number(f.processo.corte_aprovado), corteBackup: Number(f.processo.corte_backup),
-        processoTxt: 'Projeto Gol Jovens Talentos · Processo seletivo' + (f.processo.identificacao ? ' ' + f.processo.identificacao : '') + ' · ' + nomeEmp + ' · ' + f.processo.vaga,
-        fotoUrl: fotoUrl, logoEmpresaUrl: logoUrl
-      };
+      return montarDados(f, eu, cl, st.eixo, fotoUrl, logoUrl);
     }
     async function gerar(tipo, botao) {
       var texto = botao.innerHTML; botao.disabled = true; botao.innerHTML = 'Gerando…';
