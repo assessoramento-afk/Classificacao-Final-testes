@@ -11,9 +11,9 @@
   // Menu de cada perfil: [rota, texto, ícone]
   var esc = ui.esc;
   var MENUS = {
-    admin: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'],
+    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'],
             ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
-    avaliador: [['painel', 'Painel', 'painel'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
+    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
                 ['banco', 'Banco de testes', 'banco']],
     empresa: [['portal', 'Resultados', 'portal']]
   };

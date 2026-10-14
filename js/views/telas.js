@@ -27,12 +27,16 @@
     var p = ctx.perfil;
     var primeiroNome = String(p.nome || '').split(' ')[0] || '';
     var blocos = p.perfil === 'admin'
-      ? [['Configurações', 'Empresas, avaliadores, banco de testes e padrões dos processos.', 'Disponível', '#/config'],
+      ? [['Avaliar', 'Presença, grupos e notas das turmas, pelo celular ou computador, também sem internet.', 'Disponível', '#/avaliar'],
+         ['Processos', 'Processos seletivos de cada empresa, classificação, PDF e Excel.', 'Disponível', '#/processos'],
+         ['Acompanhamento', 'Jovens aprovados pelas empresas: avaliações a cada 3 meses e contratação.', 'Disponível', '#/acompanhamento'],
+         ['Agenda', 'Datas das turmas, pré-reservas e bloqueios.', 'Disponível', '#/agenda'],
+         ['Cadastros', 'Jovens e turmas dos processos seletivos.', 'Disponível', '#/cadastros'],
          ['Banco de testes', 'Áreas, testes e competências em cards.', 'Disponível', '#/banco'],
-         ['Cadastros', 'Jovens e turmas dos processos seletivos.', 'Fase 2'],
-         ['Processos', 'Processos seletivos de cada empresa.', 'Disponível', '#/processos']]
-      : [['Lançamento de notas', 'Pelo celular ou computador, também sem internet.', 'Fase 3'],
-         ['Agenda', 'Consulta das turmas marcadas.', 'Fase 2'],
+         ['Configurações', 'Empresas, avaliadores, modelos de documentos e padrões dos processos.', 'Disponível', '#/config']]
+      : [['Avaliar', 'Presença, grupos e notas das turmas, pelo celular ou computador, também sem internet.', 'Disponível', '#/avaliar'],
+         ['Processos', 'Processos seletivos e classificação.', 'Disponível', '#/processos'],
+         ['Agenda', 'Consulta das turmas marcadas.', 'Disponível', '#/agenda'],
          ['Banco de testes', 'Consulta dos testes e critérios de avaliação.', 'Disponível', '#/banco']];
     area.innerHTML = cabecalho('Olá, ' + primeiroNome + '!', 'Bem-vindo(a) ao sistema Classificação Final do Projeto Gol Jovens Talentos.') +
       '<div class="grade">' + blocos.map(function (b) {
@@ -47,10 +51,11 @@
     var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);
     if (m && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias'].indexOf(m[1]) >= 0) { window.location.replace('#/config/' + m[1]); return; }
     if (m && m[1] === 'jovens') { window.CF.telas.jovensTodos(area); return; }
+    if (m && m[1] === 'turmas') { window.CF.telas.turmasTodas(area); return; }
     area.innerHTML = cabecalho('Cadastros', 'Jovens e turmas dos processos seletivos') +
       '<div class="cards-cfg">' +
         '<a class="cfg" href="#/cadastros/jovens" style="--cor:var(--c-aval)" data-card="jovens"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg></span><div><b>Jovens</b><small>Todos os jovens cadastrados e o histórico de processos de cada um. O cadastro é feito dentro de cada processo.</small></div></a>' +
-        '<div class="cfg em-breve-cfg" style="--cor:var(--c-area)"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div><b>Turmas</b><small>Crachás, lista de presença por dia e termos: use o <b>Kit da turma</b> na tela de jovens de cada processo.</small></div></div>' +
+        '<a class="cfg" href="#/cadastros/turmas" style="--cor:var(--c-area)" data-card="turmas"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div><b>Turmas</b><small>Todas as turmas, com datas e jovens. Cada turma abre o Kit da turma: crachás, lista de presença por dia, termos e materiais.</small></div></a>' +
       '</div>';
   };
 })();

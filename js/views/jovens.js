@@ -44,7 +44,8 @@
   window.CF.telas.jovensProcesso = async function (area, ctx, procId) {
     var admin = ctx.perfil.perfil === 'admin';
     area.innerHTML = '<a class="voltar" href="#/processos/' + esc(procId) + '">← Processo</a><div id="jv"><div class="girando" style="margin:30px auto"></div></div>';
-    var st = { turma: null, busca: '', incompletos: /[?&]incompletos/.test(window.location.hash) };
+    var mt = (window.location.hash || '').match(/[?&]turma=([0-9a-z-]{8,})/i);   // vindo de Cadastros › Turmas
+    var st = { turma: mt ? mt[1] : null, busca: '', incompletos: /[?&]incompletos/.test(window.location.hash) };
     var p, ag, emp, parts, cfg, contagem = {};
     async function carregar() {
       var r = await Promise.all([dados.processos.obter(procId), dados.agenda.carregarTudo(), dados.jovens.doProcesso(procId), dados.config.carregar(), dados.jovens.todasParticipacoes()]);

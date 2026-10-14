@@ -1150,3 +1150,28 @@ table.pt-rk td { padding: 10px 8px; border-bottom: 1px solid var(--borda-2); ver
   .pt-cont { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pt-filtros .entrada { margin-left: 0; max-width: none; width: 100%; }
 }
+
+.tt-hoje { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--laranja); color: #fff; font-size: 11px; font-weight: 700; }
+
+/* ---------- Gráficos (tela inicial) ---------- */
+.gf-topo { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.gf-topo h1 { font-size: 26px; margin: 0; } .gf-topo p { margin: 4px 0 0; }
+.gf-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.gf-emp { min-height: 36px; max-width: 220px; }
+.gf-kpis { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.gf-k { padding: 14px 16px; border-left: 5px solid var(--c); }
+.gf-k b { display: block; font-size: 28px; } .gf-k span { color: var(--texto-2); font-size: 13px; } .gf-k small { display: block; color: var(--texto-3); font-size: 12px; margin-top: 2px; }
+.gf-l1 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
+.gf-l2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.gf-l2b { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gf-g { padding: 16px 18px; min-width: 0; }
+.gf-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.gf-cab h2 { font-size: 15px; margin: 0; } .gf-cab p { margin: 2px 0 0; color: var(--texto-3); font-size: 12.5px; }
+.gf-cab .btn { flex: none; }
+.gf-svg { overflow-x: auto; }
+.gf-lst { list-style: none; margin: 0; padding: 0; }
+.gf-lst li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--borda-2); font-size: 13.5px; }
+.gf-lst small { display: block; color: var(--texto-3); font-size: 12px; }
+.gf-hoje { color: var(--laranja); font-weight: 700; }
+@media (max-width: 1100px) { .gf-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .gf-l1, .gf-l2 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .gf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
