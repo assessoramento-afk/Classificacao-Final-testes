@@ -69,6 +69,15 @@
 
   /* Monta os dados de um candidato no formato usado por CF.pdf.ficha, CF.excel.ficha e CF.pdf.processo.
      f = resultado de ficha_candidato · eu = linha do jovem em classificacao_processo · cl = classificacao_processo */
+  function dataCurta(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function diasTurma(datas) {   // ['2026-11-17','2026-11-18'] → "17 e 18/11/2026"
+    var ds = (datas || []).map(function (x) { return String(x).slice(0, 10); });
+    if (!ds.length) return '';
+    var fim = dataCurta(ds[ds.length - 1]);
+    if (ds.length === 1) return fim;
+    var mesmoMes = ds.every(function (x) { return x.slice(0, 7) === ds[0].slice(0, 7); });
+    return ds.slice(0, -1).map(function (x) { return mesmoMes ? x.slice(8, 10) : dataCurta(x).slice(0, 5); }).join(', ') + ' e ' + fim;
+  }
   function montarDados(f, eu, cl, eixo, fotoUrl, logoUrl) {
     var K = window.CF.classif, g = f.jovem.genero, nomeEmp = (f.empresa && f.empresa.nome) || '';
     var classificados = (cl.jovens || []).filter(function (j) { return j.posicao; }).length;
@@ -76,14 +85,37 @@
     var det = eu.situacao === 'desistencia' && eu.desistencia && eu.desistencia !== 'FALTOU' ? ' · ' + eu.desistencia.toLowerCase() : (eu.situacao === 'desistencia' && !eu.observacao ? ' · faltou' : '');
     var areas = (cl.areas || []).map(function (a) { return { nome: a, nota: (eu.areas || {})[a] == null ? null : Number(eu.areas[a]) }; });
     var comps = (f.competencias || []).map(function (x) { return { nome: x.nome, nota: x.nota == null ? null : Number(x.nota) }; });
+    var compsOrd = comps.slice().sort(function (a, b) { return (b.nota == null ? -1 : b.nota) - (a.nota == null ? -1 : a.nota); });
+    var areasOrd = areas.slice().sort(function (a, b) { return (b.nota == null ? -1 : b.nota) - (a.nota == null ? -1 : a.nota); });
+    var datas = f.turma_datas || [], semNotas = !(f.testes || []).some(function (t) { return t.lancadas > 0; });
+    var desistTxt = null;
+    if (eu.situacao === 'desistencia') {
+      desistTxt = K.textoMotivo('desistiu', g) + '.';
+      var falta = (f.faltas || [])[0] || (f.desistencia && f.desistencia.dia);
+      if (falta) {
+        var n = datas.map(function (x) { return String(x).slice(0, 10); }).indexOf(String(falta).slice(0, 10));
+        desistTxt += ' Faltou no dia ' + (n >= 0 ? (n + 1) + ' (' + dataCurta(falta) + ')' : dataCurta(falta));
+        desistTxt += semNotas ? '; não há notas lançadas.' : '.';
+      } else if (semNotas) desistTxt += ' Não há notas lançadas.';
+      var obsD = (f.desistencia && f.desistencia.observacao) || eu.observacao;
+      if (obsD) desistTxt += ' ' + obsD;
+    }
+    var porComp = eixo === 'competencias';
     return {
       nome: f.jovem.nome, iniciais: iniciais(f.jovem.nome), codigo: f.codigo, idade: idade(f.jovem.nascimento), turma: f.turma,
+      turmaTxt: f.turma + (datas.length ? ' · ' + diasTurma(datas) : ''),
       vaga: f.processo.vaga, empresa: nomeEmp, avaliador: f.avaliador_responsavel,
+      avaliadorTxt: f.avaliador_responsavel ? f.avaliador_responsavel + (f.grupo ? ' (GRUPO ' + f.grupo + ')' : '') : null,
       nota: eu.nota == null ? null : Number(eu.nota), situacao: eu.situacao, situacaoTxt: K.textoSituacao(eu.situacao, g),
       posicaoTxt: eu.posicao ? eu.posicao + 'º de ' + classificados + ' candidatos' + (eu.empate ? ' (empate)' : '') : null,
-      motivoTxt: mot ? mot + det : null, motivoObs: eu.observacao || null, motivoPor: eu.motivo_por ? String(eu.motivo_por).toUpperCase() : null,
-      eixoTitulo: eixo === 'competencias' ? 'competências' : 'áreas', itens: eixo === 'competencias' ? comps : areas,
-      areas: areas, competencias: comps, testes: f.testes || [], observacoes: f.observacoes || [],
+      classificadosTxt: eu.posicao ? eu.posicao + 'º de ' + classificados + ' classificados' + (eu.empate ? ' (empate)' : '') : null,
+      motivoTxt: eu.situacao === 'desistencia' ? (mot ? mot + det : null) : mot, motivoObs: eu.situacao === 'desistencia' ? null : (eu.observacao || null),
+      motivoPor: eu.motivo_por ? String(eu.motivo_por).toUpperCase() : null,
+      desistenciaTxt: desistTxt, semNotas: semNotas,
+      eixoTitulo: porComp ? 'competência' : 'área', itens: porComp ? comps : areas,
+      lista: porComp ? { titulo: 'Notas por área', itens: areasOrd } : { titulo: 'Notas por competência', itens: compsOrd },
+      areas: areas, competencias: comps, testes: f.testes || [],
+      observacoes: (f.observacoes || []).map(function (o) { return { teste: o.teste, autor: o.autor, data: o.em ? dataCurta(o.em) : '', texto: o.texto }; }),
       corteAprovado: Number(f.processo.corte_aprovado), corteBackup: Number(f.processo.corte_backup),
       processoTxt: 'Projeto Gol Jovens Talentos · Processo seletivo' + (f.processo.identificacao ? ' ' + f.processo.identificacao : '') + ' · ' + nomeEmp + ' · ' + f.processo.vaga,
       fotoUrl: fotoUrl, logoEmpresaUrl: logoUrl

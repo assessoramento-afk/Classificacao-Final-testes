@@ -8,11 +8,10 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var PRETO = '#272323', LARANJA = '#ee7330', CINZA = '#6f696a', CINZA_CL = '#a7a1a2', LINHA = '#dcd6d5', FUNDO_COL = '#f4f1f0';
+  var PRETO = '#272323', LARANJA = '#ee7330', CINZA = '#6f696a', CINZA_CL = '#a7a1a2', LINHA = '#dcd6d5';
   var COR = { aprovado: '#3FA66B', backup: '#E9B500', reprovado: '#D9534F', desistencia: '#8a8486', incompleto: '#5b6b8a' };
   var COR_TX = { aprovado: '#1f6b40', backup: '#7a5e00', reprovado: '#a5302c', desistencia: '#5f5a5b', incompleto: '#3d4a63' };
   var INST = 'Kolping Estadual de São Paulo · R. Rio Branco, 36 - Cohab II, Carapicuíba - SP, 06326-030 · Telefone: (11) 4183-6018';
-  var CONFIDENCIAL = 'Documento confidencial · uso restrito à empresa e à Kolping Estadual de São Paulo, exclusivamente para este processo seletivo.';
 
   /* ---------- Carregamento (com cache) ---------- */
   var cacheFonte = null, cacheImg = {};
@@ -41,12 +40,14 @@
       im.onload = function () {
         try {
           var w = im.naturalWidth, h = im.naturalHeight, cv = document.createElement('canvas'), cx;
-          if (quadrado) {
-            var lado = Math.min(w, h), alvo = Math.min(lado, 500);
-            cv.width = cv.height = alvo; cx = cv.getContext('2d');
-            cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, alvo, alvo);
-            cx.drawImage(im, (w - lado) / 2, (h - lado) / 2, lado, lado, 0, 0, alvo, alvo);
-            cacheImg[chave] = { url: cv.toDataURL('image/jpeg', 0.9), w: alvo, h: alvo, tipo: 'JPEG' };
+          if (quadrado) {   // recorte ao centro: true = quadrado; número = proporção largura/altura (0.8 = retrato)
+            var prop = quadrado === true ? 1 : quadrado, rw = w, rh = w / prop;
+            if (rh > h) { rh = h; rw = h * prop; }
+            var aw = Math.min(Math.round(rw), 480), ah = Math.round(aw / prop);
+            cv.width = aw; cv.height = ah; cx = cv.getContext('2d');
+            cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, aw, ah);
+            cx.drawImage(im, (w - rw) / 2, (h - rh) * 0.35, rw, rh, 0, 0, aw, ah);
+            cacheImg[chave] = { url: cv.toDataURL('image/jpeg', 0.9), w: aw, h: ah, tipo: 'JPEG' };
           } else {
             var esc = Math.min(1, 900 / Math.max(w, h));
             cv.width = Math.round(w * esc); cv.height = Math.round(h * esc); cx = cv.getContext('2d');
@@ -60,6 +61,8 @@
       im.src = src;
     });
   }
+
+  function imagemRetrato(src) { return imagem(src, 0.8); }
 
   /* ---------- Documento e utilidades ---------- */
   async function novo() {
@@ -78,24 +81,33 @@
     doc.setFontSize(tam); doc.setTextColor(cor || PRETO);
   }
   function n2(v) { return v == null ? '—' : Number(v).toFixed(2).replace('.', ','); }
+  function n1(v) { return v == null ? '—' : Number(v).toFixed(1).replace('.', ','); }
+  function dataBR(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function clarear(hex, f) {
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    function m(c) { return Math.round(c + (255 - c) * f); }
+    return '#' + [m(r), m(g), m(b)].map(function (c) { return ('0' + c.toString(16)).slice(-2); }).join('');
+  }
   function faixa(doc) {
     var h = doc.internal.pageSize.getHeight();
-    doc.setFillColor(PRETO); doc.rect(7, 7, 3.2, h - 14, 'F');
-    doc.setFillColor(LARANJA); doc.rect(10.2, 7, 1.3, h - 14, 'F');
+    doc.setFillColor(PRETO); doc.rect(7, 7, 2.6, h - 14, 'F');
+    doc.setFillColor(LARANJA); doc.rect(9.6, 7, 1.1, h - 14, 'F');
   }
-  function rodape(doc, tipo, pag, total, confidencial) {
-    var w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight(), x0 = 21, x1 = w - 14;
-    var y = h - 15;
-    if (confidencial) { fonte(doc, 'n', 6.6, CINZA); doc.text(CONFIDENCIAL, x0, y - 4.2); }
-    fonte(doc, 'n', 7.2, CINZA);
-    doc.text(tipo, x0, y);
+  /* Rodapé: rótulo à esquerda, data e página à direita, linha laranja e a linha institucional.
+     x0 permite começar o rodapé depois da coluna escura da ficha. */
+  function rodape(doc, rotulo, pag, total, x0) {
+    var w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight(), x1 = w - 10;
+    x0 = x0 || 21;
+    var y = h - 16.5;
+    fonte(doc, 'n', 6.8, CINZA); doc.text(rotulo, x0, y);
     doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' · Página ' + pag + ' de ' + total, x1, y, { align: 'right' });
-    doc.setDrawColor(LARANJA); doc.setLineWidth(0.6); doc.line(x0, y + 2, x1, y + 2);
-    var nome = 'Kolping Estadual de São Paulo', resto = INST.slice(nome.length);
-    fonte(doc, 'b', 7, CINZA); var wn = doc.getTextWidth(nome);
-    fonte(doc, 'n', 7, CINZA); var wr = doc.getTextWidth(resto), xi = (x0 + x1) / 2 - (wn + wr) / 2;
-    fonte(doc, 'b', 7, CINZA); doc.text(nome, xi, y + 6);
-    fonte(doc, 'n', 7, CINZA); doc.text(resto, xi + wn, y + 6);
+    doc.setDrawColor(LARANJA); doc.setLineWidth(0.6); doc.line(x0, y + 2.2, x1, y + 2.2);
+    var nome = 'Kolping Estadual de São Paulo', resto = INST.slice(nome.length), tam = 6.8;
+    for (; tam > 5.4; tam -= 0.2) { fonte(doc, 'b', tam); var a = doc.getTextWidth(nome); fonte(doc, 'n', tam); if (a + doc.getTextWidth(resto) <= x1 - x0) break; }
+    fonte(doc, 'b', tam, CINZA); var wn = doc.getTextWidth(nome);
+    fonte(doc, 'n', tam, CINZA); var wr = doc.getTextWidth(resto), xi = (x0 + x1) / 2 - (wn + wr) / 2;
+    fonte(doc, 'b', tam, CINZA); doc.text(nome, xi, y + 6.4);
+    fonte(doc, 'n', tam, CINZA); doc.text(resto, xi + wn, y + 6.4);
   }
   function imgCaber(doc, im, x, y, wMax, hMax, alinhar) {
     if (!im) return 0;
@@ -104,7 +116,16 @@
     doc.addImage(im.url, im.tipo || 'PNG', xx, y + (hMax - h) / 2, w, h, undefined, 'FAST');
     return w;
   }
-  function arco(doc, cx, cy, r, ini, fim, larg, cor) {   // ângulos em graus, 0 = topo, sentido horário
+  // Caixa da empresa: logo (se houver) ou o nome em laranja, dentro de uma moldura arredondada
+  function caixaEmpresa(doc, im, nome, x, y, w, h) {
+    doc.setDrawColor('#d3cdcc'); doc.setLineWidth(0.3); doc.setFillColor('#ffffff'); doc.roundedRect(x, y, w, h, 2, 2, 'FD');
+    if (im) { imgCaber(doc, im, x + 3, y + 2, w - 6, h - 4, 'centro'); return; }
+    fonte(doc, 'b', 7.6, '#b4501a');
+    var l = doc.splitTextToSize(String(nome || '').toUpperCase(), w - 8).slice(0, 3);
+    var y0 = y + h / 2 - (l.length - 1) * 1.6 + 1;
+    l.forEach(function (t, i) { doc.text(t, x + w / 2, y0 + i * 3.2, { align: 'center' }); });
+  }
+  function arco(doc, cx, cy, r, ini, fim, larg, cor) {
     doc.setDrawColor(cor); doc.setLineWidth(larg); doc.setLineCap('round');
     var passos = Math.max(2, Math.ceil(Math.abs(fim - ini) / 4)), pts = [];
     for (var i = 0; i <= passos; i++) { var a = (ini + (fim - ini) * i / passos - 90) * Math.PI / 180; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
@@ -112,13 +133,7 @@
     doc.lines(d, pts[0][0], pts[0][1], [1, 1], 'S', false);
     doc.setLineCap('butt');
   }
-  function anel(doc, cx, cy, r, nota, cor) {
-    arco(doc, cx, cy, r, 0, 359.9, 3.4, '#e6e1e0');
-    if (nota != null) arco(doc, cx, cy, r, 0, Math.max(2, 360 * Math.min(5, nota) / 5), 3.4, cor);
-    fonte(doc, 'b', 19, PRETO); doc.text(n2(nota), cx, cy + 2.2, { align: 'center' });
-    fonte(doc, 'n', 7, CINZA); doc.text('nota final', cx, cy + 6.8, { align: 'center' });
-  }
-  function radar(doc, cx, cy, R, itens) {
+  function radar(doc, cx, cy, R, itens, cor, xmin, xmax) {
     var n = itens.length; if (n < 3) return;
     function pt(i, v) { var a = -Math.PI / 2 + 2 * Math.PI * i / n, r = R * v / 5; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
     function poli(vals, estilo) {
@@ -126,308 +141,284 @@
       for (var k = 1; k < p.length; k++) d.push([p[k][0] - p[k - 1][0], p[k][1] - p[k - 1][1]]);
       doc.lines(d, p[0][0], p[0][1], [1, 1], estilo, true);
     }
-    doc.setLineWidth(0.2); doc.setDrawColor(LINHA);
+    doc.setLineWidth(0.2); doc.setDrawColor('#dedad9');
     [1, 2, 3, 4, 5].forEach(function (lv) { poli(itens.map(function () { return lv; }), 'S'); });
+    doc.setLineDashPattern([0.6, 0.6], 0); doc.setDrawColor('#9a9495');
     itens.forEach(function (x, i) { var p = pt(i, 5); doc.line(cx, cy, p[0], p[1]); });
+    doc.setLineDashPattern([], 0);
     if (itens.some(function (x) { return x.nota != null; })) {
-      doc.setFillColor('#fbdcca'); doc.setDrawColor(LARANJA); doc.setLineWidth(0.6);
+      doc.setFillColor(clarear(cor, 0.8)); doc.setDrawColor(cor); doc.setLineWidth(0.55);
       poli(itens.map(function (x) { return x.nota == null ? 0 : x.nota; }), 'FD');
-      doc.setFillColor(LARANJA);
-      itens.forEach(function (x, i) { if (x.nota == null) return; var p = pt(i, x.nota); doc.circle(p[0], p[1], 0.75, 'F'); });
+      doc.setFillColor(cor);
+      itens.forEach(function (x, i) { if (x.nota == null) return; var p = pt(i, x.nota); doc.circle(p[0], p[1], 0.65, 'F'); });
     }
-    var muitos = n > 7;
+    var muitos = n > 6;
     itens.forEach(function (x, i) {
-      var p = pt(i, muitos ? 5.95 : 6.2), al = Math.abs(p[0] - cx) < 2 ? 'center' : (p[0] > cx ? 'left' : 'right');
-      var nome = muitos && x.nome.length > 15 ? x.nome.slice(0, 14) + '…' : x.nome;
-      var yy = p[1] + (p[1] < cy - R * 0.5 ? -1.4 : 0.6);
-      fonte(doc, 'medio', muitos ? 5.4 : 6.4, CINZA); doc.text(nome, p[0], yy, { align: al });
-      fonte(doc, 'b', muitos ? 6.4 : 7.4, PRETO); doc.text(n2(x.nota), p[0], yy + (muitos ? 2.7 : 3.1), { align: al });
+      var p = pt(i, 5.55), al = Math.abs(p[0] - cx) < 2 ? 'center' : (p[0] > cx ? 'left' : 'right');
+      var yy = p[1] + (p[1] < cy - R * 0.6 ? -1 : (p[1] > cy + R * 0.6 ? 2.6 : 1));
+      var nome = muitos && x.nome.length > 16 ? x.nome.slice(0, 15) + '…' : x.nome, txt = nome + ' ' + n1(x.nota);
+      fonte(doc, 'b', muitos ? 5 : 5.5, PRETO);
+      var livre = al === 'left' ? (xmax || 999) - p[0] : (al === 'right' ? p[0] - (xmin || -999) : 999);
+      if (doc.getTextWidth(txt) <= livre) { doc.text(txt, p[0], yy, { align: al }); return; }
+      // sem espaço na linha: nome em cima, nota embaixo
+      var l = doc.splitTextToSize(nome, Math.max(10, livre));
+      doc.text(l.concat([n1(x.nota)]), p[0], yy - (l.length > 1 ? 2 : 1), { align: al });
     });
   }
+  function cartao(doc, x, y, w, h, borda, fundo) {
+    doc.setDrawColor(borda || '#dcd6d5'); doc.setLineWidth(0.3); doc.setFillColor(fundo || '#ffffff');
+    doc.roundedRect(x, y, w, h, 2.2, 2.2, 'FD');
+  }
+  function setaVoltar(doc, x, y, cor) {   // seta de retorno desenhada (a fonte não tem o símbolo)
+    doc.setDrawColor(cor); doc.setLineWidth(0.3);
+    doc.line(x + 2.4, y - 2.2, x + 2.4, y - 1); doc.line(x + 2.4, y - 1, x + 0.3, y - 1);
+    doc.line(x + 0.3, y - 1, x + 1.1, y - 1.7); doc.line(x + 0.3, y - 1, x + 1.1, y - 0.3);
+  }
 
-  /* ---------- Ficha do candidato (modelo D) ----------
-     d = { nome, codigo, idade, turma, vaga, empresa, avaliador, nota, situacao, situacaoTxt, posicaoTxt,
-           motivoTxt, motivoObs, motivoPor, eixoTitulo, itens:[{nome,nota}], testes:[{nome,area,nota,avaliador}],
-           observacoes:[{teste,autor,texto}], corteAprovado, corteBackup, processoTxt,
-           foto (imagem), logoEmpresa (imagem), logoKolping (imagem), logoGol (imagem) }
-     Desenha a partir da página atual (primeira = nova página já existente). Devolve as páginas usadas. */
+  /* ---------- Ficha do candidato (modelo D aprovado) ----------
+     d = { nome, iniciais, codigo, turmaTxt, vaga, empresa, nota, situacao, situacaoTxt, classificadosTxt,
+           motivoTxt, desistenciaTxt, semNotas, eixoTitulo ('área' | 'competência'), itens (radar), lista:{titulo, itens},
+           observacoes:[{autor, data, texto}], avaliadorTxt, foto, logoEmpresa, logoKolping, paginaVoltar } */
   function desenharFicha(doc, d) {
     var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
     var paginas = [doc.getCurrentPageInfo().pageNumber];
-    var cor = COR[d.situacao] || COR.desistencia, corTx = COR_TX[d.situacao] || COR_TX.desistencia;
-    var LIM = H - 30;  // limite antes do rodapé
+    var cor = COR[d.situacao] || COR.desistencia, desist = d.situacao === 'desistencia';
+    var LIM = H - 24;
 
-    /* coluna lateral */
-    var cx0 = 14, cw = 56, cmid = cx0 + cw / 2;
-    faixa(doc);
-    doc.setFillColor(FUNDO_COL); doc.rect(cx0, 7, cw, H - 14 - 20, 'F');
-    var y = 13;
-    imgCaber(doc, d.logoKolping, cx0 + 8, y, cw - 16, 9, 'centro'); y += 15;
-    // foto
-    var rf = 17;
+    function colunaEscura(primeira) {
+      doc.setFillColor(PRETO); doc.rect(0, 0, 63, H, 'F');   // coluna escura até o fim da folha
+      doc.setFillColor(PRETO); doc.rect(7, 7, 2.6, H - 14, 'F');
+      doc.setFillColor(LARANJA); doc.rect(9.6, 7, 1.1, H - 14, 'F');
+      if (!primeira) { fonte(doc, 'b', 9, '#ffffff'); doc.text(doc.splitTextToSize(d.nome, 40), 37, 20, { align: 'center' }); }
+    }
+    colunaEscura(true);
+    var cx = 37;
+    // foto (retrato arredondado)
+    var fx = 20, fy = 16, fw = 34, fh = 42.5;
     if (d.foto) {
-      doc.saveGraphicsState(); doc.circle(cmid, y + rf, rf, null); doc.clip(); doc.discardPath();
-      doc.addImage(d.foto.url, 'JPEG', cmid - rf, y, rf * 2, rf * 2, undefined, 'FAST');
-      doc.restoreGraphicsState();
+      doc.saveGraphicsState(); doc.roundedRect(fx, fy, fw, fh, 2.4, 2.4, null); doc.clip(); doc.discardPath();
+      doc.addImage(d.foto.url, 'JPEG', fx, fy, fw, fh, undefined, 'FAST'); doc.restoreGraphicsState();
     } else {
-      doc.setFillColor('#4a3f3d'); doc.circle(cmid, y + rf, rf, 'F');
-      fonte(doc, 'b', 22, '#efe3dd'); doc.text(d.iniciais || '', cmid, y + rf + 3, { align: 'center' });
+      doc.setFillColor('#4a4242'); doc.roundedRect(fx, fy, fw, fh, 2.4, 2.4, 'F');
+      fonte(doc, 'b', 16, '#a49b9b'); doc.text(d.iniciais || 'FOTO', cx, fy + fh / 2 + 2.5, { align: 'center' });
     }
-    doc.setDrawColor('#ffffff'); doc.setLineWidth(1); doc.circle(cmid, y + rf, rf, 'S');
-    y += rf * 2 + 7;
-    fonte(doc, 'b', 11.5, PRETO);
-    var ln = doc.splitTextToSize(d.nome, cw - 8); doc.text(ln, cmid, y, { align: 'center' }); y += ln.length * 4.8;
-    doc.setFont('courier', 'bold'); doc.setFontSize(10); doc.setTextColor(PRETO); doc.text(d.codigo || '', cmid, y + 0.6, { align: 'center' }); y += 6;
-    anel(doc, cmid, y + 15, 13, d.nota, cor); y += 33;
-    // situação
-    doc.setFillColor(clarear(cor, 0.82)); doc.setDrawColor(cor); doc.setLineWidth(0.35);
-    doc.roundedRect(cx0 + 5, y, cw - 10, d.posicaoTxt ? 12.5 : 8.5, 2, 2, 'FD');
-    fonte(doc, 'b', 9.5, corTx); doc.text(d.situacaoTxt, cmid, y + 5.4, { align: 'center' });
-    if (d.posicaoTxt) { fonte(doc, 'medio', 7.3, corTx); doc.text(d.posicaoTxt, cmid, y + 9.6, { align: 'center' }); }
-    y += (d.posicaoTxt ? 12.5 : 8.5) + 6;
-    // dados
-    [['TURMA', d.turma], ['VAGA', d.vaga], ['EMPRESA', d.empresa], ['IDADE', d.idade != null ? d.idade + ' anos' : null], ['AVALIADOR RESPONSÁVEL', d.avaliador]]
-      .forEach(function (x) {
-        if (!x[1]) return;
-        fonte(doc, 'b', 5.8, CINZA_CL); doc.text(x[0], cx0 + 6, y);
-        fonte(doc, 'b', 8, PRETO); var l = doc.splitTextToSize(String(x[1]), cw - 12); doc.text(l, cx0 + 6, y + 3.6);
-        y += 3.6 + l.length * 3.5 + 2.6;
-      });
-    // logos de baixo
-    var yb = H - 14 - 20 - 26;
-    if (d.logoEmpresa) {
-      fonte(doc, 'b', 5.6, CINZA_CL); doc.text('EMPRESA', cmid, yb - 1.5, { align: 'center' });
-      imgCaber(doc, d.logoEmpresa, cx0 + 8, yb, cw - 16, 12, 'centro');
-    }
-    imgCaber(doc, d.logoGol, cx0 + 8, yb + 14, cw - 16, 11, 'centro');
+    var y = fy + fh + 6.5;
+    fonte(doc, 'b', 11, '#ffffff');
+    var ln = doc.splitTextToSize(d.nome, 40); doc.text(ln, cx, y, { align: 'center' }); y += ln.length * 4.5 + 1;
+    if (!desist) {
+      var r = 12.7, ccy = y + r + 3;
+      arco(doc, cx, ccy, r, 0, 359.9, 3, '#4a4242');
+      if (d.nota != null) arco(doc, cx, ccy, r, 0, Math.max(2, 360 * Math.min(5, d.nota) / 5), 3, cor);
+      fonte(doc, 'b', 19, '#ffffff'); doc.text(n2(d.nota), cx, ccy + 2.4, { align: 'center' });
+      y = ccy + r + 7;
+    } else { y += 2; }
+    // pílula da situação
+    fonte(doc, 'b', 8, '#ffffff'); var st = String(d.situacaoTxt || '').toUpperCase(), pw = doc.getTextWidth(st) + 9;
+    doc.setFillColor(cor); doc.roundedRect(cx - pw / 2, y - 3.7, pw, 6, 3, 3, 'F'); doc.text(st, cx, y + 0.5, { align: 'center' });
+    y += 8;
+    if (d.classificadosTxt) { fonte(doc, 'n', 7.8, '#cfc8c8'); doc.text(d.classificadosTxt, cx, y, { align: 'center' }); y += 3; }
+    y += 7;
+    [['Código', d.codigo], ['Turma', d.turmaTxt], ['Vaga', d.vaga], ['Empresa', d.empresa]].forEach(function (x) {
+      if (!x[1]) return;
+      fonte(doc, 'n', 7, '#9d9596'); doc.text(x[0], 19, y);
+      fonte(doc, 'b', 7.4, '#ffffff'); var l = doc.splitTextToSize(String(x[1]), 40); doc.text(l, 19, y + 3.4);
+      y += 3.4 + l.length * 3.2 + 2.6;
+    });
 
     /* conteúdo da direita */
-    var x0 = cx0 + cw + 7, x1 = W - 14, wd = x1 - x0;
-    y = 15;
-    fonte(doc, 'b', 15, PRETO); doc.text('Ficha do candidato', x0, y);
-    if (d.paginaVoltar) {
-      fonte(doc, 'medio', 7.5, '#b4501a'); var tv = 'Voltar à classificação', wv = doc.getTextWidth(tv);
-      doc.text(tv, x1, y - 1, { align: 'right' }); doc.link(x1 - wv, y - 4.5, wv, 5, { pageNumber: d.paginaVoltar });
+    var x0 = 71, x1 = W - 8.5, wd = x1 - x0;
+    function cabecalho() {
+      imgCaber(doc, d.logoKolping, x0, 13, 40, 9, 'esq');
+      fonte(doc, 'n', 7.2, CINZA);
+      doc.text(doc.splitTextToSize('Ficha do candidato · Projeto Gol Jovens Talentos', 50), x0 + 69, 16.5, { align: 'center' });
+      caixaEmpresa(doc, d.logoEmpresa, d.empresa, x1 - 32, 12, 32, 12.2);
+      doc.setDrawColor(PRETO); doc.setLineWidth(0.6); doc.line(x0, 27, x1, 27);
     }
-    fonte(doc, 'n', 8, CINZA); var lp = doc.splitTextToSize(d.processoTxt || '', wd); doc.text(lp, x0, y + 5);
-    y += 5 + lp.length * 3.5; doc.setDrawColor(PRETO); doc.setLineWidth(0.5); doc.line(x0, y, x1, y); y += 6;
-
-    function titulo(t) { fonte(doc, 'b', 10, PRETO); doc.text(t, x0, y); y += 4.5; }
-    function garantir(alt, repetirTitulo) {
+    cabecalho();
+    y = 29.5;
+    function nova(alt) {
       if (y + alt <= LIM) return;
-      doc.addPage(); paginas.push(doc.getCurrentPageInfo().pageNumber); faixa(doc);
-      x0 = 21; x1 = W - 14; wd = x1 - x0; y = 16;
-      fonte(doc, 'b', 9, CINZA); doc.text(d.nome + ' · ' + (d.codigo || '') + ' · continuação', x0, y); y += 3;
-      doc.setDrawColor(LINHA); doc.setLineWidth(0.3); doc.line(x0, y, x1, y); y += 6;
-      if (repetirTitulo) titulo(repetirTitulo);
+      doc.addPage(); paginas.push(doc.getCurrentPageInfo().pageNumber); colunaEscura(false); cabecalho(); y = 29.5;
     }
 
-    // motivo
-    if (d.motivoTxt) {
-      fonte(doc, 'n', 8, PRETO);
-      var lo = d.motivoObs ? doc.splitTextToSize(d.motivoObs, wd - 10) : [];
-      var alt = 9 + lo.length * 3.6 + (d.motivoPor ? 4 : 0);
-      doc.setFillColor(clarear(cor, 0.88)); doc.rect(x0, y, wd, alt, 'F');
-      doc.setFillColor(cor); doc.rect(x0, y, 1.4, alt, 'F');
-      fonte(doc, 'b', 9, corTx); doc.text(d.motivoTxt, x0 + 5, y + 5.5);
-      if (lo.length) { fonte(doc, 'n', 8, PRETO); doc.text(lo, x0 + 5, y + 10); }
-      if (d.motivoPor) { fonte(doc, 'n', 6.8, CINZA); doc.text('Aplicado por ' + d.motivoPor, x0 + 5, y + alt - 2); }
-      y += alt + 6;
+    if (desist) {
+      fonte(doc, 'n', 8, PRETO); var ld = doc.splitTextToSize(d.desistenciaTxt || 'Candidato desistiu do processo seletivo.', wd - 9);
+      var hd = 10 + ld.length * 3.6;
+      cartao(doc, x0, y, wd, hd); fonte(doc, 'b', 8.5, PRETO); doc.text('Situação', x0 + 4.5, y + 5.5);
+      fonte(doc, 'n', 8, PRETO); doc.text(ld, x0 + 4.5, y + 10.3); y += hd + 2.5;
     }
-
-    // desempenho: radar + barras
-    titulo('Desempenho por ' + d.eixoTitulo);
-    var muitosItens = d.itens.length > 7, rr = muitosItens ? 19 : 20, rcx = x0 + (muitosItens ? 34 : 31), rcy = y + rr + 7;
-    radar(doc, rcx, rcy, rr, d.itens);
-    var bx = x0 + 78, bw = x1 - bx, by = y + 3;
-    var passo = 7;
-    d.itens.forEach(function (x, i) {
-      var yy = by + i * passo;
-      fonte(doc, 'medio', 6.4, CINZA); doc.text(doc.splitTextToSize(x.nome, bw - 12)[0], bx, yy + 2);
-      doc.setFillColor('#eeeae9'); doc.roundedRect(bx, yy + 3.2, bw - 12, 1.8, 0.9, 0.9, 'F');
-      if (x.nota != null) { doc.setFillColor(LARANJA); doc.roundedRect(bx, yy + 3.2, Math.max(1.8, (bw - 12) * x.nota / 5), 1.8, 0.9, 0.9, 'F'); }
-      fonte(doc, 'b', 8, PRETO); doc.text(n2(x.nota), x1, yy + 4.9, { align: 'right' });
-    });
-    y = Math.max(rcy + rr + 9, by + d.itens.length * passo + 3);
-    // faixas
-    doc.setDrawColor(LINHA); doc.setLineWidth(0.25); doc.line(x0, y, x1, y); y += 4.2;
-    fonte(doc, 'n', 7, CINZA); doc.text('Faixas do processo:', x0, y);
-    var fx = x0 + doc.getTextWidth('Faixas do processo:') + 3;
-    doc.setFillColor(COR.aprovado); doc.circle(fx + 1, y - 1, 1, 'F');
-    var t1 = 'aprovado a partir de ' + n2(d.corteAprovado); doc.text(t1, fx + 3, y); fx += doc.getTextWidth(t1) + 6;
-    doc.setFillColor(COR.backup); doc.circle(fx + 1, y - 1, 1, 'F');
-    doc.text('backup de ' + n2(d.corteBackup) + ' a ' + n2(d.corteAprovado - 0.01), fx + 3, y);
-    y += 8;
-
-    // notas dos testes
-    garantir(20); titulo('Notas dos testes');
-    var cT = x0, cA = x0 + wd * 0.45, cN = x0 + wd * 0.76, cV = x0 + wd * 0.8;
-    function cabTabela() {
-      doc.setFillColor('#f1eeee'); doc.rect(x0, y - 3.4, wd, 5.4, 'F');
-      fonte(doc, 'b', 6.2, CINZA); doc.text('TESTE', cT + 1.5, y); doc.text('ÁREA', cA, y); doc.text('NOTA', cN, y, { align: 'right' }); doc.text('AVALIADOR', cV, y);
-      y += 5.5;
+    if (!desist || !d.semNotas) {
+      // desempenho (radar) + lista
+      var lista = (d.lista && d.lista.itens) || [];
+      fonte(doc, 'n', 6.6, PRETO);
+      var linhasLista = lista.map(function (x) { return doc.splitTextToSize(x.nome, 47); });
+      var altLista = 12 + linhasLista.reduce(function (a, l) { return a + Math.max(1, l.length) * 3.1 + 2.7; }, 0);
+      var hc = Math.max(73, altLista + 3);
+      var w1 = 67.5, w2 = wd - w1 - 2.4;
+      cartao(doc, x0, y, w1, hc); cartao(doc, x0 + w1 + 2.4, y, w2, hc);
+      fonte(doc, 'b', 8.5, PRETO); doc.text('Desempenho por ' + d.eixoTitulo, x0 + 2.8, y + 5.6);
+      radar(doc, x0 + w1 / 2, y + 6 + Math.min(hc, 73) / 2, 16.5, d.itens || [], cor, x0 + 1.5, x0 + w1 - 1.5);
+      var lx = x0 + w1 + 5.2, lw = w2 - 6;
+      fonte(doc, 'b', 8.5, PRETO); doc.text(d.lista ? d.lista.titulo : '', lx - 2.4, y + 5.6);
+      var ly = y + 11.6;
+      lista.forEach(function (x, i) {
+        var l = linhasLista[i], h = Math.max(1, l.length) * 3.1;
+        fonte(doc, 'n', 6.6, PRETO); doc.text(l, lx, ly + 0.4);
+        fonte(doc, 'b', 7.6, PRETO); doc.text(n1(x.nota), lx + lw - 1, ly + (l.length > 1 ? 1.9 : 0.4), { align: 'right' });
+        ly += h + 2.7; doc.setDrawColor('#e3dedd'); doc.setLineWidth(0.25); doc.line(lx - 0.8, ly - 3.3, lx + lw, ly - 3.3);
+      });
+      y += hc + 2.5;
     }
-    cabTabela();
-    (d.testes || []).forEach(function (t) {
-      fonte(doc, 'b', 7.6, PRETO);
-      var l = doc.splitTextToSize(t.nome, cA - cT - 4), alt = Math.max(6.2, l.length * 3.3 + 2.9);
-      if (y + alt > LIM) { garantir(alt + 10, 'Notas dos testes (continuação)'); cabTabela(); }
-      fonte(doc, 'b', 7.6, PRETO); doc.text(l, cT + 1.5, y);
-      fonte(doc, 'medio', 7, '#2c6c75'); doc.text(doc.splitTextToSize(t.area || '', cN - cA - 12)[0], cA, y);
-      fonte(doc, 'b', 9, PRETO); doc.text(t.nota == null ? '—' : n2(t.nota), cN, y + 0.2, { align: 'right' });
-      fonte(doc, 'n', 7, t.avaliador ? PRETO : CINZA_CL); doc.text(doc.splitTextToSize(t.avaliador || (t.nota == null ? 'não lançada' : '—'), x1 - cV)[0], cV, y);
-      y += alt - 2.6; doc.setDrawColor('#ebe6e5'); doc.setLineWidth(0.2); doc.line(x0, y, x1, y); y += 4.6;
-    });
-    y += 3;
-
-    // observações
+    if (d.motivoTxt && !desist) {
+      fonte(doc, 'n', 8, PRETO); var lm = doc.splitTextToSize(d.motivoTxt, wd - 9);
+      if (d.motivoObs) lm = lm.concat(doc.splitTextToSize(d.motivoObs, wd - 9));
+      var hm = 10.5 + lm.length * 3.6;
+      nova(hm); cartao(doc, x0, y, wd, hm, COR.reprovado, '#fdf1f1');
+      fonte(doc, 'b', 8.5, PRETO); doc.text('Motivo', x0 + 4.5, y + 5.6);
+      fonte(doc, 'n', 8, PRETO); doc.text(lm, x0 + 4.5, y + 10.6); y += hm + 2.5;
+    }
     var obs = d.observacoes || [];
-    garantir(16); titulo('Observações dos avaliadores');
-    if (!obs.length) { fonte(doc, 'n', 7.6, CINZA); doc.text('Nenhuma observação registrada.', x0, y + 1); y += 6; }
-    obs.forEach(function (o) {
-      fonte(doc, 'n', 7.8, PRETO);
-      var l = doc.splitTextToSize(o.texto || '', wd - 8), alt = 8 + l.length * 3.5, wAntes = wd;
-      garantir(alt + 2, 'Observações dos avaliadores (continuação)');
-      if (wd !== wAntes) { fonte(doc, 'n', 7.8, PRETO); l = doc.splitTextToSize(o.texto || '', wd - 8); alt = 8 + l.length * 3.5; }
-      doc.setFillColor('#f7f4f3'); doc.rect(x0, y - 1, wd, alt, 'F');
-      doc.setFillColor(LARANJA); doc.rect(x0, y - 1, 0.9, alt, 'F');
-      fonte(doc, 'b', 6, CINZA); doc.text((o.teste || '') + (o.autor ? ' · ' + o.autor : ''), x0 + 4, y + 3);
-      fonte(doc, 'n', 7.8, PRETO); doc.text(l, x0 + 4, y + 7.2);
-      y += alt + 2.5;
-    });
+    if (obs.length) {
+      // cada observação: "AUTOR, data:" em negrito + texto, no mesmo parágrafo
+      var blocos = obs.map(function (o) {
+        var rot = (o.autor || '') + (o.data ? ', ' + o.data : '') + ': ';
+        fonte(doc, 'b', 7.6); var wr = doc.getTextWidth(rot);
+        fonte(doc, 'n', 7.6);
+        var resto = String(o.texto || ''), primeira = doc.splitTextToSize(resto, wd - 9 - wr)[0] || '';
+        var sobra = resto.slice(primeira.length).trim();
+        return { rot: rot, wr: wr, primeira: primeira, demais: sobra ? doc.splitTextToSize(sobra, wd - 9) : [] };
+      });
+      var ho = 10.5 + blocos.reduce(function (a, b) { return a + (1 + b.demais.length) * 4.1; }, 0);
+      nova(Math.min(ho, 60));
+      cartao(doc, x0, y, wd, ho); fonte(doc, 'b', 8.5, PRETO); doc.text('Observações dos avaliadores', x0 + 4.5, y + 5.6);
+      var oy = y + 10.8;
+      blocos.forEach(function (b) {
+        fonte(doc, 'b', 7.6, PRETO); doc.text(b.rot, x0 + 4.5, oy);
+        fonte(doc, 'n', 7.6, PRETO); doc.text(b.primeira, x0 + 4.5 + b.wr, oy); oy += 4.1;
+        b.demais.forEach(function (l) { doc.text(l, x0 + 4.5, oy); oy += 4.1; });
+      });
+      y += ho + 2.5;
+    }
+    if (d.avaliadorTxt) {
+      nova(15); cartao(doc, x0, y, wd, 14.5); fonte(doc, 'b', 8.5, PRETO); doc.text('Avaliador responsável', x0 + 4.5, y + 5.6);
+      fonte(doc, 'n', 7.8, PRETO); doc.text(d.avaliadorTxt, x0 + 4.5, y + 10.6); y += 17;
+    }
+    nova(14);
+    fonte(doc, 'n', 6.6, CINZA);
+    doc.setFont('P', 'normal');
+    var conf = doc.splitTextToSize('Documento confidencial. Dados compartilhados com autorização do candidato, para uso exclusivo neste processo seletivo.', wd);
+    doc.text(conf, x0, y + 2.5); y += 2.5 + conf.length * 3.2 + 2.5;
+    if (d.paginaVoltar) {
+      setaVoltar(doc, x0, y + 1.1, LARANJA);
+      fonte(doc, 'n', 7.4, LARANJA); doc.text('voltar ao ranking', x0 + 3.6, y + 1.1);
+      doc.link(x0, y - 2.5, 30, 4.8, { pageNumber: d.paginaVoltar });
+    }
     return paginas;
   }
-  function clarear(hex, f) {
-    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
-    function m(c) { return Math.round(c + (255 - c) * f); }
-    return '#' + [m(r), m(g), m(b)].map(function (c) { return ('0' + c.toString(16)).slice(-2); }).join('');
-  }
 
-
-  /* ---------- PDF do processo ----------
-     p = { empresa, logoEmpresaUrl, vaga, identificacao, agradecimento (texto já com as variáveis trocadas),
-           turmas:[{nome, datas:['2026-10-01',...]}], contagem:{aprovado,backup,reprovado,desistencia,incompleto},
-           total, liberadoEm, previa (true se ainda não liberado),
-           ranking:[{posicao, empate, nome, codigo, turma, nota, situacao, situacaoTxt, detalhe}], fichas:[d da ficha, na ordem do ranking] }
-     Páginas: 1 capa (só logos) · 2 agradecimento · 3 informações · ranking (nomes com link para a ficha) · fichas. */
-  function dataBR(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
-  function capa(doc, im) {
-    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  /* ---------- PDF do processo (modelo aprovado) ---------- */
+  function capa(doc, im, empresa) {
+    var W = doc.internal.pageSize.getWidth();
     faixa(doc);
-    imgCaber(doc, im.gol, 21, 62, W - 35, 98, 'centro');
-    var y = H - 78;
-    doc.setDrawColor(LINHA); doc.setLineWidth(0.3); doc.line(48, y - 12, W - 41, y - 12);
-    if (im.empresa) {
-      imgCaber(doc, im.kolping, 30, y, 70, 26, 'centro');
-      doc.setDrawColor(LINHA); doc.line(W / 2 + 3.5, y + 2, W / 2 + 3.5, y + 24);
-      imgCaber(doc, im.empresa, W / 2 + 13, y, 70, 26, 'centro');
-    } else {
-      imgCaber(doc, im.kolping, 50, y, W - 85, 26, 'centro');
-    }
+    imgCaber(doc, im.gol, 60, 85, W - 120, 68, 'centro');
+    fonte(doc, 'b', 15.5, PRETO); doc.text('Projeto Gol Jovens Talentos', W / 2 + 4, 173, { align: 'center' });
+    imgCaber(doc, im.kolping, 46, 185, 74, 16, 'centro');
+    caixaEmpresa(doc, im.empresa, empresa, 133, 187.5, 31, 12);
   }
-  function paginaAgradecimento(doc, texto, im) {
-    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), x0 = 36, x1 = W - 28, wd = x1 - x0;
+  function paginaAgradecimento(doc, texto, im, empresa) {
+    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), x0 = 36, x1 = W - 28, wd = x1 - x0, cxm = W / 2 + 4;
     faixa(doc);
-    imgCaber(doc, im.gol, (W - 30) / 2 + 3.5, 30, 30, 30, 'centro');
     var pars = String(texto || '').split(/\n\s*\n/), linhas = [];
-    fonte(doc, 'n', 13, PRETO);
+    fonte(doc, 'n', 11.5, PRETO);
     pars.forEach(function (par, i) { if (i) linhas.push(''); doc.splitTextToSize(par.replace(/\n/g, ' '), wd).forEach(function (l) { linhas.push(l); }); });
-    var alt = linhas.length * 6.6, y = Math.max(82, (H - alt) / 2 - 8);
-    fonte(doc, 'b', 18, PRETO); doc.text('Agradecimento', W / 2 + 3.5, y - 16, { align: 'center' });
-    doc.setFillColor(LARANJA); doc.rect(W / 2 + 3.5 - 10, y - 11, 20, 0.9, 'F');
-    fonte(doc, 'n', 13, PRETO);
-    linhas.forEach(function (l, i) { doc.text(l, W / 2 + 3.5, y + i * 6.6, { align: 'center' }); });
-    y += alt + 16;
-    fonte(doc, 'b', 10.5, PRETO); doc.text('Coordenação · Kolping Estadual de São Paulo', W / 2 + 3.5, y, { align: 'center' });
-    imgCaber(doc, im.kolping, (W - 60) / 2 + 3.5, H - 52, 60, 18, 'centro');
+    var alt = linhas.length * 6, y = Math.max(80, (H - alt) / 2 - 10);
+    fonte(doc, 'b', 17, PRETO); doc.text('Agradecimento', cxm, y - 16, { align: 'center' });
+    doc.setFillColor(LARANJA); doc.rect(cxm - 10, y - 11, 20, 0.9, 'F');
+    fonte(doc, 'n', 11.5, PRETO);
+    linhas.forEach(function (l, i) { doc.text(l, cxm, y + i * 6, { align: 'center' }); });
+    y += alt + 14;
+    fonte(doc, 'b', 10.5, PRETO); doc.text('Kolping Estadual de São Paulo', cxm, y, { align: 'center' });
+    imgCaber(doc, im.kolping, cxm - 70 / 2 - 22, H - 58, 60, 14, 'centro');
+    caixaEmpresa(doc, im.empresa, empresa, cxm + 18, H - 58 + 1, 31, 12);
   }
-  function cabecalhoDoc(doc, im, titulo, sub) {
-    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 14;
+  function cabecalhoDoc(doc, im, centro, empresa) {
+    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 10;
     faixa(doc);
-    imgCaber(doc, im.kolping, x0, 11, 48, 12, 'esq');
-    if (im.empresa) imgCaber(doc, im.empresa, x1 - 48, 10, 48, 14, 'direita');
-    else imgCaber(doc, im.gol, x1 - 14, 9, 14, 15, 'direita');
-    doc.setDrawColor(PRETO); doc.setLineWidth(0.5); doc.line(x0, 27, x1, 27);
-    fonte(doc, 'b', 16, PRETO); doc.text(titulo, x0, 37);
-    if (sub) { fonte(doc, 'n', 8.5, CINZA); doc.text(sub, x0, 42.5); }
-    return sub ? 50 : 45;
+    imgCaber(doc, im.kolping, x0, 15.5, 40, 9, 'esq');
+    fonte(doc, 'n', 7.4, CINZA); doc.text(centro, (x0 + 44 + x1 - 34) / 2, 21, { align: 'center' });
+    caixaEmpresa(doc, im.empresa, empresa, x1 - 32, 14, 32, 12.5);
+    doc.setDrawColor(PRETO); doc.setLineWidth(0.6); doc.line(x0, 29, x1, 29);
+  }
+  function periodoTxt(datas) {
+    if (!datas.length) return null;
+    var a = datas[0], b = datas[datas.length - 1];
+    if (a === b) return dataBR(a);
+    return a.slice(0, 4) === b.slice(0, 4) ? dataBR(a).slice(0, 5) + ' a ' + dataBR(b) : dataBR(a) + ' a ' + dataBR(b);
+  }
+  function diasTxt(datas, comAno) {   // ['2026-11-17','2026-11-18'] → "17 e 18/11" (ou "17 e 18/11/2026")
+    if (!datas || !datas.length) return '';
+    var ds = datas.map(function (x) { return String(x).slice(0, 10); }), mesmoMes = ds.every(function (x) { return x.slice(0, 7) === ds[0].slice(0, 7); });
+    var fimTxt = dataBR(ds[ds.length - 1]).slice(0, comAno ? 10 : 5);
+    if (ds.length === 1) return fimTxt;
+    var antes = ds.slice(0, -1).map(function (x) { return mesmoMes ? x.slice(8, 10) : dataBR(x).slice(0, 5); });
+    return antes.join(', ') + ' e ' + fimTxt;
   }
   function paginaInfo(doc, p, im) {
-    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 14, wd = x1 - x0;
-    var y = cabecalhoDoc(doc, im, 'Processo seletivo', 'Projeto Gol Jovens Talentos');
+    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 10, wd = x1 - x0;
+    cabecalhoDoc(doc, im, 'Resultado do processo seletivo · Projeto Gol Jovens Talentos', p.empresa);
+    fonte(doc, 'b', 15, PRETO); doc.text('Informações do processo', x0, 39);
     var datas = [];
     (p.turmas || []).forEach(function (t) { (t.datas || []).forEach(function (d) { datas.push(String(d).slice(0, 10)); }); });
     datas.sort();
-    var linhas = [['Empresa', p.empresa], ['Vaga', p.vaga], ['Processo', p.identificacao],
-      ['Período', datas.length ? (datas[0] === datas[datas.length - 1] ? dataBR(datas[0]) : dataBR(datas[0]) + ' a ' + dataBR(datas[datas.length - 1])) : null],
-      ['Turmas', (p.turmas || []).length ? String(p.turmas.length) : null], ['Candidatos', String(p.total)],
-      ['Resultado liberado em', p.liberadoEm ? dataBR(p.liberadoEm) : null]].filter(function (x) { return x[1]; });
+    var linhas = [['Empresa', p.razaoSocial || p.empresa], ['Vaga', p.vaga], ['Processo', p.identificacao], ['Período', periodoTxt(datas)],
+      ['Turmas', (p.turmas || []).map(function (t) { var dt = diasTxt(t.datas); return t.nome + (dt ? ' (' + dt + ')' : ''); }).join(' · ')],
+      ['Jovens avaliados', String(p.total)], ['Liberado em', p.liberadoEm ? dataBR(p.liberadoEm) : (p.previa ? 'ainda não liberado (prévia)' : null)]]
+      .filter(function (x) { return x[1]; });
+    var y = 48.5;
     linhas.forEach(function (x) {
-      fonte(doc, 'n', 9, CINZA); doc.text(x[0], x0, y);
-      fonte(doc, 'b', 10.5, PRETO); var l = doc.splitTextToSize(String(x[1]), wd - 52); doc.text(l, x0 + 50, y);
-      y += Math.max(1, l.length) * 4.6 + 2.2;
-      doc.setDrawColor('#ebe6e5'); doc.setLineWidth(0.2); doc.line(x0, y - 3.6, x1, y - 3.6);
+      fonte(doc, 'n', 9.5, CINZA); doc.text(x[0], x0, y);
+      fonte(doc, 'b', 9.5, PRETO); var l = doc.splitTextToSize(String(x[1]), wd - 44); doc.text(l, x0 + 44, y);
+      y += l.length * 4.6 + 2.9;
     });
-    y += 6;
-    // resultado em números
-    fonte(doc, 'b', 11, PRETO); doc.text('Resultado', x0, y); y += 4;
-    var itens = [['aprovado', 'Aprovados'], ['backup', 'Backup'], ['reprovado', 'Reprovados'], ['desistencia', 'Desistências']];
-    var gw = (wd - 3 * 4) / 4;
+    y += 3;
+    var itens = [['aprovado', 'Aprovados'], ['backup', 'Backup'], ['reprovado', 'Reprovados'], ['desistencia', 'Desistências']], gap = 3, gw = (wd - 3 * gap) / 4;
     itens.forEach(function (it, i) {
-      var x = x0 + i * (gw + 4), c = COR[it[0]];
-      doc.setFillColor(clarear(c, 0.86)); doc.roundedRect(x, y, gw, 22, 2.5, 2.5, 'F');
-      doc.setFillColor(c); doc.rect(x, y + 20.2, gw, 1.8, 'F');
-      fonte(doc, 'b', 20, COR_TX[it[0]]); doc.text(String(p.contagem[it[0]] || 0), x + gw / 2, y + 11, { align: 'center' });
-      fonte(doc, 'medio', 8, COR_TX[it[0]]); doc.text(it[1], x + gw / 2, y + 16.5, { align: 'center' });
+      var x = x0 + i * (gw + gap);
+      cartao(doc, x, y, gw, 21);
+      doc.setFillColor(COR[it[0]]); doc.roundedRect(x, y + 19.6, gw, 1.4, 0.7, 0.7, 'F');
+      fonte(doc, 'b', 16, PRETO); doc.text(String(p.contagem[it[0]] || 0), x + gw / 2, y + 9.5, { align: 'center' });
+      fonte(doc, 'n', 8.4, PRETO); doc.text(it[1], x + gw / 2, y + 15, { align: 'center' });
     });
-    y += 32;
-    // turmas
-    if ((p.turmas || []).length) {
-      fonte(doc, 'b', 11, PRETO); doc.text('Turmas', x0, y); y += 5;
-      p.turmas.forEach(function (t) {
-        fonte(doc, 'b', 9, PRETO); doc.text(t.nome, x0, y);
-        fonte(doc, 'n', 9, CINZA); doc.text((t.datas || []).map(dataBR).join(' e ') || '—', x0 + 50, y);
-        fonte(doc, 'n', 9, CINZA); doc.text((t.candidatos || 0) + ' candidato' + (t.candidatos === 1 ? '' : 's'), x1, y, { align: 'right' });
-        y += 6;
-      });
-      y += 4;
-    }
-    fonte(doc, 'n', 8.5, CINZA);
-    doc.text(doc.splitTextToSize('A classificação a seguir reúne em um único ranking os candidatos de todas as turmas. Clique no nome de um candidato para abrir a ficha dele neste mesmo documento.', wd), x0, y);
+    y += 29;
+    fonte(doc, 'n', 8.4, CINZA);
+    doc.text('Na página seguinte está o ranking final. Clique no nome de um jovem para ir direto à ficha dele.', x0, y);
   }
-  var RK_LINHAS = 30;
+  var RK_LINHAS = 17;
   function paginaRanking(doc, p, im, ini, fim, primeira) {
-    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 14, wd = x1 - x0;
-    var y = cabecalhoDoc(doc, im, primeira ? 'Classificação final' : 'Classificação final (continuação)', p.empresa + ' · ' + p.vaga);
-    var cP = x0, cN = x0 + 16, cT = x0 + wd * 0.58, cNo = x0 + wd * 0.77, cS = x0 + wd * 0.81;
-    doc.setFillColor('#f1eeee'); doc.rect(x0, y - 4, wd, 6, 'F');
-    fonte(doc, 'b', 6.6, CINZA); doc.text('POSIÇÃO', cP + 2, y); doc.text('CANDIDATO', cN, y); doc.text('TURMA', cT, y); doc.text('NOTA', cNo, y, { align: 'right' }); doc.text('SITUAÇÃO', cS, y);
-    y += 5.6;
+    var W = doc.internal.pageSize.getWidth(), x0 = 21, x1 = W - 10, wd = x1 - x0;
+    cabecalhoDoc(doc, im, 'Classificação final · ' + p.vaga, p.empresa);
+    fonte(doc, 'b', 15, PRETO); doc.text(primeira ? 'Classificação final' : 'Classificação final (continuação)', x0, 39);
+    var cP = x0, cN = x0 + 14, cNo = x0 + wd * 0.47, cS = x0 + wd * 0.59;
+    var y = 44;
+    doc.setFillColor('#f0eeed'); doc.rect(x0, y, wd, 7.5, 'F');
+    fonte(doc, 'b', 7.6, PRETO); doc.text('Pos.', cP + 2.5, y + 4.9); doc.text('Jovem', cN, y + 4.9); doc.text('Nota final', cNo, y + 4.9); doc.text('Situação', cS, y + 4.9);
+    y += 7.5;
     var links = [];
     for (var i = ini; i < fim; i++) {
-      var r = p.ranking[i], c = COR[r.situacao] || COR.desistencia, h = 7.3;
-      doc.setFillColor(c); doc.rect(x0, y - 4.4, 1.2, h - 0.8, 'F');
-      fonte(doc, 'b', 9.5, PRETO); doc.text(r.posicao ? r.posicao + 'º' : '—', cP + 4, y);
-      fonte(doc, 'b', 8.6, '#b4501a'); var nome = doc.splitTextToSize(r.nome, cT - cN - 4)[0]; doc.text(nome, cN, y - 0.3);
+      var r = p.ranking[i], c = COR[r.situacao] || COR.desistencia, h = r.detalhe ? 13.6 : 12.3;
+      doc.setFillColor(c); doc.rect(x0, y, 0.9, h, 'F');
+      var yc = y + h / 2;
+      fonte(doc, 'b', 8.6, PRETO); doc.text(r.posicao ? r.posicao + 'º' : '—', cP + 5, yc + 1, { align: 'center' });
+      fonte(doc, 'b', 8.4, PRETO); var nome = doc.splitTextToSize(r.nome, cNo - cN - 8)[0]; doc.text(nome, cN, yc - 0.6);
       var wn = doc.getTextWidth(nome);
-      doc.setDrawColor('#e8b89c'); doc.setLineWidth(0.15); doc.line(cN, y + 0.5, cN + wn, y + 0.5);
-      doc.setFont('courier', 'bold'); doc.setFontSize(7); doc.setTextColor(CINZA); doc.text(r.codigo || '', cN, y + 3);
-      fonte(doc, 'n', 8, PRETO); doc.text(doc.splitTextToSize(r.turma || '', cNo - cT - 14)[0], cT, y);
-      fonte(doc, 'b', 9.5, PRETO); doc.text(r.nota == null ? '—' : n2(r.nota), cNo, y, { align: 'right' });
-      if (r.empate) { fonte(doc, 'n', 6, CINZA); doc.text('empate', cNo, y + 3, { align: 'right' }); }
-      fonte(doc, 'b', 8, COR_TX[r.situacao] || CINZA); doc.text(r.situacaoTxt, cS, y);
-      if (r.detalhe) { fonte(doc, 'n', 6.4, CINZA); doc.text(doc.splitTextToSize(r.detalhe, x1 - cS)[0], cS, y + 3); }
-      links.push({ i: i, x: cN, y: y - 3.6, w: Math.max(wn, 30), h: 7 });
-      y += h; doc.setDrawColor('#ebe6e5'); doc.setLineWidth(0.2); doc.line(x0, y - 3.9, x1, y - 3.9);
-    }
-    // legenda
-    if (fim === p.ranking.length) {
-      y += 3; fonte(doc, 'n', 7, CINZA);
-      var lx = x0;
-      [['aprovado', 'Aprovado'], ['backup', 'Backup'], ['reprovado', 'Reprovado'], ['desistencia', 'Desistência']].forEach(function (x) {
-        doc.setFillColor(COR[x[0]]); doc.rect(lx, y - 2.4, 2.6, 2.6, 'F'); doc.text(x[1], lx + 4, y); lx += doc.getTextWidth(x[1]) + 11;
-      });
-      doc.text('· Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.', lx - 4, y);
+      fonte(doc, 'b', 8.4, LARANJA); doc.text('›', cN + wn + 0.8, yc - 0.6);
+      fonte(doc, 'n', 6.6, CINZA); doc.text((r.turma || '') + (r.codigo ? ' · ' + r.codigo : ''), cN, yc + 3.2);
+      fonte(doc, 'b', 8.6, PRETO); doc.text(r.nota == null ? '—' : n2(r.nota), cNo, yc + 1);
+      var st = r.situacaoTxt; fonte(doc, 'b', 7.2, '#ffffff'); var pw = doc.getTextWidth(st) + 7, py = r.detalhe ? yc - 4.4 : yc - 2.6;
+      doc.setFillColor(c); doc.roundedRect(cS, py, pw, 5, 2.5, 2.5, 'F'); doc.text(st, cS + 3.5, py + 3.4);
+      if (r.detalhe) { fonte(doc, 'n', 6.4, CINZA); doc.text(doc.splitTextToSize(r.detalhe, x1 - cS)[0], cS, yc + 4.4); }
+      links.push({ i: i, x: cN, y: yc - 4, w: wn + 4, h: 8.5 });
+      y += h; doc.setDrawColor('#e3dedd'); doc.setLineWidth(0.25); doc.line(x0, y, x1, y);
     }
     return links;
   }
@@ -435,37 +426,36 @@
     var doc = await novo();
     var r = await Promise.all([imagem('assets/img/gol_light.png'), imagem('assets/img/kolping_light.png'), imagem(p.logoEmpresaUrl)]);
     var im = { gol: r[0], kolping: r[1], empresa: r[2] };
-    // fotos de todos (em paralelo, com limite simples)
     var fichas = p.fichas || [];   // mesma ordem do ranking (posição sem ficha = null)
     for (var k = 0; k < fichas.length; k += 8) {
-      await Promise.all(fichas.slice(k, k + 8).map(async function (d) { if (d) d.foto = await imagem(d.fotoUrl, true); }));
+      await Promise.all(fichas.slice(k, k + 8).map(async function (d) { if (d) d.foto = await imagemRetrato(d.fotoUrl); }));
     }
     fichas.forEach(function (d) { if (!d) return; d.logoEmpresa = im.empresa; d.logoKolping = im.kolping; d.logoGol = im.gol; });
 
-    capa(doc, im);                                   // página 1
-    doc.addPage(); paginaAgradecimento(doc, p.agradecimento, im);   // página 2
-    doc.addPage(); paginaInfo(doc, p, im);           // página 3
-    var pagInfo = 3, pagRanking = [], linksRk = [];
+    capa(doc, im, p.empresa);
+    doc.addPage(); paginaAgradecimento(doc, p.agradecimento, im, p.empresa);
+    doc.addPage(); paginaInfo(doc, p, im);
+    var pagInfo = 3, pagRanking = [], linksRk = [], rotulo = {};
+    rotulo[pagInfo] = ['Resultado do processo seletivo', 21];
     for (var i = 0; i < p.ranking.length || i === 0; i += RK_LINHAS) {
-      doc.addPage(); pagRanking.push(doc.getCurrentPageInfo().pageNumber);
-      var ls = paginaRanking(doc, p, im, i, Math.min(p.ranking.length, i + RK_LINHAS), i === 0);
-      ls.forEach(function (l) { l.pagina = doc.getCurrentPageInfo().pageNumber; linksRk.push(l); });
+      doc.addPage(); var pr = doc.getCurrentPageInfo().pageNumber; pagRanking.push(pr); rotulo[pr] = ['Classificação final', 21];
+      paginaRanking(doc, p, im, i, Math.min(p.ranking.length, i + RK_LINHAS), i === 0).forEach(function (l) { l.pagina = pr; linksRk.push(l); });
       if (!p.ranking.length) break;
     }
-    var inicioFicha = [], paginasFicha = [];
+    var inicioFicha = [];
     fichas.forEach(function (d, idx) {
       if (!d) return;
       doc.addPage();
       d.paginaVoltar = pagRanking[Math.floor(idx / RK_LINHAS)] || pagRanking[0];
       inicioFicha[idx] = doc.getCurrentPageInfo().pageNumber;
-      desenharFicha(doc, d).forEach(function (pg) { paginasFicha.push(pg); });
+      desenharFicha(doc, d).forEach(function (pg) { rotulo[pg] = ['Ficha do candidato', 67]; });
     });
-    // links do ranking para as fichas
     linksRk.forEach(function (l) { if (inicioFicha[l.i]) { doc.setPage(l.pagina); doc.link(l.x, l.y, l.w, l.h, { pageNumber: inicioFicha[l.i] }); } });
-    // rodapés (capa e agradecimento sem rodapé)
-    var total = doc.getNumberOfPages(), tipo = 'Processo seletivo · ' + p.empresa + ' · ' + p.vaga + (p.previa ? ' · PRÉVIA (processo ainda não liberado)' : '');
-    for (var pg = 3; pg <= total; pg++) { doc.setPage(pg); rodape(doc, tipo, pg, total, paginasFicha.indexOf(pg) >= 0); }
-    // marcadores (índice lateral do leitor de PDF)
+    var total = doc.getNumberOfPages();
+    for (var pg = 3; pg <= total; pg++) {
+      doc.setPage(pg); var ro = rotulo[pg] || ['Resultado do processo seletivo', 21];
+      rodape(doc, ro[0] + (p.previa ? ' · PRÉVIA (processo ainda não liberado)' : ''), pg, total, ro[1]);
+    }
     try {
       if (doc.outline) {
         doc.outline.add(null, 'Capa', { pageNumber: 1 });
@@ -483,10 +473,10 @@
   /* ---------- Documento: ficha avulsa ---------- */
   async function ficha(d) {
     var doc = await novo();
-    var r = await Promise.all([imagem(d.fotoUrl, true), imagem(d.logoEmpresaUrl), imagem('assets/img/kolping_light.png'), imagem('assets/img/gol_light.png')]);
+    var r = await Promise.all([imagemRetrato(d.fotoUrl), imagem(d.logoEmpresaUrl), imagem('assets/img/kolping_light.png'), imagem('assets/img/gol_light.png')]);
     d.foto = r[0]; d.logoEmpresa = r[1]; d.logoKolping = r[2]; d.logoGol = r[3];
     var pags = desenharFicha(doc, d);
-    pags.forEach(function (p, i) { doc.setPage(p); rodape(doc, 'Ficha do candidato · Projeto Gol Jovens Talentos', i + 1, pags.length, true); });
+    pags.forEach(function (p, i) { doc.setPage(p); rodape(doc, 'Ficha do candidato', i + 1, pags.length, 67); });
     doc.setProperties({ title: 'Ficha · ' + d.nome, subject: 'Projeto Gol Jovens Talentos', author: 'Kolping Estadual de São Paulo', creator: 'Classificação Final' });
     return doc.output('blob');
   }

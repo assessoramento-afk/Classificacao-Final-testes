@@ -191,7 +191,7 @@
       }
       y++;
     }
-    mesclar('H' + y + ':K' + y); c = ws.getCell('H' + y); c.value = 'Desempenho por ' + d.eixoTitulo; fonte(c, 12, true); alto(y, 20); y++;
+    mesclar('H' + y + ':K' + y); c = ws.getCell('H' + y); c.value = 'Desempenho por ' + (d.eixoTitulo === 'competência' ? 'competências' : (d.eixoTitulo === 'área' ? 'áreas' : d.eixoTitulo)); fonte(c, 12, true); alto(y, 20); y++;
     var dsp = desempenhoImg(d.itens || []), dW = 77 * 7.0, dH = dW * dsp.h / dsp.w, linhas = Math.ceil(dH / 20);
     for (i = 0; i < linhas; i++) alto(y + i, 20);
     img(dsp.url, 'png', 7, 0, y - 1, 0, dW, dH); y += linhas;

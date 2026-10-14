@@ -58,7 +58,7 @@
       var mot = j.motivo && j.situacao !== 'incompleto' ? textoMotivo(j.motivo, j.genero) : (j.situacao === 'reprovado' ? 'Nota final abaixo de ' + corteTxt(cl.processo.corte_backup) : '');
       var det = j.situacao === 'desistencia' && j.desistencia && j.desistencia !== 'FALTOU' ? ' · ' + j.desistencia.toLowerCase() : (j.situacao === 'desistencia' && !j.observacao ? ' · faltou' : '');
       ranking.push({ posicao: j.posicao, empate: j.empate, nome: j.nome, codigo: j.codigo, turma: j.turma, nota: j.nota == null ? null : Number(j.nota),
-                     situacao: j.situacao, situacaoTxt: textoSituacao(j.situacao, j.genero), detalhe: mot ? mot + det : '' });
+                     situacao: j.situacao, situacaoTxt: textoSituacao(j.situacao, j.genero), detalhe: mot || '' });
       var f = porId[j.participacao_id];
       fichas.push(f ? window.CF.fichaDados(f, j, cl, 'areas', f.jovem.foto_path ? urls[f.jovem.foto_path] || null : null, logoUrl) : null);
     });
@@ -66,7 +66,7 @@
     var vars = { empresa: emp.nome || '', vaga: pr.vaga || '', processo: pr.identificacao || '', data: new Date(quando).toLocaleDateString('pt-BR') };
     var agr = String(dp.agradecimento || '').replace(/\{(empresa|vaga|processo|data)\}/g, function (m, k) { return vars[k]; });
     return window.CF.pdf.processo({
-      empresa: emp.nome || '', logoEmpresaUrl: logoUrl, vaga: pr.vaga, identificacao: pr.identificacao, agradecimento: agr,
+      empresa: emp.nome || '', razaoSocial: emp.razao_social || '', logoEmpresaUrl: logoUrl, vaga: pr.vaga, identificacao: pr.identificacao, agradecimento: agr,
       turmas: dp.turmas || [], contagem: cont, total: cl.jovens.length, liberadoEm: pr.liberado_em, previa: pr.situacao !== 'liberado',
       ranking: ranking, fichas: fichas
     });
