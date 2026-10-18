@@ -1176,3 +1176,28 @@ table.pt-rk td { padding: 10px 8px; border-bottom: 1px solid var(--borda-2); ver
 .gf-hoje { color: var(--laranja); font-weight: 700; }
 @media (max-width: 1100px) { .gf-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .gf-l1, .gf-l2 { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) { .gf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- Permissões ---------- */
+.pm-aguarda { padding: 14px 18px; border-left: 5px solid var(--laranja); margin-bottom: 14px; }
+.pm-pend { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--borda-2); }
+.pm-pend:last-child { border-bottom: 0; } .pm-pend small { display: block; color: var(--texto-3); font-size: 12px; }
+.pm-pend-b { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .pm-pend-b .entrada { min-height: 36px; max-width: 220px; }
+.pm-tab { padding: 6px 10px; }
+table.pm { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+table.pm th { position: sticky; top: 0; z-index: 1; background: var(--cartao, var(--surface)); font-size: 12px; padding: 10px 8px; border-bottom: 1px solid var(--borda); text-align: center; vertical-align: bottom; min-width: 104px; }
+table.pm th.pm-f, table.pm td.pm-f { text-align: left; min-width: 260px; position: sticky; left: 0; z-index: 2; background: var(--cartao, var(--surface)); }
+table.pm td { padding: 8px; border-bottom: 1px solid var(--borda-2); text-align: center; background: transparent; }
+.pm-f b { display: block; font-size: 13px; } .pm-f small { color: var(--texto-3); font-size: 11.5px; }
+tr.pm-mod td { background: var(--surface-2) !important; font-weight: 700; text-align: left; font-size: 12.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--texto-2); position: static; }
+.pm-sw { width: 50px; height: 26px; border-radius: 999px; border: 0; font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; }
+.pm-sw.on { background: #3FA66B; } .pm-sw.off { background: #D9534F; } .pm-sw[disabled] { opacity: .55; cursor: not-allowed; }
+.pm-sw.alt { outline: 3px solid var(--laranja); outline-offset: 2px; }
+.pm-pes { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pm-pes small { font-weight: 400; color: var(--texto-3); font-size: 11px; }
+.pm-av { width: 30px; height: 30px; border-radius: 50%; background: #4a4242; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.pm-prog { width: 60px; height: 5px; border-radius: 9px; background: var(--surface-2); overflow: hidden; } .pm-prog i { display: block; height: 100%; background: #3FA66B; }
+.pm-perf { background: color-mix(in srgb, #3557e0 7%, transparent) !important; }
+.pm-exc { min-height: 28px; font-size: 11.5px; margin-top: 4px; }
+.pm-exc-t { display: block; font-size: 10.5px; color: #3557e0; font-weight: 700; margin-top: 2px; }
+.pm-sens { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: #fdecea; color: #a5302c; font-size: 10.5px; font-weight: 700; vertical-align: 1px; }
+.pm-barra { position: sticky; bottom: 0; display: flex; justify-content: center; gap: 12px; align-items: center; padding: 12px; background: var(--cartao, var(--surface)); border-top: 2px solid var(--laranja); box-shadow: 0 -6px 18px rgba(0,0,0,.12); border-radius: 12px; z-index: 5; }

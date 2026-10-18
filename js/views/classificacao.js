@@ -218,8 +218,8 @@
           : '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Ao <b>liberar</b>, a empresa passa a ver a classificação final, as fichas, as notas e o gráfico de radar. Os dados ficam travados; só o administrador pode reabrir, com motivo registrado.</span></div>') +
         (admin ? '<div class="bloco-botoes">' +
           (p.situacao === 'andamento' ? '<button type="button" class="btn btn-pri" id="rv-env"' + (podeEnviar ? '' : ' disabled') + '>Enviar para revisão</button>' : '') +
-          (p.situacao === 'revisao' ? '<button type="button" class="btn btn-pri" id="rv-lib" disabled>Liberar para a empresa</button>' : '') +
-          (p.situacao === 'revisao' || p.situacao === 'liberado' ? '<button type="button" class="btn" id="rv-reab">' + (p.situacao === 'liberado' ? 'Reabrir a revisão' : 'Voltar para em andamento') + '</button>' : '') + '</div>' : '');
+          (p.situacao === 'revisao' && window.CF.perm.pode('processos_liberar') ? '<button type="button" class="btn btn-pri" id="rv-lib" disabled>Liberar para a empresa</button>' : '') +
+          ((p.situacao === 'revisao' || p.situacao === 'liberado') && window.CF.perm.pode('processos_reabrir') ? '<button type="button" class="btn" id="rv-reab">' + (p.situacao === 'liberado' ? 'Reabrir a revisão' : 'Voltar para em andamento') + '</button>' : '') + '</div>' : '');
       var conf = area.querySelector('#rv-conf'), lib = area.querySelector('#rv-lib');
       if (conf && lib) conf.addEventListener('change', function () { lib.disabled = !(conf.checked && podeLiberar); });
       var env = area.querySelector('#rv-env');

@@ -105,6 +105,8 @@
     raiz.querySelector('#b-sair').addEventListener('click', sair);
 
     navegar();
+    // permissões: esconde o que a pessoa não pode usar e, se a tela atual não for permitida, volta para uma que seja
+    if (window.CF.perm) window.CF.perm.carregar(p).then(function () { window.CF.perm.aplicarMenu(raiz); if (!window.CF.perm.rotaPermitida(rotaAtual())) navegar(); });
   }
 
   function atualizarUsuario() {
@@ -187,7 +189,9 @@
     var p = estado.perfil;
     var conteudo = document.getElementById('conteudo');
     if (!p || !conteudo) return;
-    var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; }).concat(['conta']).concat(p.perfil === 'empresa' ? [] : ['envios']);
+    var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; })
+      .filter(function (r) { return !window.CF.perm || window.CF.perm.rotaPermitida(r); })
+      .concat(['conta']).concat(p.perfil === 'empresa' ? [] : ['envios']);
     var rota = rotaAtual();
     if (!rota || permitidas.indexOf(rota) < 0) {
       rota = permitidas[0];

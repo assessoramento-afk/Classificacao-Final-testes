@@ -10,6 +10,7 @@
   var TEXTO_PADRAO = 'A Kolping Estadual de São Paulo agradece à {empresa} pela confiança e pela parceria neste processo seletivo para a vaga de {vaga}.\n\n' +
     'Juntos, abrimos portas para que jovens deem o primeiro passo no mundo do trabalho, com oportunidade, preparo e dignidade.';
   var ICONES = {
+    permissoes: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.5"/>',
     empresas: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
     avaliadores: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
     areas: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
@@ -43,6 +44,7 @@
     if (sub === 'termo') return paginaTermo(area);
     if (sub === 'modelos') return paginaModelos(area);
     if (sub === 'saude') return paginaSaude(area);
+    if (sub === 'permissoes') return window.CF.telas.permissoes(area);
     paginaInicial(area);
   };
 
@@ -76,7 +78,8 @@
     area.querySelector('#cfg-cards').innerHTML =
       '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
         card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
-        card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') + '</div></section>' +
+        card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') +
+        (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'aval', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') + '</div></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +

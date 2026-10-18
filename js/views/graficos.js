@@ -124,7 +124,7 @@
   /* ---------- Tela ---------- */
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.painel = async function (area, ctx) {
-    var p = ctx.perfil, admin = p.perfil === 'admin';
+    var p = ctx.perfil, admin = p.perfil === 'admin' && (!window.CF.perm || window.CF.perm.pode('graficos_acomp'));
     var primeiroNome = String(p.nome || '').split(' ')[0] || '';
     var st = { periodo: 'ano', empresa: '' }, base;
     area.innerHTML = '<div id="gf"><div class="girando" style="margin:40px auto"></div></div>';
