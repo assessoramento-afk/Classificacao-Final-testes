@@ -30,6 +30,9 @@
     });
     return r;
   }
+  // Dia aberto na tela: o escolhido no seletor Dia 1 / Dia 2 (vale para a turma, neste aparelho) ou o dia de hoje
+  function diaDaTela(snap) { var e = null; try { e = sessionStorage.getItem('cf_dia_' + snap.turma.id); } catch (x) { /* sem armazenamento */ } return e && snap.dias.indexOf(e) >= 0 ? e : diaAtual(snap); }
+  function escolherDia(snap, d) { try { sessionStorage.setItem('cf_dia_' + snap.turma.id, d); } catch (x) { /* sem armazenamento */ } }
   function presente(snap, pid, dia) { var x = snap.presencas[pid + '|' + dia]; return x ? x.presente : null; }
   function meuId() { return (window.CF.perfilAtual || {}).id; }
 
@@ -113,7 +116,11 @@
      TURMA: passos do dia
      ================================================================ */
   function turmaPassos(area, ctx, snap) {
-    var dia = diaAtual(snap), di = snap.dias.indexOf(dia);
+    var dia = diaDaTela(snap), di = snap.dias.indexOf(dia);
+    var resumoDias = snap.dias.map(function (d, i) {
+      var p2 = snap.jovens.filter(function (j) { return presente(snap, j.id, d) === true; }).length, f2 = snap.jovens.filter(function (j) { return presente(snap, j.id, d) === false; }).length;
+      return 'Dia ' + (i + 1) + ': ' + (p2 + f2 ? p2 + ' presente(s) · ' + f2 + ' falta(s)' : 'a marcar');
+    }).join('  |  ');
     var marc = snap.jovens.filter(function (j) { return presente(snap, j.id, dia) !== null; }).length;
     var pres = snap.jovens.filter(function (j) { return presente(snap, j.id, dia) === true; }).length;
     var nGrupos = {}; snap.jovens.forEach(function (j) { if (j.grupo) nGrupos[j.grupo] = (nGrupos[j.grupo] || 0) + 1; });
@@ -125,16 +132,18 @@
     }
     area.innerHTML = '<a class="voltar" href="#/avaliar">← Avaliar</a>' +
       '<header class="cabecalho"><div><h1>' + esc(snap.turma.nome) + ' · dia ' + (di + 1) + ' de ' + snap.dias.length + '</h1><p>' + esc(snap.empresa.nome + ' · ' + snap.processo.vaga + ' · ' + D.longa(dia)) + '</p></div>' +
-        (navigator.onLine ? '<button type="button" class="btn btn-p" id="tp-atual">⟳ Atualizar</button>' : '') + '</header>' +
+        '<div class="tp-acoes">' + (snap.dias.length > 1 ? '<div class="segmentos" role="group" aria-label="Dia">' + snap.dias.map(function (d, i) { return '<button type="button" data-tdia="' + d + '" aria-pressed="' + (d === dia) + '">Dia ' + (i + 1) + ' · ' + esc(D.curta(d)) + '</button>'; }).join('') + '</div>' : '') +
+        (navigator.onLine ? '<button type="button" class="btn btn-p" id="tp-atual">⟳ Atualizar</button>' : '') + '</div></header>' +
       '<span class="baixado">✓ Disponível sem internet · atualizado às ' + hora(snap.baixado_em) + '</span>' +
       '<div class="passos-d">' +
-        passo(1, ok1, !ok1, 'Presença', marc ? pres + ' presente(s) · ' + (marc - pres) + ' falta(s)' + (marc < snap.jovens.length ? ' · ' + (snap.jovens.length - marc) + ' a marcar' : '') : snap.jovens.length + ' jovens a marcar', '#/avaliar/' + snap.turma.id + '/presenca') +
+        passo(1, ok1, !ok1, 'Presença', snap.dias.length > 1 ? resumoDias : (marc ? pres + ' presente(s) · ' + (marc - pres) + ' falta(s)' + (marc < snap.jovens.length ? ' · ' + (snap.jovens.length - marc) + ' a marcar' : '') : snap.jovens.length + ' jovens a marcar'), '#/avaliar/' + snap.turma.id + '/presenca') +
         passo(2, ok2, ok1 && !ok2, 'Grupos', ok2 ? listaG.length + ' grupo(s) (' + listaG.map(function (g) { return nGrupos[g]; }).join(', ') + ')' : 'Montar os grupos com os presentes do 1º dia', '#/avaliar/' + snap.turma.id + '/grupos') +
         passo(3, ok3, ok2 && !ok3, 'Avaliadores dos grupos', !ok2 ? 'Depois de montar os grupos' : (meus.length ? 'Você: grupo' + (meus.length > 1 ? 's ' : ' ') + meus.join(' e ') : 'Você ainda não escolheu grupos') + (livres.length ? ' · falta escolher: ' + livres.join(', ') : ' · todos os grupos têm avaliador'), ok2 ? '#/avaliar/' + snap.turma.id + '/avaliadores' : null) +
         passo(4, !!snap.turma.concluida_em, ok3 && !snap.turma.concluida_em, 'Lançar notas', ok3 ? notasResumo(snap) : 'Liberado quando todos os grupos tiverem avaliador', ok3 ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
         passo(5, !!snap.turma.concluida_em, false, 'Fechar turma', snap.turma.concluida_em ? 'Concluída em ' + D.completa(snap.turma.concluida_em.slice(0, 10)) + (ctx.perfil.perfil === 'admin' ? ' · o administrador pode reabrir' : '') : 'Conferir pendências e concluir', '#/avaliar/' + snap.turma.id + '/fechar') +
       '</div>' +
       '<div class="bloco-botoes"><a class="btn btn-p" href="#/avaliar/' + snap.turma.id + '/desistencias">Desistências (' + listaDesist(snap).length + ')</a></div>';
+    area.querySelectorAll('[data-tdia]').forEach(function (b) { b.addEventListener('click', function () { escolherDia(snap, b.getAttribute('data-tdia')); turmaPassos(area, ctx, snap); barraSync(area); }); });
     var at = area.querySelector('#tp-atual');
     if (at) at.addEventListener('click', function () { ui.executar(at, 'Atualizando…', async function () { try { var s = await obterTurma(snap.turma.id, true); turmaPassos(area, ctx, s); barraSync(area); ui.toast('Turma atualizada.', 'ok'); } catch (e) { erro(e); } }); });
   }
@@ -143,7 +152,7 @@
      PRESENÇA (funciona sem internet)
      ================================================================ */
   function presenca(area, ctx, snap) {
-    var dia = diaAtual(snap), di = snap.dias.indexOf(dia), busca = '';
+    var dia = diaDaTela(snap), di = snap.dias.indexOf(dia), busca = '';
     function marcar(j, valor) {
       var em = new Date().toISOString();
       snap.presencas[j.id + '|' + dia] = { presente: valor, em: em };
@@ -154,6 +163,7 @@
       '<header class="cabecalho"><div><h1>Presença · ' + esc(snap.turma.nome) + '</h1><p>' + esc(snap.empresa.nome) + ' · dia ' + (di + 1) + ' de ' + snap.dias.length + ' · ' + D.curta(dia) + '</p></div>' +
       (snap.dias.length > 1 ? '<div class="segmentos" role="group" aria-label="Dia">' + snap.dias.map(function (d, i) { return '<button type="button" data-dia="' + d + '" aria-pressed="' + (d === dia) + '">Dia ' + (i + 1) + '</button>'; }).join('') + '</div>' : '') + '</header>' +
       '<div class="resumo-p" id="pr-res"></div>' +
+      (snap.turma.concluida_em ? '' : '<div class="bloco-botoes"><button type="button" class="btn btn-pri" id="pr-todos">✓ Marcar todos presentes</button></div>') +
       '<label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="pr-busca" placeholder="Buscar por nome ou código"></label>' +
       '<div id="pr-lista" class="pr-lista"></div>' +
       '<button type="button" class="fab" id="pr-qr">📷 Ler crachá</button>';
@@ -176,7 +186,16 @@
       });
     }
     area.querySelector('#pr-busca').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
-    area.querySelectorAll('[data-dia]').forEach(function (b) { b.addEventListener('click', function () { dia = b.getAttribute('data-dia'); di = snap.dias.indexOf(dia); presenca(area, ctx, snap); barraSync(area); }); });
+    area.querySelectorAll('[data-dia]').forEach(function (b) { b.addEventListener('click', function () { escolherDia(snap, b.getAttribute('data-dia')); presenca(area, ctx, snap); barraSync(area); }); });
+    var todos = area.querySelector('#pr-todos');
+    if (todos) todos.addEventListener('click', async function () {
+      // só quem ainda não foi marcado neste dia e não tem desistência registrada
+      var alvo = snap.jovens.filter(function (j) { return presente(snap, j.id, dia) === null && !(snap.desistencias || []).some(function (d) { return d.participacao_id === j.id; }); });
+      if (!alvo.length) { ui.toast('Todos já estão marcados neste dia.', 'info'); return; }
+      if (!(await ui.confirmar('Marcar ' + alvo.length + ' jovem(ns) como presente(s)?', 'Vale para o dia ' + (di + 1) + ' (' + D.curta(dia) + '). Quem já está como "Faltou" não muda. Depois é só trocar quem faltou.', 'Marcar presentes', 'Cancelar'))) return;
+      alvo.forEach(function (j) { marcar(j, true); });
+      desenhar(); ui.toast(alvo.length + ' presença(s) marcada(s).', 'ok');
+    });
     area.querySelector('#pr-qr').addEventListener('click', function () {
       lerCracha(snap, function (j) { return { texto: presente(snap, j.id, dia) === true ? 'Já está presente' : 'Marcar presente', acao: function () { marcar(j, true); desenhar(); ui.toast(j.nome + ': presente.', 'ok'); } }; });
     });

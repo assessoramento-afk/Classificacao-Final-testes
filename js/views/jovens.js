@@ -93,7 +93,7 @@
               '<td><span class="cod">' + esc(x.codigo) + '</span></td><td>' + (x.convocacao ? D.completa(x.convocacao) : '—') + '</td>' +
               '<td>' + (f.length ? f.map(function (y) { return ui.pill(y, 'off'); }).join(' ') : ui.pill('Completo', 'sim')) + (contagem[x.jovem_id] > 1 ? ' ' + ui.pill(contagem[x.jovem_id] + 'º processo', 'neu') : '') + '</td>' +
               '<td><div class="acoes"><button type="button" class="btn btn-p" data-termo="' + x.id + '" title="Imprimir termo">🖨</button>' + (aberto ? '<button type="button" class="btn btn-p" data-editar="' + x.id + '">Editar</button>' : '') +
-                (admin && p.situacao === 'montagem' ? '<button type="button" class="btn btn-p btn-perigo" data-remover="' + x.id + '">Remover</button>' : '') + '</div></td></tr>';
+                ((p.situacao === 'montagem' || p.situacao === 'andamento') && window.CF.perm.pode('cadastros_remover') ? '<button type="button" class="btn btn-p btn-perigo" data-remover="' + x.id + '">Tirar do processo</button>' : '') + '</div></td></tr>';
           }).join('') + '</tbody></table></div>' : '<div class="card vazio">' + (st.busca ? 'Nenhum jovem encontrado.' : 'Nenhum jovem nesta turma ainda.' + (aberto ? ' Use "Novo jovem" ou "Importar lista".' : '')) + '</div>');
       carregarFotos(box);
       box.querySelectorAll('[data-turma]').forEach(function (b) { b.addEventListener('click', function () { st.turma = b.getAttribute('data-turma'); desenhar(); }); });
@@ -109,8 +109,9 @@
       box.querySelectorAll('[data-remover]').forEach(function (b) {
         b.addEventListener('click', async function () {
           var x = porId(parts, b.getAttribute('data-remover'));
-          if (!(await ui.confirmar('Tirar ' + x.jovem.nome + ' deste processo?', 'O cadastro do jovem continua no sistema; só a participação neste processo é apagada.', 'Remover', 'Cancelar'))) return;
-          try { await dados.jovens.remover(x.id); ui.toast('Jovem removido do processo.', 'ok'); await recarregar(); } catch (e) { erro(e); }
+          if (!(await ui.confirmar('Tirar ' + x.jovem.nome + ' deste processo?', 'O cadastro do jovem continua no sistema; só a participação neste processo é apagada.' +
+              (p.situacao === 'andamento' ? ' Só é possível se ele ainda não tiver presença, nota ou observação lançada.' : ''), 'Tirar do processo', 'Cancelar'))) return;
+          try { await dados.jovens.remover(x.id); ui.toast('Jovem tirado do processo.', 'ok'); await recarregar(); } catch (e) { erro(e); }
         });
       });
     }
@@ -133,7 +134,7 @@
       var jn = ui.janela({
         titulo: (novo ? 'Novo jovem' : 'Editar jovem') + ' · ' + (porId(ts, pa ? pa.turma_id : st.turma) || {}).nome,
         corpo: '<div class="jovem-topo"><div class="foto-col"><div class="foto-box" id="fj-foto">' + (j.foto_path ? '' : 'SEM FOTO') + '</div>' +
-            '<div class="foto-bts"><button type="button" class="btn btn-p" id="fj-camera">📷 Foto</button><button type="button" class="btn btn-p" id="fj-galeria">🖼 Galeria</button></div></div>' +
+            '<div class="foto-bts"><button type="button" class="btn btn-p" id="fj-camera">📷 Foto</button><button type="button" class="btn btn-p" id="fj-galeria">🖼 Galeria</button>' + (j.foto_path ? '<button type="button" class="btn btn-p btn-perigo" id="fj-semfoto">Remover foto</button>' : '') + '</div></div>' +
           '<div class="jovem-dados"><label class="campo" for="fj-nome"><span>Nome completo <span class="obrig">*</span></span><input class="entrada" id="fj-nome" maxlength="120" value="' + esc(j.nome || '') + '"></label>' +
             '<div class="campo"><span>Gênero <span class="obrig">*</span></span><div class="segmentos seg-genero" role="group" aria-label="Gênero">' + GENEROS.map(function (g) { return '<button type="button" data-gen="' + g[0] + '" aria-pressed="' + (genero === g[0]) + '">' + g[1] + '</button>'; }).join('') + '</div></div>' +
             '<div class="form-grade"><label class="campo" for="fj-nasc"><span>Nascimento</span><input class="entrada" type="date" id="fj-nasc" value="' + esc(j.nascimento || '') + '" max="' + D.hoje() + '"></label>' +
@@ -172,6 +173,16 @@
       }
       el.querySelector('#fj-camera').addEventListener('click', function () { escolherFoto(true); });
       el.querySelector('#fj-galeria').addEventListener('click', function () { escolherFoto(false); });
+      var semFoto = el.querySelector('#fj-semfoto');
+      if (semFoto) semFoto.addEventListener('click', async function () {
+        if (!(await ui.confirmar('Remover a foto?', 'A foto sai do cadastro, da ficha, do crachá e dos PDFs. Dá para colocar outra depois.', 'Remover foto', 'Cancelar'))) return;
+        try {
+          await dados.jovens.removerFoto(j.id, j.foto_path);
+          j.foto_path = null; arquivoFoto = null;
+          el.querySelector('#fj-foto').innerHTML = 'SEM FOTO'; semFoto.remove();
+          ui.toast('Foto removida.', 'ok');
+        } catch (e) { ui.toast(window.CF.api.traduzErro(e), 'erro'); }
+      });
       if (el.querySelector('#fj-imp')) el.querySelector('#fj-imp').addEventListener('click', function () { imprimirTermos([pa]); });
       el.querySelector('#fj-nome').focus();
 
@@ -518,7 +529,7 @@
       var genero = j.genero || '', arquivoFoto = null;
       var jn = ui.janela({ titulo: novo ? 'Novo jovem' : 'Editar jovem',
         corpo: '<div class="jovem-topo"><div class="foto-col"><div class="foto-box" id="fp-foto">' + (j.foto_path ? '' : 'SEM FOTO') + '</div>' +
-            '<div class="foto-bts"><button type="button" class="btn btn-p" id="fp-camera">📷 Foto</button><button type="button" class="btn btn-p" id="fp-galeria">🖼 Galeria</button></div></div>' +
+            '<div class="foto-bts"><button type="button" class="btn btn-p" id="fp-camera">📷 Foto</button><button type="button" class="btn btn-p" id="fp-galeria">🖼 Galeria</button>' + (j.foto_path ? '<button type="button" class="btn btn-p btn-perigo" id="fp-semfoto">Remover foto</button>' : '') + '</div></div>' +
           '<div class="jovem-dados"><label class="campo" for="fp-nome"><span>Nome completo <span class="obrig">*</span></span><input class="entrada" id="fp-nome" maxlength="120" value="' + esc(j.nome || '') + '"></label>' +
             '<div class="campo"><span>Gênero <span class="obrig">*</span></span><div class="segmentos seg-genero" role="group" aria-label="Gênero">' + GENEROS.map(function (g) { return '<button type="button" data-gen="' + g[0] + '" aria-pressed="' + (genero === g[0]) + '">' + g[1] + '</button>'; }).join('') + '</div></div>' +
             '<div class="form-grade"><label class="campo" for="fp-nasc"><span>Nascimento</span><input class="entrada" type="date" id="fp-nasc" value="' + esc(j.nascimento || '') + '" max="' + D.hoje() + '"></label>' +
@@ -553,6 +564,16 @@
       }
       el.querySelector('#fp-camera').addEventListener('click', function () { escolherFoto(true); });
       el.querySelector('#fp-galeria').addEventListener('click', function () { escolherFoto(false); });
+      var semFoto = el.querySelector('#fp-semfoto');
+      if (semFoto) semFoto.addEventListener('click', async function () {
+        if (!(await ui.confirmar('Remover a foto?', 'A foto sai do cadastro, da ficha, do crachá e dos PDFs. Dá para colocar outra depois.', 'Remover foto', 'Cancelar'))) return;
+        try {
+          await dados.jovens.removerFoto(j.id, j.foto_path);
+          j.foto_path = null; arquivoFoto = null;
+          el.querySelector('#fp-foto').innerHTML = 'SEM FOTO'; semFoto.remove();
+          ui.toast('Foto removida.', 'ok');
+        } catch (e) { ui.toast(window.CF.api.traduzErro(e), 'erro'); }
+      });
       el.querySelector('#fp-nome').focus();
     }
   };

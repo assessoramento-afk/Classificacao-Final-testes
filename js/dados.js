@@ -172,6 +172,11 @@
       await q(sb.from('jovens').update({ foto_path: caminho }).eq('id', jovemId).select('id').single());
       return caminho;
     },
+    // Tira a foto do cadastro e apaga o arquivo (se o arquivo não puder ser apagado, a limpeza recolhe depois)
+    removerFoto: async function (jovemId, caminho) {
+      await q(sb.from('jovens').update({ foto_path: null }).eq('id', jovemId).select('id').single());
+      if (caminho) { try { await sb.storage.from('fotos').remove([caminho]); } catch (e) { /* fica para a limpeza */ } }
+    },
     urlFoto: async function (caminho) { if (!caminho) return null; var r = await sb.storage.from('fotos').createSignedUrl(caminho, 3600); return r.error ? null : r.data.signedUrl; }
   };
 
@@ -223,7 +228,9 @@
   var saude = {
     carregar: function (versao) { return q(sb.rpc('saude_sistema', { p_versao_atual: versao || null })); },
     detalhes: function (assinatura) { return q(sb.rpc('detalhes_erro', { p_assinatura: assinatura })); },
-    marcarVistos: function (assinatura) { return q(sb.rpc('marcar_erros_vistos', { p_assinatura: assinatura || null })); }
+    marcarVistos: function (assinatura) { return q(sb.rpc('marcar_erros_vistos', { p_assinatura: assinatura || null })); },
+    resolver: function (assinatura) { return q(sb.rpc('erro_resolver', { p_assinatura: assinatura, p_versao: window.CF_CONFIG.versao })); },
+    resolvidos: function () { return q(sb.rpc('erros_resolvidos_listar')); }
   };
 
   var classificacao = {

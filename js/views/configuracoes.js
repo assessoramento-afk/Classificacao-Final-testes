@@ -196,9 +196,10 @@
           '<button type="button" class="btn-link" id="sd-lim">Ajustar limites do plano</button></p></section>' +
         '<section class="card bloco sd-bloco"><span class="lbl">Erros · ' + sd.erros_hoje + ' hoje · ' + sd.erros_novos + ' novo(s)</span>' +
           ((sd.erros || []).length ? (sd.erros || []).map(function (g, i) {
-            return '<div class="sd-item' + (g.novo ? ' novo' : '') + '"><div class="sd-tx"><b>' + esc(g.mensagem) + '</b><small>' + g.vezes + ' vez(es) · ' + g.aparelhos + ' aparelho(s)' + (g.tipos_aparelho ? ' (' + esc(g.tipos_aparelho) + ')' : '') + ' · tela ' + esc(g.tela || '?') + ' · versão ' + esc(g.versoes || '?') + ' · último ' + new Date(g.ultimo).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
-              '<div class="acoes"><button type="button" class="btn btn-p" data-det="' + i + '">Ver detalhes</button><button type="button" class="btn btn-pri btn-p" data-rel="' + i + '">📋 Copiar relatório para o Claude</button></div></div>';
-          }).join('') + (sd.erros_novos ? '<button type="button" class="btn-link" id="sd-vistos">Marcar todos como vistos</button>' : '') : '<p class="dica" style="margin:0">✓ Nenhum erro nos últimos 30 dias.</p>') + '</section>' +
+            return '<div class="sd-item' + (g.novo ? ' novo' : '') + (g.voltou ? ' sd-voltou' : '') + '"><div class="sd-tx"><b>' + esc(g.mensagem) + '</b>' + (g.voltou ? '<span class="sd-volta">voltou depois de resolvido</span>' : '') + '<small>' + g.vezes + ' vez(es) · ' + g.aparelhos + ' aparelho(s)' + (g.tipos_aparelho ? ' (' + esc(g.tipos_aparelho) + ')' : '') + ' · tela ' + esc(g.tela || '?') + ' · versão ' + esc(g.versoes || '?') + (g.voltou ? ' · resolvido em ' + new Date(g.resolvido_em).toLocaleDateString('pt-BR') + (g.resolvido_versao ? ' (versão ' + esc(g.resolvido_versao) + ')' : '') : '') + ' · último ' + new Date(g.ultimo).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
+              '<div class="acoes"><button type="button" class="btn btn-p" data-det="' + i + '">Ver detalhes</button><button type="button" class="btn btn-pri btn-p" data-rel="' + i + '">📋 Copiar relatório para o Claude</button><button type="button" class="btn btn-p" data-res="' + i + '">✓ Marcar como resolvido</button></div></div>';
+          }).join('') + (sd.erros_novos ? '<button type="button" class="btn-link" id="sd-vistos">Marcar todos como vistos</button>' : '') : '<p class="dica" style="margin:0">✓ Nenhum erro em aberto nos últimos 30 dias.</p>') +
+          (sd.erros_resolvidos ? '<button type="button" class="btn-link" id="sd-resolvidos">Ver resolvidos (' + sd.erros_resolvidos + ')</button>' : '') + '</section>' +
         '<section class="card bloco sd-bloco"><span class="lbl">Envios e aparelhos</span>' +
           (sd.recusados_hoje ? '<div class="sd-item"><div class="sd-tx"><b>' + sd.recusados_hoje + ' lançamento(s) recusado(s) hoje</b><small>' + (sd.recusas_motivos || []).map(function (x) { return esc(x.motivo) + ' (' + x.vezes + ')'; }).join(' · ') + '</small></div></div>' : '') +
           (sd.aparelhos_parados || []).map(function (a) { return '<div class="sd-item"><div class="sd-tx"><b>' + esc(a.pessoa) + ' · ' + esc(a.nome || 'aparelho') + ': ' + a.pendentes + ' item(ns) aguardando desde ' + new Date(a.desde).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</b><small>versão ' + esc(a.versao || '?') + ' · visto ' + new Date(a.visto_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' · peça para abrir o sistema com internet</small></div>' + ui.pill('⏳ parado', 'off') + '</div>'; }).join('') +
@@ -216,6 +217,21 @@
       var el = area.querySelector('#sd');
       el.querySelectorAll('[data-det]').forEach(function (b) { b.addEventListener('click', function () { detalhes(sd.erros[+b.getAttribute('data-det')]); }); });
       el.querySelectorAll('[data-rel]').forEach(function (b) { b.addEventListener('click', function () { copiarRelatorio(sd.erros[+b.getAttribute('data-rel')]); }); });
+      el.querySelectorAll('[data-res]').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          var g = sd.erros[+b.getAttribute('data-res')];
+          if (!(await ui.confirmar('Marcar como resolvido?', 'O erro sai da lista. Se acontecer de novo, volta a aparecer com o aviso "voltou depois de resolvido".', 'Marcar como resolvido', 'Cancelar'))) return;
+          try { await dados.saude.resolver(g.assinatura); if (window.CF.verificarMonitores) window.CF.verificarMonitores(); ui.toast('Erro marcado como resolvido.', 'ok'); carregar(); } catch (e) { erro(e); }
+        });
+      });
+      if (el.querySelector('#sd-resolvidos')) el.querySelector('#sd-resolvidos').addEventListener('click', async function () {
+        try {
+          var l = await dados.saude.resolvidos();
+          ui.janela({ titulo: 'Erros resolvidos', confirmarDescarte: false,
+            corpo: l.length ? l.map(function (x) { return '<div class="sd-det"><b>' + esc(x.mensagem || x.assinatura) + '</b><small style="display:block">' + x.vezes + ' vez(es) antes de resolver · tela ' + esc(x.tela || '?') + ' · resolvido em ' + new Date(x.resolvido_em).toLocaleString('pt-BR') + (x.versao ? ' (versão ' + esc(x.versao) + ')' : '') + (x.por ? ' por ' + esc(x.por) : '') + '</small></div>'; }).join('') : '<p class="dica">Nenhum erro resolvido.</p>',
+            botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
+        } catch (e) { erro(e); }
+      });
       if (el.querySelector('#sd-vistos')) el.querySelector('#sd-vistos').addEventListener('click', async function () { try { await dados.saude.marcarVistos(null); if (window.CF.verificarMonitores) window.CF.verificarMonitores(); carregar(); } catch (e) { erro(e); } });
       el.querySelector('#sd-lim').addEventListener('click', limites);
     }
