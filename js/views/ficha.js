@@ -144,6 +144,7 @@
         dados.config.carregar().catch(function () { return null; })
       ]);
       cl = r[0]; f = r[1];
+      if (window.CF.drive && f && f.empresa) window.CF.drive.definirContexto({ processo_id: procId, empresa: f.empresa.nome || 'SEM EMPRESA', processo: f.processo.vaga + (f.processo.identificacao ? ' · ' + f.processo.identificacao : '') });
       if (r[2] && r[2].modelos_documento && r[2].modelos_documento.ficha_tela) padrao = r[2].modelos_documento.ficha_tela;
       fotoUrl = f.jovem && f.jovem.foto_path ? await dados.jovens.urlFoto(f.jovem.foto_path).catch(function () { return null; }) : null;
     } catch (e) {

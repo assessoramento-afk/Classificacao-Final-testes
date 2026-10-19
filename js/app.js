@@ -186,6 +186,7 @@
 
   function navegar() {
     document.querySelectorAll('.janela-fundo').forEach(function (f) { f.remove(); });
+    if (window.CF.drive) window.CF.drive.definirContexto(null);   // cada tela define a pasta do Drive dos seus downloads
     var p = estado.perfil;
     var conteudo = document.getElementById('conteudo');
     if (!p || !conteudo) return;

@@ -85,6 +85,7 @@
       var r = await Promise.all([dados.classificacao.carregar(procId), window.CF.sb.rpc('empresas_nomes')]);
       c = r[0]; emp = ((r[1] && r[1].data) || []).filter(function (e) { return e.id === c.processo.empresa_id; })[0] || {};
       area.querySelector('.voltar').textContent = '← ' + (emp.nome_fantasia || '') + ' · ' + c.processo.vaga;
+      if (window.CF.drive) window.CF.drive.definirContexto({ processo_id: procId, empresa: emp.nome_fantasia || 'SEM EMPRESA', processo: c.processo.vaga + (c.processo.identificacao ? ' · ' + c.processo.identificacao : '') });
     }
     try { await carregar(); } catch (e) { erro(e); area.querySelector('#cl').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
 
@@ -117,10 +118,27 @@
               '<td><span class="sit">' + textoSituacao(j.situacao, j.genero) + '</span>' + (mot ? '<span class="mot">' + esc(mot + det) + (j.motivo_por ? ' · por ' + esc(j.motivo_por.split(' ')[0]) : '') + '</span>' : '') + '</td>' +
               '<td class="ac"><a class="btn btn-p" href="#/processos/' + procId + '/ficha/' + j.participacao_id + '">Ficha</a>' + (podeMotivo && j.situacao !== 'desistencia' || (podeMotivo && j.motivo === 'desistiu') ? '<button type="button" class="btn btn-p" data-mot="' + j.participacao_id + '">Motivo</button>' : '') + '</td></tr>';
           }).join('') + '</tbody></table></div>' : '<div class="card vazio">Nenhum jovem nesse filtro.</div>') +
-        '<p class="dica">Ordem: aprovados, backups, reprovados e desistências; em cada faixa, da maior para a menor nota. Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.</p>';
+        '<p class="dica">Ordem: aprovados, backups, reprovados e desistências; em cada faixa, da maior para a menor nota. Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.</p>' +
+        '<section class="card bloco" id="cl-drive"><h2 style="font-size:16px;margin:0">Arquivos no Drive</h2><p class="dica" style="margin:0">Carregando…</p></section>';
       ligar();
     }
+    // Arquivos deste processo salvos no Google Drive
+    async function arquivosDrive() {
+      var el = area.querySelector('#cl-drive'); if (!el) return;
+      try {
+        var r = await window.CF.sb.from('arquivos_drive').select('*').eq('processo_id', procId).order('atualizado_em', { ascending: false });
+        if (r.error) throw r.error;
+        var l = r.data || [];
+        el.innerHTML = '<h2 style="font-size:16px;margin:0">Arquivos no Drive</h2>' + (l.length ? '<p class="dica" style="margin:0">' + esc('Classificação Final' + (l[0].caminho || '').split('/').slice(0, 3).join(' / ')) + '</p>' +
+          l.map(function (a) {
+            return '<div class="drv-li"><span>' + (/\.xlsx$/i.test(a.nome) ? '📊' : (/\.png$/i.test(a.nome) ? '🖼' : '📄')) + ' <b>' + esc(a.nome) + '</b><small>' + esc((a.caminho || '').split('/').pop()) + ' · ' + new Date(a.atualizado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</small></span>' +
+              (a.link ? '<a class="btn btn-p" href="' + esc(a.link) + '" target="_blank" rel="noopener">Abrir</a>' : '') + '</div>';
+          }).join('') + (l[0].pasta_id ? '<p style="margin:6px 0 0"><a class="btn btn-p" href="https://drive.google.com/drive/folders/' + esc(l[0].pasta_id) + '" target="_blank" rel="noopener">Abrir a pasta no Drive</a></p>' : '')
+          : '<p class="dica" style="margin:0">Nenhum arquivo deste processo foi salvo no Drive ainda. Ao baixar o PDF, o Excel ou uma ficha, a cópia aparece aqui.</p>');
+      } catch (e) { el.innerHTML = '<h2 style="font-size:16px;margin:0">Arquivos no Drive</h2><p class="dica" style="margin:0">Não foi possível carregar a lista.</p>'; }
+    }
     function ligar() {
+      arquivosDrive();
       var box = area.querySelector('#cl');
       box.querySelectorAll('[data-sit]').forEach(function (b) { b.addEventListener('click', function () { st.sit = st.sit === b.getAttribute('data-sit') ? '' : b.getAttribute('data-sit'); desenhar(); }); });
       var bb = box.querySelector('#cl-busca'); bb.addEventListener('input', function () { st.busca = ui.normalizar(bb.value); var pos = bb.selectionStart; desenhar(); var n = area.querySelector('#cl-busca'); n.focus(); n.setSelectionRange(pos, pos); });

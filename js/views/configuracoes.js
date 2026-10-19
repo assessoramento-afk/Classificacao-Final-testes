@@ -29,7 +29,7 @@
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
   function fmt(n) { return n == null ? '' : Number(n).toFixed(2).replace('.', ','); }
   function numero(v) { var n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; }
-  function subAtual() { var m = (window.location.hash || '').match(/^#\/config\/([a-z]+)/); return m ? m[1] : null; }
+  function subAtual() { var m = (window.location.hash || '').match(/^#\/config\/([a-z-]+)/); return m ? m[1] : null; }
   function cabecalho(titulo, sub) {
     return '<a class="voltar" href="#/config">← Configurações</a><header class="cabecalho"><div><h1>' + esc(titulo) + '</h1><p>' + esc(sub) + '</p></div></header>';
   }
@@ -46,6 +46,7 @@
     if (sub === 'modelos') return paginaModelos(area);
     if (sub === 'saude') return paginaSaude(area);
     if (sub === 'permissoes') return window.CF.telas.permissoes(area);
+    if (sub === 'integracoes') return paginaIntegracoes(area);
     paginaInicial(area);
   };
 
@@ -80,6 +81,7 @@
       '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
         card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
         card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') +
+        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'padrao', 'Integrações', 'Google Drive: cópia de tudo o que é baixado', '') : '') +
         (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'aval', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') + '</div></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
@@ -351,6 +353,48 @@
       });
     });
     previa();
+  }
+
+  /* ---------- Integrações (Google Drive) · só o responsável ---------- */
+  async function paginaIntegracoes(area) {
+    var q = (window.location.hash.split('?')[1] || ''), pr = {};
+    q.split('&').forEach(function (x) { var k = x.split('='); if (k[0]) pr[k[0]] = decodeURIComponent(k[1] || ''); });
+    if (pr.drive === 'ok') ui.toast('Google Drive conectado.', 'ok');
+    if (pr.drive === 'erro') ui.toast('Não foi possível conectar o Drive: ' + (pr.msg || 'erro desconhecido'), 'erro');
+    if (pr.drive) history.replaceState(null, '', '#/config/integracoes');
+    area.innerHTML = cabecalho('Integrações', 'Ligações do sistema com outros serviços') + '<div id="int-drive"><div class="girando" style="margin:20px auto"></div></div>';
+    var box = area.querySelector('#int-drive');
+    async function desenhar() {
+      var st;
+      try { var r = await window.CF.sb.rpc('integracao_drive_status'); if (r.error) throw r.error; st = r.data; }
+      catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
+      box.innerHTML = '<section class="card drv-card" style="--c:' + (st.conectado ? '#3FA66B' : '#8a8486') + '"><span class="drv-ic">📁</span><div style="flex:1;min-width:0">' +
+        (st.conectado
+          ? '<b>Google Drive · conectado</b><small>como ' + esc(st.email || '?') + ' · Drive compartilhado "' + esc(st.drive_nome || '') + '" · desde ' + new Date(st.conectado_em).toLocaleDateString('pt-BR') + '</small>' +
+            '<small>' + (st.arquivos ? 'Último envio: ' + new Date(st.ultimo_envio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' · ' + st.arquivos + ' arquivo(s) salvos' : 'Nenhum arquivo enviado ainda') + '</small>'
+          : '<b>Google Drive</b><small>Não conectado. Os arquivos baixados não estão sendo salvos no Drive.</small><small>Ao clicar, entre com <b>projetogol@kolpingsp.org</b> e autorize.</small>') +
+        '</div><div class="drv-bts">' + (st.conectado ? '<button type="button" class="btn btn-p" id="drv-testar">Testar</button><button type="button" class="btn btn-p btn-perigo" id="drv-sair">Desconectar</button>'
+          : '<button type="button" class="btn btn-pri" id="drv-con">Conectar Google Drive</button>') + '</div></section>' +
+        '<p class="dica">Tudo o que a equipe baixa no sistema (PDFs, planilhas, fichas, históricos e gráficos) também é salvo no Drive compartilhado, em pastas por empresa e processo. Gerar de novo o mesmo documento substitui o anterior; o Drive guarda as versões antigas.</p>';
+      var con = box.querySelector('#drv-con');
+      if (con) con.addEventListener('click', function (ev) {
+        ui.executar(ev.currentTarget, 'Abrindo o Google…', async function () {
+          try { var r = await window.CF.drive.chamar('drive-conectar', { acao: 'inicio' }); window.location.href = r.url; } catch (e) { ui.toast(e.message, 'erro'); }
+        });
+      });
+      var te = box.querySelector('#drv-testar');
+      if (te) te.addEventListener('click', function (ev) {
+        ui.executar(ev.currentTarget, 'Testando…', async function () {
+          try { var r = await window.CF.drive.chamar('drive-salvar', { acao: 'testar' }); ui.toast('Tudo certo: o sistema acessa o Drive "' + r.drive + '".', 'ok'); } catch (e) { ui.toast(e.message, 'erro'); }
+        });
+      });
+      var sa = box.querySelector('#drv-sair');
+      if (sa) sa.addEventListener('click', async function () {
+        if (!(await ui.confirmar('Desconectar o Google Drive?', 'Os arquivos já salvos continuam no Drive. Os próximos downloads deixam de ser copiados até conectar de novo.', 'Desconectar', 'Cancelar'))) return;
+        try { await window.CF.drive.chamar('drive-conectar', { acao: 'desconectar' }); ui.toast('Google Drive desconectado.', 'ok'); desenhar(); } catch (e) { ui.toast(e.message, 'erro'); }
+      });
+    }
+    desenhar();
   }
 
   /* ---------- Texto do e-mail do acompanhamento ---------- */

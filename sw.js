@@ -4,7 +4,7 @@
    Os dados (Supabase) NUNCA são guardados aqui: só os arquivos do app.
    A cada versão nova, o nome do cache muda e o antigo é apagado.
    ===================================================================== */
-var VERSAO = 'cf-4.9.3';
+var VERSAO = 'cf-4.10.0';
 var ARQUIVOS = [
   './',
   'index.html',
@@ -27,6 +27,7 @@ var ARQUIVOS = [
   'js/pdf.js',
   'vendor/exceljs.min.js',
   'js/excel.js',
+  'js/drive.js',
   'assets/fonts/poppins-regular.ttf',
   'assets/fonts/poppins-medium.ttf',
   'assets/fonts/poppins-bold.ttf',
