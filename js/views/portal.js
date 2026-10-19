@@ -154,6 +154,46 @@
     });
   }
 
+  /* ---------- "Preparar e-mail": o sistema NÃO envia; abre no Outlook de quem clicou ---------- */
+  var cfgEmail = null;
+  async function janelaEmail(a, ctx) {
+    if (!cfgEmail) { try { cfgEmail = await window.CF.dados.config.carregar(); } catch (e) { cfgEmail = {}; } }
+    var ms = marcos(a), alvo = ms.filter(function (x) { return x.estado === 'atrasada' || x.estado === 'pendente'; })[0] || ms.filter(function (x) { return x.estado === 'futura'; })[0];
+    if (!alvo) { ui.toast('Não há avaliação pendente para este jovem.', 'info'); return; }
+    var nomeRem = String((ctx.perfil && ctx.perfil.nome) || '').split(' ')[0] || 'Kolping';
+    var vars = {
+      empresa: a.empresa, jovem: a.nome, avaliacao: alvo.marco + ' meses' + (alvo.marco === 12 ? ' (com a informação sobre a contratação)' : ''),
+      aprovado: flex(a.genero, 'aprovado', 'aprovada'), aprovado_em: dataBR(a.aprovado_em),
+      situacao: alvo.estado === 'futura' ? 'estará disponível em ' + dataBR(alvo.vence) : 'está pendente desde ' + dataBR(alvo.vence),
+      link: window.location.origin + window.location.pathname, remetente: nomeRem.toUpperCase()
+    };
+    var texto = String(cfgEmail.texto_email_acomp || window.CF.EMAIL_ACOMP_PADRAO || '').replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; });
+    var para = (a.emails || []).join('; '), assunto = 'Projeto Gol Jovens Talentos · avaliação de ' + alvo.marco + ' meses · ' + a.nome;
+    var jan = ui.janela({
+      titulo: 'E-mail para ' + a.empresa, confirmarDescarte: false,
+      corpo: '<p class="dica" style="margin:0 0 8px">Confira o texto. Nada é enviado pelo sistema: o e-mail abre no seu Outlook para você revisar e enviar.' + (a.contato_kolping ? ' Contato desta empresa: <b>' + esc(a.contato_kolping) + '</b>.' : '') + '</p>' +
+        '<label class="campo"><span>Para</span><input class="entrada" id="em-para" value="' + esc(para) + '" placeholder="e-mail da empresa"></label>' +
+        (para ? '' : '<p class="dica" style="margin:-4px 0 8px;color:#a5302c">A empresa não tem e-mail cadastrado. Preencha acima ou cadastre em Configurações › Empresas.</p>') +
+        '<label class="campo"><span>Assunto</span><input class="entrada" id="em-ass" value="' + esc(assunto) + '"></label>' +
+        '<label class="campo"><span>Texto</span><textarea class="entrada" id="em-txt" data-normal rows="12" style="line-height:1.5">' + esc(texto) + '</textarea></label>',
+      botoes: [{ texto: 'Copiar texto', aoClicar: function (el) { copiar(el.querySelector('#em-txt').value); return false; } },
+               { texto: 'Abrir no programa de e-mail', aoClicar: function (el) { abrir(el, 'mailto'); return false; } },
+               { texto: 'Abrir no Outlook (web)', principal: true, aoClicar: function (el) { abrir(el, 'owa'); return false; } }]
+    });
+    function copiar(t) {
+      try { navigator.clipboard.writeText(t).then(function () { ui.toast('Texto copiado.', 'ok'); }); } catch (e) { ui.toast('Não foi possível copiar.', 'erro'); }
+    }
+    function abrir(el, tipo) {
+      var to = el.querySelector('#em-para').value.trim(), su = el.querySelector('#em-ass').value, bo = el.querySelector('#em-txt').value;
+      if (!to) { ui.toast('Informe o e-mail da empresa.', 'erro'); return; }
+      var url = tipo === 'owa'
+        ? 'https://outlook.office.com/mail/deeplink/compose?to=' + encodeURIComponent(to.replace(/;\s*/g, ',')) + '&subject=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(bo)
+        : 'mailto:' + to.replace(/;\s*/g, ',') + '?subject=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(bo);
+      window.open(url, tipo === 'owa' ? '_blank' : '_self');
+    }
+    return jan;
+  }
+
   /* ================================================================
      PORTAL DA EMPRESA
      ================================================================ */
@@ -307,15 +347,17 @@
           '<input class="entrada" id="ak-busca" type="search" placeholder="Buscar jovem, código ou empresa" value="' + esc(st.busca) + '"></div>' +
           (vis.length ? '<div class="tabela-rolar"><table class="pt-rk"><thead><tr><th>Jovem</th><th>Aprovado em</th><th>Avaliações</th><th>Situação</th><th></th></tr></thead><tbody>' +
             vis.map(function (x, i) {
-              return '<tr style="--c:' + CORR[x.r.cls] + '"><td class="pt-nm pt-barra"><b>' + esc(x.a.nome) + '</b><small>' + esc(x.a.empresa + ' · ' + x.a.vaga + ' · ' + x.a.codigo) + '</small></td>' +
+              return '<tr style="--c:' + CORR[x.r.cls] + '"><td class="pt-nm pt-barra"><b>' + esc(x.a.nome) + '</b><small>' + esc(x.a.empresa + ' · ' + x.a.vaga + ' · ' + x.a.codigo + (x.a.contato_kolping ? ' · contato: ' + x.a.contato_kolping : '')) + '</small></td>' +
                 '<td>' + dataBR(x.a.aprovado_em) + '</td><td>' + trilha(x.a) + '</td>' +
                 '<td style="color:' + CORR[x.r.cls] + ';font-weight:700;font-size:13px">' + esc(x.r.txt) + '</td>' +
-                '<td><button type="button" class="btn btn-p" data-ver="' + x.a.participacao_id + '">Ver</button></td></tr>';
+                '<td><div class="ak-bts"><button type="button" class="btn btn-p" data-ver="' + x.a.participacao_id + '">Ver</button>' +
+                (x.r.cls === 'atrasada' || x.r.cls === 'pendente' ? '<button type="button" class="btn btn-p" data-mail="' + x.a.participacao_id + '">✉ Preparar e-mail</button>' : '') + '</div></td></tr>';
             }).join('') + '</tbody></table></div>' : '<p class="dica" style="margin:6px 0 0">' + (lista.length ? 'Nenhum jovem neste filtro.' : 'Nenhuma empresa informou jovens aprovados ainda.') + '</p>') + '</section>';
       box.querySelectorAll('[data-f]').forEach(function (b) { b.addEventListener('click', function () { st.filtro = b.getAttribute('data-f'); desenhar(); }); });
       var bus = box.querySelector('#ak-busca');
       bus.addEventListener('input', function () { st.busca = bus.value; var pos = bus.selectionStart; desenhar(); var n = box.querySelector('#ak-busca'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { /* ok */ } });
       box.querySelectorAll('[data-ver]').forEach(function (b) { b.addEventListener('click', function () { janelaDetalhe(lista.filter(function (a) { return a.participacao_id === b.getAttribute('data-ver'); })[0]); }); });
+      box.querySelectorAll('[data-mail]').forEach(function (b) { b.addEventListener('click', function () { janelaEmail(lista.filter(function (a) { return a.participacao_id === b.getAttribute('data-mail'); })[0], ctx); }); });
     }
     desenhar();
     atualizarBadge(ctx.perfil);

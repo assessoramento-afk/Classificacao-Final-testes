@@ -138,6 +138,9 @@
           campo('f-cep', 'CEP', e.cep ? e.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '', { ph: '00000-000', modo: 'numeric', max: 9 }) +
           campo('f-resp', 'Responsável', e.responsavel, { ph: 'Nome de quem acompanha o processo' }) +
           campo('f-telresp', 'Telefone do responsável', e.telefone_responsavel, { ph: '(11) 00000-0000', modo: 'tel', max: 15 }) +
+          '<label class="campo"><span>Contato pela Kolping</span><select class="entrada" id="f-contk"><option value="">—</option>' +
+            ['EVERTON', 'RACHEL'].map(function (n) { return '<option value="' + n + '"' + (e.contato_kolping === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') +
+            '</select><small class="dica">Quem envia os e-mails para esta empresa</small></label>' +
           '<div class="campo largo"><span>Logotipo</span><div class="logo-envio"><span class="logo-mini grande" id="f-logo-previa">' + (e.logo_path ? '' : 'Prévia') + '</span>' +
             '<span class="dica" style="flex:1;min-width:180px">PNG ou JPG, de preferência com fundo transparente. Aparece nos PDFs, no Excel e no portal.</span>' +
             '<button type="button" class="btn btn-p" id="f-logo-btn">Escolher arquivo</button></div></div>' +
@@ -219,7 +222,7 @@
         id: e.id, razao_social: v('#f-razao').replace(/\s+/g, ' '), nome_fantasia: v('#f-fantasia').replace(/\s+/g, ' '),
         cnpj: ui.soNumeros(v('#f-cnpj')), telefone: v('#f-tel') || null, email: v('#f-email').toLowerCase() || null,
         endereco: v('#f-end') || null, cidade: (cid[0] || '').trim() || null, uf: /^[A-Z]{2}$/.test(uf) ? uf : null,
-        cep: ui.soNumeros(v('#f-cep')) || null, responsavel: v('#f-resp') || null, telefone_responsavel: v('#f-telresp') || null,
+        cep: ui.soNumeros(v('#f-cep')) || null, responsavel: v('#f-resp') || null, telefone_responsavel: v('#f-telresp') || null, contato_kolping: v('#f-contk') || null,
         situacao_receita: situacao
       };
       if (e.id) obj.ativa = fundo.querySelector('#f-ativa').checked;

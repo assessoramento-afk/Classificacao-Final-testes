@@ -5,10 +5,13 @@
    Nunca coloque aqui a chave secreta (secret / service_role).
    ===================================================================== */
 window.CF_CONFIG = Object.freeze({
-  versao: '4.9.1',
+  versao: '4.9.3',
   supabaseUrl: 'https://nctyfeoifbuloihidabg.supabase.co',
   supabaseKey: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh',
   nomeSistema: 'Classificação Final',
   programa: 'Projeto Gol Jovens Talentos',
-  senhaMinima: 8
+  senhaMinima: 8,
+  // Entrar com contas da Kolping (o provedor precisa estar ligado no Supabase · Authentication)
+  loginGoogle: true,       // @kolpingsp.org
+  loginMicrosoft: false    // @kolping-sp.org.br · ligar depois da configuração no Microsoft Entra
 });

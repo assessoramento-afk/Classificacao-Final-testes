@@ -75,9 +75,12 @@
       '<p style="margin:0;color:var(--texto-2)">O sistema ficou 1 hora sem uso. ' + (navigator.onLine ? 'Há dados aguardando envio, por isso você continua conectado.' : 'Sem internet, você continua conectado e nada foi perdido.') + ' Digite sua senha para continuar.</p>' +
       '<p style="margin:0;font-weight:700">' + ui.esc(p.nome || p.email || '') + '</p>' +
       '<label class="campo" for="bq-senha"><span>Senha</span><input class="entrada" type="password" id="bq-senha" autocomplete="current-password"></label>' +
-      '</div><div class="janela-pe"><button type="button" class="btn btn-pri" id="bq-ok">Desbloquear</button></div></div>';
+      '</div><div class="janela-pe">' + (navigator.onLine && window.CF.contaExterna && window.CF.contaExterna() ? '<button type="button" class="btn" id="bq-sso">Desbloquear com a conta ' + (window.CF.contaExterna() === 'google' ? 'Google' : 'Microsoft') + '</button>' : '') +
+      '<button type="button" class="btn btn-pri" id="bq-ok">Desbloquear</button></div></div>';
     document.body.appendChild(f);
     var inp = f.querySelector('#bq-senha'), bt = f.querySelector('#bq-ok');
+    var bsso = f.querySelector('#bq-sso');   // quem entra com Google/Microsoft pode desbloquear pela conta (os envios pendentes ficam guardados no aparelho)
+    if (bsso) bsso.addEventListener('click', function () { window.CF.auth.entrarCom(window.CF.contaExterna(), bsso); });
     async function tentar() {
       var senha = inp.value; if (!senha) return;
       bt.disabled = true;

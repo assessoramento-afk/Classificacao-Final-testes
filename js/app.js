@@ -280,6 +280,12 @@
     auth.mostrarAcesso(raiz, 'entrar', mensagem || null);
   }
 
+  // Conta usada para entrar: 'google', 'azure' ou null (e-mail e senha)
+  window.CF.contaExterna = function () {
+    var u = estado.sessao && estado.sessao.user; if (!u) return null;
+    var prov = (u.app_metadata && u.app_metadata.provider) || '';
+    return prov === 'google' || prov === 'azure' ? prov : null;
+  };
   sb.auth.onAuthStateChange(function (evento, sessao) {
     // O Supabase recomenda não aguardar chamadas ao banco dentro deste evento
     setTimeout(function () {

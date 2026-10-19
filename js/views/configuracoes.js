@@ -41,6 +41,7 @@
     if (sub === 'notas') return paginaNotas(area);
     if (sub === 'prereserva') return paginaPreReserva(area);
     if (sub === 'agradecimento') return paginaAgradecimento(area);
+    if (sub === 'email-acomp') return paginaEmailAcomp(area);
     if (sub === 'termo') return paginaTermo(area);
     if (sub === 'modelos') return paginaModelos(area);
     if (sub === 'saude') return paginaSaude(area);
@@ -87,7 +88,7 @@
         card('prereserva', 'padrao', 'Pré-reserva da agenda', cfg ? 'Prazo ' + cfg.prazo_pre_reserva_dias + ' dias · aviso ' + cfg.aviso_pre_reserva_dias + ' dia' + (cfg.aviso_pre_reserva_dias === 1 ? '' : 's') + ' antes' : '') +
         '</div></section>' +
       '<section class="grupo"><h2>Documentos</h2><div class="cards-cfg">' +
-        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
+        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'padrao', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
       '<section class="grupo"><h2>Sistema</h2><div class="cards-cfg">' +
         card('saude', 'padrao', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
@@ -348,6 +349,32 @@
       ui.executar(ev.currentTarget, 'Salvando…', async function () {
         try { await dados.config.salvar({ texto_termo_jovem: tj.value.trim(), texto_termo_responsavel: tr.value.trim() }); ui.toast('Texto do termo salvo.', 'ok'); } catch (x) { erro(x); }
       });
+    });
+    previa();
+  }
+
+  /* ---------- Texto do e-mail do acompanhamento ---------- */
+  var EMAIL_PADRAO = window.CF.EMAIL_ACOMP_PADRAO = 'Olá, equipe da {empresa}!\n\nComo parte do acompanhamento do Projeto Gol Jovens Talentos, a avaliação de {avaliacao} de {jovem} ({aprovado} pela empresa em {aprovado_em}) {situacao}.\n\n' +
+    'A avaliação é rápida: uma nota de 1 a 5 e, se quiserem, uma observação. Basta entrar no sistema Classificação Final, em Resultados:\n{link}\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\n{remetente}\nKolping Estadual de São Paulo · (11) 4183-6018';
+  async function paginaEmailAcomp(area) {
+    var cfg = await dados.config.carregar(), VARS = ['empresa', 'jovem', 'avaliacao', 'aprovado', 'aprovado_em', 'situacao', 'link', 'remetente'];
+    var EX = { empresa: 'EMPRESA EXEMPLO', jovem: 'NOME DO JOVEM', avaliacao: '3 meses', aprovado: 'aprovada', aprovado_em: '02/12/2026', situacao: 'está pendente desde 17/03/2027', link: window.location.origin + window.location.pathname, remetente: 'RACHEL' };
+    area.innerHTML = cabecalho('E-mail do acompanhamento', 'Texto usado no botão "Preparar e-mail". O sistema não envia: o e-mail abre no Outlook de quem clicou.') +
+      '<div class="agr-grade"><section class="card bloco" style="gap:12px"><label class="lbl" for="em-texto">Texto</label>' +
+        '<textarea class="entrada" id="em-texto" data-normal rows="14" maxlength="3000" style="line-height:1.6">' + esc(cfg.texto_email_acomp || EMAIL_PADRAO) + '</textarea>' +
+        '<div class="vars"><span class="dica">Inserir:</span>' + VARS.map(function (v) { return '<button type="button" class="chip-var" data-var="' + v + '">{' + v + '}</button>'; }).join('') + '</div>' +
+        '<div class="botoes-fim"><button type="button" class="btn" id="em-padrao">Restaurar texto padrão</button><button type="button" class="btn btn-pri" id="em-salvar">Salvar</button></div></section>' +
+        '<section class="grupo"><span class="lbl">Prévia (exemplo)</span><div class="folha" id="em-previa" style="white-space:pre-line"></div></section></div>';
+    var tx = area.querySelector('#em-texto'), pv = area.querySelector('#em-previa');
+    function previa() { pv.innerHTML = esc(tx.value).replace(/\{(\w+)\}/g, function (m, k) { return EX[k] != null ? '<b>' + esc(EX[k]) + '</b>' : m; }); }
+    tx.addEventListener('input', previa);
+    area.querySelectorAll('[data-var]').forEach(function (b) {
+      b.addEventListener('click', function () { var ins = '{' + b.getAttribute('data-var') + '}', i = tx.selectionStart || tx.value.length, f = tx.selectionEnd || i; tx.value = tx.value.slice(0, i) + ins + tx.value.slice(f); tx.focus(); previa(); });
+    });
+    area.querySelector('#em-padrao').addEventListener('click', async function () { if (await ui.confirmar('Restaurar o texto padrão?', 'O texto atual será substituído (só fica salvo ao clicar em Salvar).', 'Restaurar', 'Cancelar')) { tx.value = EMAIL_PADRAO; previa(); } });
+    area.querySelector('#em-salvar').addEventListener('click', function (ev) {
+      var t = tx.value.trim(); if (t.length < 20) { ui.toast('O texto está muito curto.', 'erro'); return; }
+      ui.executar(ev.currentTarget, 'Salvando…', async function () { try { await dados.config.salvar({ texto_email_acomp: t }); ui.toast('Texto do e-mail salvo.', 'ok'); } catch (x) { erro(x); } });
     });
     previa();
   }
