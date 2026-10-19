@@ -11,10 +11,8 @@
   // Menu de cada perfil: [rota, texto, ícone]
   var esc = ui.esc;
   var MENUS = {
-    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'],
-            ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
-    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'],
-                ['banco', 'Banco de testes', 'banco']],
+    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
+    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['banco', 'Banco de testes', 'banco']],
     empresa: [['portal', 'Resultados', 'portal']]
   };
 
@@ -81,7 +79,6 @@
       var registrar = function () { if (document.hidden || !navigator.onLine) return; try { window.CF.dados.pessoas.registrarAtividade().catch(function () {}); } catch (e) { /* sem registro */ } };
       registrar(); clearInterval(window.__cfAtividade); window.__cfAtividade = setInterval(registrar, 60000);
     }
-    if (p.perfil === 'admin' && window.CF.agendaUtil) setTimeout(window.CF.agendaUtil.atualizarBadge, 600);
     window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 1 hora sem uso. Entre novamente.' } : null); });
 
     var lateral = raiz.querySelector('#lateral'), bMenu = raiz.querySelector('#b-menu');
@@ -190,6 +187,7 @@
     var p = estado.perfil;
     var conteudo = document.getElementById('conteudo');
     if (!p || !conteudo) return;
+    if (rotaAtual() === 'agenda') { window.location.hash = '#/cadastros/turmas'; return; }   // a Agenda agora fica no Google
     var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; })
       .filter(function (r) { return !window.CF.perm || window.CF.perm.rotaPermitida(r); })
       .concat(['conta']).concat(p.perfil === 'empresa' ? [] : ['envios']);

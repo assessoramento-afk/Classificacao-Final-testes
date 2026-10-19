@@ -212,7 +212,7 @@
         var nJ = jovensP.filter(function (x) { return x.turma_id === t.id; }).length;
         if (!nJ) {
           if (!(await ui.confirmar('Excluir a ' + t.nome + '?', 'Os dias dela ficam livres na agenda.', 'Excluir turma', 'Cancelar'))) return;
-          try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); recarregarPainel(); } catch (x) { erro(x); }
+          try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); if (window.CF.agendaG) window.CF.agendaG.sincronizar(true); recarregarPainel(); } catch (x) { erro(x); }
           return;
         }
         var outras = turmas.filter(function (x) { return x.id !== t.id; });
@@ -227,7 +227,7 @@
             try {
               if (op === 'mover') await dados.agenda.excluirTurma(t.id, f.querySelector('#ex-dest').value, false);
               else await dados.agenda.excluirTurma(t.id, null, true);
-              ui.toast('Turma excluída.', 'ok'); recarregarPainel(); return true;
+              ui.toast('Turma excluída.', 'ok'); if (window.CF.agendaG) window.CF.agendaG.sincronizar(true); recarregarPainel(); return true;
             } catch (x) { erro(x); return false; }
           } }] });
       });
@@ -259,9 +259,8 @@
       corpo: '<div class="form-grade"><label class="campo" for="tu-nome"><span>Nome <span class="obrig">*</span></span><input class="entrada" id="tu-nome" maxlength="40" value="' + esc(t ? t.nome : sugestao) + '"></label>' +
         '<div class="campo"><span>Quantos dias?</span><div class="segmentos" role="group" aria-label="Quantos dias"><button type="button" data-qtd="1" aria-pressed="' + (qtd === 1) + '">1 dia</button><button type="button" data-qtd="2" aria-pressed="' + (qtd === 2) + '">2 dias</button></div></div></div>' +
         '<div id="tu-cal" class="cal-escolha"></div><div id="tu-esc"></div>' +
-        '<div class="form-grade"><label class="campo" for="tu-hor"><span>Horário</span><input class="entrada" id="tu-hor" maxlength="60" value="' + esc(t ? t.horario || '' : '08:00 ÀS 17:00') + '"></label>' +
-        '<label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
-        '<p class="dica" style="margin:0">Os dias riscados já estão ocupados por outra turma, pré-reserva ou bloqueio. Fins de semana podem ser escolhidos.</p>',
+        '<div class="form-grade"><label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
+        '<p class="dica" style="margin:0">Riscado: o dia já tem outra turma. Em azul: evento da Google Agenda (só aparece, não impede). Fins de semana podem ser escolhidos.</p>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Criar turma' : 'Salvar turma', principal: true, aoClicar: async function (f) {
         var nome = ui.maiusculas(f.querySelector('#tu-nome').value.trim().replace(/\s+/g, ' ')), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#tu-vagas').value, 10);
         if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
@@ -269,18 +268,29 @@
         if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os 2 dias da turma.', 'erro'); return false; }
         if (isNaN(vagas) || vagas < 1 || vagas > 60) { ui.toast('Vagas entre 1 e 60.', 'erro'); return false; }
         try {
-          await dados.agenda.salvarTurma({ id: t ? t.id : null, processo_id: p.id, nome: nome, horario: f.querySelector('#tu-hor').value, vagas: vagas, datas: escolhidos });
+          var diasH = escolhidos.map(function (d) { var h = horas[d] || { inicio: '08:00', fim: '17:00' }; return { data: d, inicio: h.inicio, fim: h.fim }; });
+          var ruim = diasH.filter(function (d) { return !d.inicio || !d.fim || d.fim <= d.inicio; })[0];
+          if (ruim) { ui.toast('No dia ' + D.curta(ruim.data) + ', o horário de fim precisa ser depois do início.', 'erro'); return false; }
+          await dados.agenda.salvarTurma({ id: t ? t.id : null, processo_id: p.id, nome: nome, vagas: vagas, dias: diasH });
+          if (window.CF.agendaG) window.CF.agendaG.sincronizar(true);
           ui.toast(novo ? 'Turma criada: ' + D.listaDias(escolhidos) + '.' : 'Turma atualizada.', 'ok');
-          if (window.CF.agendaUtil) window.CF.agendaUtil.atualizarBadge();
           aoSalvar(); return true;
         } catch (x) { erro(x); return false; }
       } }]
     });
-    var esc2 = j.elemento.querySelector('#tu-esc');
+    var esc2 = j.elemento.querySelector('#tu-esc'), horas = {};
+    // horário de cada dia (o que já estava salvo, ou 08:00 às 17:00)
+    ag.dias.filter(function (d) { return t && d.turma_id === t.id; }).forEach(function (d) { horas[d.data] = { inicio: String(d.hora_inicio || '08:00').slice(0, 5), fim: String(d.hora_fim || '17:00').slice(0, 5) }; });
     function mostrar(l) {
-      esc2.innerHTML = l.length ? '<div class="aviso aviso-ok">' + ui.icone('ok', 18) + '<span>Escolhido' + (l.length > 1 ? 's' : '') + ': <b>' + esc(D.listaDias(l)) + '</b></span></div>' : '';
+      esc2.innerHTML = l.map(function (d, i) {
+        var h = horas[d] || (horas[d] = { inicio: (horas[l[0]] || {}).inicio || '08:00', fim: (horas[l[0]] || {}).fim || '17:00' });
+        return '<div class="tu-dia"><b>Dia ' + (i + 1) + '</b><span>' + esc(D.longa(d)) + '</span><input class="entrada" type="time" data-hi="' + d + '" value="' + h.inicio + '" aria-label="Início do dia ' + (i + 1) + '"><span>às</span><input class="entrada" type="time" data-hf="' + d + '" value="' + h.fim + '" aria-label="Fim do dia ' + (i + 1) + '"></div>';
+      }).join('');
+      esc2.querySelectorAll('[data-hi]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hi')].inicio = x.value; }); });
+      esc2.querySelectorAll('[data-hf]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hf')].fim = x.value; }); });
     }
-    var cal = window.CF.calendario.escolher(j.elemento.querySelector('#tu-cal'), { max: qtd, selecionados: dias, ocupados: window.CF.agendaUtil.ocupados(ag, t ? t.id : null), aoMudar: mostrar });
+    var cal = window.CF.calendario.escolher(j.elemento.querySelector('#tu-cal'), { max: qtd, selecionados: dias, ocupados: window.CF.agendaUtil.ocupados(ag, t ? t.id : null), eventos: {}, aoMudar: mostrar });
+    if (window.CF.agendaG) window.CF.agendaG.eventosGoogle().then(function (l) { if (!l.length) return; cal.definirEventos(window.CF.agendaG.mapaEventos(l)); });
     mostrar(dias);
     j.elemento.querySelectorAll('[data-qtd]').forEach(function (b) {
       b.addEventListener('click', function () {

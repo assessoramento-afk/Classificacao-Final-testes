@@ -131,8 +131,9 @@
     var box = area.querySelector('#gf');
     try {
       var r = await Promise.all([dados.agenda.carregarTudo(), dados.jovens.todasParticipacoes(),
-        admin ? window.CF.sb.rpc('acomp_listar', { p_proc: null }).then(function (x) { return x.error ? [] : x.data; }) : Promise.resolve([])]);
-      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {} };
+        admin ? window.CF.sb.rpc('acomp_listar', { p_proc: null }).then(function (x) { return x.error ? [] : x.data; }) : Promise.resolve([]),
+        window.CF.agendaG ? window.CF.agendaG.eventosGoogle() : Promise.resolve([])]);
+      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {}, gev: r[3] || [] };
     } catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
     var ag = base.ag, procs = ag.processos || [], empresas = ag.empresas || [];
     function nomeEmp(id) { var e = empresas.filter(function (x) { return x.id === id; })[0]; return e ? (e.nome_fantasia || e.razao_social || '') : ''; }
@@ -191,8 +192,11 @@
       // próximas turmas e indicadores
       var lim = new Date(); lim.setDate(lim.getDate() + 15); var limISO = iso(lim);
       var proximas = turmasF.map(function (x) { return { t: x, ds: diasTurma(x.id), p: ps.filter(function (y) { return y.id === x.processo_id; })[0] }; })
-        .filter(function (x) { return x.ds.length && x.ds[x.ds.length - 1] >= h; }).sort(function (a, b) { return a.ds[0].localeCompare(b.ds[0]); });
-      var em15 = proximas.filter(function (x) { return x.ds[0] <= limISO; });
+        .filter(function (x) { return x.ds.length && x.ds[x.ds.length - 1] >= h; });
+      // eventos criados direto na Google Agenda também aparecem (marcados)
+      if (!st.empresa) (base.gev || []).forEach(function (g) { if ((g.data_fim || g.data_ini) >= h) proximas.push({ g: g, ds: g.data_fim && g.data_fim !== g.data_ini ? [g.data_ini, g.data_fim] : [g.data_ini] }); });
+      proximas.sort(function (a, b) { return a.ds[0].localeCompare(b.ds[0]); });
+      var em15 = proximas.filter(function (x) { return !x.g && x.ds[0] <= limISO; });
       return {
         sit: { andamento: ps.filter(function (x) { return x.situacao === 'andamento'; }).length, montagem: ps.filter(function (x) { return x.situacao === 'montagem'; }).length, revisao: ps.filter(function (x) { return x.situacao === 'revisao'; }).length },
         em15: em15, proximas: proximas.slice(0, 5), avaliados: avaliados, nProcPeriodo: noPeriodo.length, tot: tot, totAll: totAll,
@@ -235,9 +239,10 @@
         '<div class="gf-kpis" style="--n:' + kpis.length + '">' + kpis.map(function (k) { return '<div class="card gf-k" style="--c:' + k[0] + '"><b>' + esc(String(k[1])) + '</b><span>' + esc(k[2]) + '</span><small>' + esc(k[3]) + '</small></div>'; }).join('') + '</div>' +
         '<div class="gf-l1">' + cartao('resultado') + cartao('meses') + '</div>' +
         '<div class="gf-l2' + (admin ? '' : ' gf-l2b') + '">' + cartao('areas') + (admin ? cartao('empresa') : '') +
-          '<section class="card gf-g"><div class="gf-cab"><div><h2>Próximas turmas</h2><p>Agenda dos próximos dias</p></div><a class="btn btn-p" href="#/cadastros/turmas">Ver todas</a></div>' +
+          '<section class="card gf-g"><div class="gf-cab"><div><h2>Próximas turmas</h2><p>Turmas e eventos da Google Agenda</p></div><a class="btn btn-p" href="#/cadastros/turmas">Ver todas</a></div>' +
           (d.proximas.length ? '<ul class="gf-lst">' + d.proximas.map(function (x) {
             var q = x.ds[0] === hoje() ? 'hoje' + (x.ds[1] ? ' e ' + dataBR(x.ds[1]).slice(0, 5) : '') : x.ds.map(function (s) { return dataBR(s).slice(0, 5); }).join(' e ');
+            if (x.g) return '<li><span><b>' + esc(x.g.titulo) + '</b><span class="gtag">na Google Agenda</span><small>' + (x.g.dia_inteiro ? 'dia inteiro' : esc(window.CF.agendaG.hora(x.g.inicio) + '–' + window.CF.agendaG.hora(x.g.fim))) + '</small></span><span' + (x.ds[0] === hoje() ? ' class="gf-hoje"' : '') + '>' + esc(q) + '</span></li>';
             return '<li><span><b>' + esc(x.t.nome) + '</b><small>' + esc(nomeEmp(x.p.empresa_id) + ' · ' + x.p.vaga) + '</small></span><span' + (x.ds[0] === hoje() ? ' class="gf-hoje"' : '') + '>' + esc(q) + '</span></li>'; }).join('') + '</ul>'
             : '<p class="dica" style="margin:18px 0">Nenhuma turma marcada.</p>') + '</section></div>';
       box.querySelectorAll('[data-per]').forEach(function (b) { b.addEventListener('click', function () { st.periodo = b.getAttribute('data-per'); desenhar(); }); });

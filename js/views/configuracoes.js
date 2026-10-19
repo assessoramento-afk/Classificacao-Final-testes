@@ -39,7 +39,7 @@
     var sub = subAtual();
     if (sub && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias', 'materiais'].indexOf(sub) >= 0) { window.CF.configPaginas.render(area, sub, ctx); return; }
     if (sub === 'notas') return paginaNotas(area);
-    if (sub === 'prereserva') return paginaPreReserva(area);
+    if (sub === 'prereserva') { window.location.hash = '#/config'; return; }
     if (sub === 'agradecimento') return paginaAgradecimento(area);
     if (sub === 'email-acomp') return paginaEmailAcomp(area);
     if (sub === 'termo') return paginaTermo(area);
@@ -81,13 +81,12 @@
       '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
         card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
         card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') +
-        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'padrao', 'Integrações', 'Google Drive: cópia de tudo o que é baixado', '') : '') +
+        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'padrao', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
         (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'aval', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') + '</div></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'padrao', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
-        card('prereserva', 'padrao', 'Pré-reserva da agenda', cfg ? 'Prazo ' + cfg.prazo_pre_reserva_dias + ' dias · aviso ' + cfg.aviso_pre_reserva_dias + ' dia' + (cfg.aviso_pre_reserva_dias === 1 ? '' : 's') + ' antes' : '') +
         '</div></section>' +
       '<section class="grupo"><h2>Documentos</h2><div class="cards-cfg">' +
         card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'padrao', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
@@ -375,9 +374,27 @@
           : '<b>Google Drive</b><small>Não conectado. Os arquivos baixados não estão sendo salvos no Drive.</small><small>Ao clicar, entre com <b>projetogol@kolpingsp.org</b> e autorize.</small>') +
         '</div><div class="drv-bts">' + (st.conectado ? '<button type="button" class="btn btn-p" id="drv-testar">Testar</button><button type="button" class="btn btn-p btn-perigo" id="drv-sair">Desconectar</button>'
           : '<button type="button" class="btn btn-pri" id="drv-con">Conectar Google Drive</button>') + '</div></section>' +
-        '<p class="dica">Tudo o que a equipe baixa no sistema (PDFs, planilhas, fichas, históricos e gráficos) também é salvo no Drive compartilhado, em pastas por empresa e processo. Gerar de novo o mesmo documento substitui o anterior; o Drive guarda as versões antigas.</p>';
+        '<p class="dica">Tudo o que a equipe baixa no sistema (PDFs, planilhas, fichas, históricos e gráficos) também é salvo no Drive compartilhado, em pastas por empresa e processo. Gerar de novo o mesmo documento substitui o anterior; o Drive guarda as versões antigas.</p>'; +
+        (st.conectado ? '<section class="card drv-card" style="--c:' + (st.agenda_erro ? '#D9534F' : (st.agenda_id ? '#3FA66B' : '#8a8486')) + '"><span class="drv-ic">📅</span><div style="flex:1;min-width:0">' +
+          '<b>Google Agenda · ' + (st.agenda_id ? '"Classificação Final · Turmas"' : 'ainda não criada') + '</b>' +
+          (st.agenda_id ? '<small>' + st.agenda_eventos + ' dia(s) de turma na agenda · ' + st.agenda_google + ' evento(s) criados direto no Google' + (st.agenda_sinc_em ? ' · última atualização ' + new Date(st.agenda_sinc_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '') + '</small>' : '<small>Clique em "Sincronizar agora" para criar a agenda e levar as turmas.</small>') +
+          (st.agenda_erro ? '<small style="color:#D9534F">' + esc(st.agenda_erro) + '</small>' : '') +
+          '</div><div class="drv-bts"><button type="button" class="btn btn-p" id="ag-sinc">Sincronizar agora</button>' +
+          (st.agenda_id ? '<a class="btn btn-p" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/u/0/r/settings/calendar/' + btoa(st.agenda_id).replace(/=+$/, '') + '">Compartilhar / link Outlook</a>' : '') +
+          '<button type="button" class="btn btn-p" id="ag-recon">Reconectar Google</button></div></section>' +
+          '<p class="dica">Para a equipe ver a agenda: no Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
+          'Para quem usa o Outlook: copie o <b>Endereço secreto no formato iCal</b> e, no Outlook, use <b>Adicionar calendário › Assinar da Web</b>. ' +
+          'Se aparecer "ainda não autorizou a agenda", clique em <b>Reconectar Google</b> e entre com projetogol@kolpingsp.org.</p>' : '');
       var con = box.querySelector('#drv-con');
       if (con) con.addEventListener('click', function (ev) {
+        ui.executar(ev.currentTarget, 'Abrindo o Google…', async function () {
+          try { var r = await window.CF.drive.chamar('drive-conectar', { acao: 'inicio' }); window.location.href = r.url; } catch (e) { ui.toast(e.message, 'erro'); }
+        });
+      });
+      var as = box.querySelector('#ag-sinc');
+      if (as) as.addEventListener('click', function (ev) { ui.executar(ev.currentTarget, 'Sincronizando…', async function () { await window.CF.agendaG.sincronizar(false); desenhar(); }); });
+      var ar = box.querySelector('#ag-recon');
+      if (ar) ar.addEventListener('click', function (ev) {
         ui.executar(ev.currentTarget, 'Abrindo o Google…', async function () {
           try { var r = await window.CF.drive.chamar('drive-conectar', { acao: 'inicio' }); window.location.href = r.url; } catch (e) { ui.toast(e.message, 'erro'); }
         });

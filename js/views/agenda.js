@@ -40,6 +40,7 @@
     Object.keys(info).forEach(function (k) {
       var x = info[k];
       if (exceto && ((x.turma && x.turma.id === exceto) || (x.pre && x.pre.id === exceto))) return;
+      if (x.tipo !== 'turma') return;   // pré-reservas e bloqueios não existem mais
       m[k] = x.titulo + (x.sub ? ' · ' + x.sub : '');
     });
     return m;
@@ -55,6 +56,7 @@
   }
   // Número de avisos no item Agenda do menu (administrador)
   async function atualizarBadge() {
+    return;   // sem pré-reservas: não há mais aviso no menu
     var link = document.querySelector('.menu a[data-rota="agenda"]'); if (!link) return;
     var n = 0;
     try { var a = await dados.agenda.carregarTudo(); var v = avisos(a); n = v.vencidas.length + v.vencendo.length; } catch (e) { /* sem agenda ainda */ }

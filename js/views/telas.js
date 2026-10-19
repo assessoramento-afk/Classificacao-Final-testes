@@ -30,7 +30,6 @@
       ? [['Avaliar', 'Presença, grupos e notas das turmas, pelo celular ou computador, também sem internet.', 'Disponível', '#/avaliar'],
          ['Processos', 'Processos seletivos de cada empresa, classificação, PDF e Excel.', 'Disponível', '#/processos'],
          ['Acompanhamento', 'Jovens aprovados pelas empresas: avaliações a cada 3 meses e contratação.', 'Disponível', '#/acompanhamento'],
-         ['Agenda', 'Datas das turmas, pré-reservas e bloqueios.', 'Disponível', '#/agenda'],
          ['Cadastros', 'Jovens e turmas dos processos seletivos.', 'Disponível', '#/cadastros'],
          ['Banco de testes', 'Áreas, testes e competências em cards.', 'Disponível', '#/banco'],
          ['Configurações', 'Empresas, avaliadores, modelos de documentos e padrões dos processos.', 'Disponível', '#/config']]

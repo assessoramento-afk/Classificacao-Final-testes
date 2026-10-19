@@ -36,9 +36,11 @@
       for (var d = 1; d <= dias; d++) {
         var s = iso(new Date(ano, mes, d)), dow = new Date(ano, mes, d).getDay();
         var ocup = opcoes.ocupados && opcoes.ocupados[s], passado = s < h, escolhido = sel.indexOf(s) >= 0;
-        var cls = 'cal-dia' + (escolhido ? ' sel' : '') + (ocup ? ' ocup' : '') + (passado ? ' passado' : '') + (dow === 0 || dow === 6 ? ' fds' : '') + (s === h ? ' hoje' : '');
-        var tit = ocup ? 'Ocupado: ' + ocup : (passado ? 'Data passada' : longa(s));
-        celulas += '<button type="button" class="' + cls + '" data-dia="' + s + '"' + (ocup || passado ? ' disabled' : '') + ' aria-pressed="' + escolhido + '" title="' + esc(tit) + '" aria-label="' + esc(tit) + '">' + d + '</button>';
+        var gev = opcoes.eventos && opcoes.eventos[s];   // evento criado na Google Agenda: só aparece, não trava
+        var cls = 'cal-dia' + (escolhido ? ' sel' : '') + (ocup ? ' ocup' : '') + (gev && !ocup ? ' gev' : '') + (passado ? ' passado' : '') + (dow === 0 || dow === 6 ? ' fds' : '') + (s === h ? ' hoje' : '');
+        var tit = ocup ? 'Ocupado: ' + ocup : (passado ? 'Data passada' : longa(s) + (gev ? ' · Na Google Agenda: ' + gev : ''));
+        var rot = ocup || gev ? '<small class="cal-rot">' + esc(String(ocup || gev).split(' · ')[0]) + '</small>' : '';
+        celulas += '<button type="button" class="' + cls + (rot ? ' com-rot' : '') + '" data-dia="' + s + '"' + (ocup || passado ? ' disabled' : '') + ' aria-pressed="' + escolhido + '" title="' + esc(tit) + '" aria-label="' + esc(tit) + '">' + d + rot + '</button>';
       }
       el.innerHTML = '<div class="cal-nav"><button type="button" class="btn btn-p" data-nav="-1" aria-label="Mês anterior">‹</button><b>' + esc(mesAno(ano, mes)) + '</b><button type="button" class="btn btn-p" data-nav="1" aria-label="Próximo mês">›</button></div>' +
         '<div class="cal-grade">' + celulas + '</div>';
@@ -61,6 +63,7 @@
     desenhar();
     return {
       valor: function () { return sel.slice(); },
+      definirEventos: function (m) { opcoes.eventos = m || {}; desenhar(); },
       definirMax: function (m) { opcoes.max = m; if (sel.length > m) { sel = sel.slice(0, m); desenhar(); if (opcoes.aoMudar) opcoes.aoMudar(sel.slice()); } }
     };
   }
