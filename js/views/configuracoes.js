@@ -89,15 +89,15 @@
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
-        card('notas', 'padrao', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
-        card('feriados', 'padrao', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
+        card('notas', 'nota', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
+        card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
         '</div></section>' +
       '<section class="grupo"><h2>Documentos</h2><div class="cards-cfg">' +
-        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'padrao', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
+        card('agradecimento', 'agr', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'mail', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'termo', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'modelo', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
       '<section class="grupo"><h2>Sistema</h2><div class="cards-cfg">' +
-        (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'aval', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
-        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'padrao', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
-        card('saude', 'padrao', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
+        (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'perm', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
+        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
+        card('saude', 'saude', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
   /* ---------- Notas de corte ---------- */
@@ -454,10 +454,15 @@
           var lista = (r.agendas || []).filter(function (a) { return a.id !== r.propria; });
           boxL.innerHTML = '<div class="ag-lista-agendas">' + '<div class="ag-li"><span>🔒</span><div><b>Classificação Final · Turmas</b><small>mantida pelo sistema (turmas, feriados, Kolping Estadual)</small></div><span class="pill" style="background:#3FA66B">Mantida pelo sistema</span></div>' +
             lista.map(function (a, i) {
-              return '<label class="ag-li"><input type="checkbox" data-ag="' + i + '"' + (ids[a.id] ? ' checked' : '') + '><div><b>' + esc(a.nome) + (a.principal ? ' (principal)' : '') + '</b><small>' + (/holiday|feriado/i.test(a.id + a.nome) ? 'agenda do Google · o sistema já tem os feriados' : (/contacts|anivers/i.test(a.id + a.nome) ? 'agenda automática do Google' : 'agenda da conta')) + '</small></div></label>';
+              var corAtual = (lidas.filter(function (x) { return x.id === a.id; })[0] || {}).cor || 'azul', CA = window.CF.agendaG.CORES_AG;
+              return '<div class="ag-li"><input type="checkbox" data-ag="' + i + '"' + (ids[a.id] ? ' checked' : '') + ' aria-label="Ler esta agenda"><div><b>' + esc(a.nome) + (a.principal ? ' (principal)' : '') + '</b><small>' + (/holiday|feriado/i.test(a.id + a.nome) ? 'agenda do Google · o sistema já tem os feriados' : (/contacts|anivers/i.test(a.id + a.nome) ? 'agenda automática do Google' : 'agenda da conta')) + '</small></div>' +
+                '<span class="ag-cores" role="radiogroup" aria-label="Cor">' + Object.keys(CA).map(function (k) { return '<button type="button" class="ag-cor' + (k === corAtual ? ' on' : '') + '" data-cor="' + i + '|' + k + '" title="' + k + '" style="background:' + CA[k] + '"></button>'; }).join('') + '</span></div>';
             }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="btn btn-pri btn-p" id="ag-lidas-salvar">Salvar agendas lidas</button></div>';
+          boxL.querySelectorAll('.ag-cor').forEach(function (bt) {
+            bt.addEventListener('click', function () { var i = bt.getAttribute('data-cor').split('|')[0]; boxL.querySelectorAll('.ag-cor[data-cor^="' + i + '|"]').forEach(function (x) { x.classList.remove('on'); }); bt.classList.add('on'); });
+          });
           boxL.querySelector('#ag-lidas-salvar').addEventListener('click', function (ev) {
-            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var a = lista[+c.getAttribute('data-ag')]; sel.push({ id: a.id, nome: a.nome }); } });
+            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var i = +c.getAttribute('data-ag'), a = lista[i], on = boxL.querySelector('.ag-cor.on[data-cor^="' + i + '|"]'); sel.push({ id: a.id, nome: a.nome, cor: on ? on.getAttribute('data-cor').split('|')[1] : 'azul' }); } });
             ui.executar(ev.currentTarget, 'Salvando…', async function () {
               try { var x = await window.CF.sb.rpc('agendas_lidas_salvar', { p: sel }); if (x.error) throw x.error; ui.toast('Agendas salvas. Atualizando…', 'ok'); await window.CF.agendaG.sincronizar(false); } catch (e) { erro(e); }
             });

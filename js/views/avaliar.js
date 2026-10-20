@@ -54,7 +54,7 @@
     var tela = { presenca: presenca, grupos: grupos, avaliadores: avaliadores, notas: function (a, c, sn) { window.CF.avaliarNotas(a, c, sn); }, sugestoes: function (a, c, sn) { window.CF.avaliarSugestoes(a, c, sn); }, fechar: fechar, desistencias: desistencias }[m[2]] || turmaPassos;
     area.innerHTML = '<div class="girando" style="margin:30px auto"></div>';
     obterTurma(m[1]).then(function (snap) { area.innerHTML = ''; tela(area, ctx, snap); barraSync(area); })
-      .catch(function (e) { area.innerHTML = '<a class="voltar" href="#/avaliar">← Avaliar</a><div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; });
+      .catch(function (e) { area.innerHTML = '<a class="voltar" href="#/processos">← Profiling Empresas</a><div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; });
   };
 
   /* ================================================================
@@ -130,7 +130,7 @@
     function passo(n, ok, ativo, tit, sub, href) {
       return '<div class="pd' + (ok ? ' ok' : (ativo ? ' on' : '')) + '"><span class="n">' + (ok ? '✓' : n) + '</span><div class="pd-txt"><b>' + tit + '</b><small>' + sub + '</small></div>' + (href ? '<a class="btn btn-p" href="' + href + '">Abrir</a>' : '') + '</div>';
     }
-    area.innerHTML = '<a class="voltar" href="#/avaliar">← Avaliar</a>' +
+    area.innerHTML = '<a class="voltar" href="#/processos">← Profiling Empresas</a>' +
       '<header class="cabecalho"><div><h1>' + esc(snap.turma.nome) + ' · dia ' + (di + 1) + ' de ' + snap.dias.length + '</h1><p>' + esc(snap.empresa.nome + ' · ' + snap.processo.vaga + ' · ' + D.longa(dia)) + '</p></div>' +
         '<div class="tp-acoes">' + (snap.dias.length > 1 ? '<div class="segmentos" role="group" aria-label="Dia">' + snap.dias.map(function (d, i) { return '<button type="button" data-tdia="' + d + '" aria-pressed="' + (d === dia) + '">Dia ' + (i + 1) + ' · ' + esc(D.curta(d)) + '</button>'; }).join('') + '</div>' : '') +
         (navigator.onLine ? '<button type="button" class="btn btn-p" id="tp-atual">⟳ Atualizar</button>' : '') + '</div></header>' +

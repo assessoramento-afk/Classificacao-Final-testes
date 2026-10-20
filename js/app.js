@@ -11,8 +11,8 @@
   // Menu de cada perfil: [rota, texto, ícone]
   var esc = ui.esc;
   var MENUS = {
-    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Profiling Empresas', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
-    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Profiling Empresas', 'processos'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco']],
+    admin: [['painel', 'Gráficos', 'graficos'], ['processos', 'Profiling Empresas', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
+    avaliador: [['processos', 'Profiling Empresas', 'processos'], ['painel', 'Gráficos', 'graficos'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco']],
     empresa: [['portal', 'Resultados', 'portal']]
   };
 
@@ -187,7 +187,7 @@
     var p = estado.perfil;
     var conteudo = document.getElementById('conteudo');
     if (!p || !conteudo) return;
-    var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; })
+    var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; }).concat(p.perfil === 'empresa' ? [] : ['avaliar'])
       .filter(function (r) { return !window.CF.perm || window.CF.perm.rotaPermitida(r); })
       .concat(['conta']).concat(p.perfil === 'empresa' ? [] : ['envios']);
     var rota = rotaAtual();
@@ -208,7 +208,7 @@
       conteudo.innerHTML = '<header class="cabecalho"><div><h1>' + esc(item ? item[1] : 'Minha conta') + '</h1></div></header>' +
         '<section class="card bloco sem-net"><span class="sem-net-ic" aria-hidden="true">📡</span><h2>Sem internet</h2>' +
         '<p>Esta tela precisa de internet para mostrar os dados. Sem internet, você pode usar o <b>Avaliar</b> nas turmas baixadas neste aparelho: presença, grupos e notas ficam salvos e são enviados quando a conexão voltar.</p>' +
-        '<a class="btn btn-pri" href="#/avaliar">Ir para Avaliar</a></section>';
+        '<a class="btn btn-pri" href="#/processos">Ir para Profiling Empresas</a></section>';
       var volta = function () { window.removeEventListener('online', volta); if (rotaAtual() === rota) navegar(); };
       window.addEventListener('online', volta);
       conteudo.focus({ preventScroll: true }); window.scrollTo(0, 0);

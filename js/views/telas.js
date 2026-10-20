@@ -27,13 +27,13 @@
     var p = ctx.perfil;
     var primeiroNome = String(p.nome || '').split(' ')[0] || '';
     var blocos = p.perfil === 'admin'
-      ? [['Avaliar', 'Presença, grupos e notas das turmas, pelo celular ou computador, também sem internet.', 'Disponível', '#/avaliar'],
+      ? [['Avaliar', 'Presença, grupos e notas das turmas: botão Avaliar em cada processo do Profiling Empresas, também sem internet.', 'Disponível', '#/processos'],
          ['Profiling Empresas', 'Processos seletivos de cada empresa, classificação, PDF e Excel.', 'Disponível', '#/processos'],
          ['Acompanhamento', 'Jovens aprovados pelas empresas: avaliações a cada 3 meses e contratação.', 'Disponível', '#/acompanhamento'],
          ['Cadastros', 'Jovens e turmas dos processos seletivos.', 'Disponível', '#/cadastros'],
          ['Banco de testes', 'Áreas, testes e competências em cards.', 'Disponível', '#/banco'],
          ['Configurações', 'Empresas, avaliadores, modelos de documentos e padrões dos processos.', 'Disponível', '#/config']]
-      : [['Avaliar', 'Presença, grupos e notas das turmas, pelo celular ou computador, também sem internet.', 'Disponível', '#/avaliar'],
+      : [['Avaliar', 'Presença, grupos e notas das turmas: botão Avaliar em cada processo do Profiling Empresas, também sem internet.', 'Disponível', '#/processos'],
          ['Profiling Empresas', 'Processos seletivos e classificação.', 'Disponível', '#/processos'],
          ['Agenda', 'Consulta das turmas marcadas.', 'Disponível', '#/agenda'],
          ['Banco de testes', 'Consulta dos testes e critérios de avaliação.', 'Disponível', '#/banco']];

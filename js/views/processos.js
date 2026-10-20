@@ -58,6 +58,94 @@
   };
 
   /* ================================================================
+     AVALIAR NO CARTÃO (substitui o item Avaliar do menu)
+     · Avaliar: 1 turma abre direto; 2 ou mais, escolhe a turma
+     · Baixar para usar sem internet / ✓ Salvo neste aparelho · Atualizar
+     · sem internet: aparecem os processos salvos neste aparelho
+     ================================================================ */
+  var D = window.CF.datas, OFF = window.CF.offline;
+  function salvasDe(turmas) { var g = OFF ? OFF.turmas() : {}; return turmas.map(function (t) { return g[t.id]; }); }
+  function areaAvaliar(p, turmas) {
+    if (p.situacao !== 'andamento') return p.situacao === 'montagem' ? '<p class="dica proc-av-dica">Avaliar aparece quando o processo for iniciado</p>' : '';
+    if (!turmas.length) return '<p class="dica proc-av-dica">Sem turmas para avaliar</p>';
+    var sv = salvasDe(turmas), todas = sv.every(Boolean);
+    var quando = todas ? sv.map(function (x) { return x.baixado_em || ''; }).sort()[0] : '';
+    var hm = quando ? new Date(quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    var dt = quando && quando.slice(0, 10) !== D.hoje() ? new Date(quando).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' : '';
+    var bloq = !navigator.onLine && !sv.some(Boolean);
+    return '<div class="proc-av"><button type="button" class="btn btn-pri btn-p" data-av="' + p.id + '"' + (bloq ? ' disabled' : '') + '>✏️ Avaliar</button>' +
+      (todas ? '<div class="proc-salvo"><span>✓ Salvo neste aparelho · ' + dt + hm + '</span>' + (navigator.onLine ? '<button type="button" class="btn-link" data-bx="' + p.id + '">Atualizar</button>' : '') + '</div>'
+             : (navigator.onLine ? '<button type="button" class="btn btn-p" data-bx="' + p.id + '">⬇ Baixar para usar sem internet</button>' : '<p class="dica proc-av-dica">Não foi baixado: precisa de internet</p>')) + '</div>';
+  }
+  var cacheTurmas = {};   // processo → turmas (para os botões)
+  function ligarCartoes(box, redesenhar) {
+    box.querySelectorAll('.proc[data-href]').forEach(function (c) {
+      c.addEventListener('click', function (ev) { if (ev.target.closest('button, a')) return; window.location.hash = c.getAttribute('data-href'); });
+      c.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target === c) window.location.hash = c.getAttribute('data-href'); });
+    });
+    box.querySelectorAll('[data-av]').forEach(function (b) { b.addEventListener('click', function () { abrirAvaliar(b.getAttribute('data-av')); }); });
+    box.querySelectorAll('[data-bx]').forEach(function (b) {
+      b.addEventListener('click', function (ev) {
+        var pid = b.getAttribute('data-bx'), ts = cacheTurmas[pid] || [];
+        ui.executar(ev.currentTarget, 'Baixando…', async function () {
+          try { for (var i = 0; i < ts.length; i++) OFF.guardarTurma(await dados.avaliacao.baixarTurma(ts[i].id)); ui.toast(ts.length > 1 ? 'Turmas salvas neste aparelho.' : 'Turma salva neste aparelho.', 'ok'); redesenhar(); }
+          catch (e) { erro(e); }
+        });
+      });
+    });
+  }
+  function abrirAvaliar(pid) {
+    var ts = cacheTurmas[pid] || [], h = D.hoje();
+    if (!navigator.onLine) { var g = OFF.turmas(); ts = ts.filter(function (t) { return g[t.id]; }); }
+    if (ts.length === 1) { window.location.hash = '#/avaliar/' + ts[0].id; return; }
+    if (!ts.length) { ui.toast('Nenhuma turma disponível neste aparelho.', 'erro'); return; }
+    var ord = ts.slice().sort(function (a, b) { return String(a.dias[0] || '').localeCompare(String(b.dias[0] || '')); });
+    var prox = ord.filter(function (t) { return t.dias.length && t.dias[t.dias.length - 1] >= h; })[0];
+    ui.janela({ titulo: 'Qual turma avaliar?', confirmarDescarte: false,
+      corpo: ord.map(function (t) {
+        var hoje = t.dias.indexOf(h) >= 0, tag = hoje ? '<span class="pill" style="background:var(--laranja);color:#fff">Hoje</span>' : (prox && prox.id === t.id ? '<span class="pill" style="background:#2f6fd0;color:#fff">Próxima</span>' : '');
+        return '<a class="proc-tlin" href="#/avaliar/' + t.id + '"><div><b>' + esc(t.nome) + '</b><small>' + esc(t.dias.length ? D.listaDias(t.dias) : 'sem data') + '</small></div>' + tag + '<span class="btn btn-p">Abrir</span></a>';
+      }).join(''),
+      botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
+    document.querySelectorAll('.proc-tlin').forEach(function (a) { a.addEventListener('click', function () { document.querySelectorAll('.janela-fundo').forEach(function (f) { f.remove(); }); }); });
+  }
+  // guarda um resumo dos processos para mostrar sem internet
+  function guardarResumo(procs, empresas, ag) {
+    try {
+      var r = procs.filter(function (p) { return p.situacao === 'andamento'; }).map(function (p) {
+        var e = porId(empresas, p.empresa_id) || {};
+        var ts = turmasDe(ag, p.id).map(function (t) { return { id: t.id, nome: t.nome, dias: diasDaTurma(ag, t.id) }; });
+        cacheTurmas[p.id] = ts;
+        return { id: p.id, empresa: e.nome_fantasia || e.razao_social || '', vaga: p.vaga, identificacao: p.identificacao, situacao: p.situacao, turmas: ts };
+      });
+      procs.forEach(function (p) { if (!cacheTurmas[p.id]) cacheTurmas[p.id] = turmasDe(ag, p.id).map(function (t) { return { id: t.id, nome: t.nome, dias: diasDaTurma(ag, t.id) }; }); });
+      localStorage.setItem('cf_procs_resumo', JSON.stringify(r));
+    } catch (e) { /* sem armazenamento */ }
+  }
+  function semInternet(area) {
+    var r = []; try { r = JSON.parse(localStorage.getItem('cf_procs_resumo') || '[]'); } catch (e) { r = []; }
+    var g = OFF ? OFF.turmas() : {};
+    Object.keys(g).forEach(function (id) {   // turmas salvas que não estão no resumo
+      var s = g[id]; if (!s || !s.processo) return;
+      if (r.some(function (p) { return p.turmas.some(function (t) { return t.id === id; }); })) return;
+      var p = r.filter(function (x) { return x.id === s.processo.id; })[0];
+      if (!p) { p = { id: s.processo.id, empresa: (s.empresa && s.empresa.nome) || '', vaga: s.processo.vaga, identificacao: s.processo.identificacao, situacao: 'andamento', turmas: [] }; r.push(p); }
+      p.turmas.push({ id: id, nome: s.turma.nome, dias: s.dias });
+    });
+    r.forEach(function (p) { cacheTurmas[p.id] = p.turmas; });
+    var box = area.querySelector('#procs');
+    ['#abas-p', '#filtros', '.barra'].forEach(function (sel) { var x = area.querySelector(sel); if (x) x.classList.add('oculto'); });
+    var nb = area.querySelector('#b-novo'); if (nb) nb.classList.add('oculto');
+    box.innerHTML = '<div class="aviso aviso-info" style="margin-bottom:14px">' + ui.icone('alerta', 18) + '<span>Sem internet: aparecem os processos salvos neste aparelho. Os lançamentos ficam guardados e são enviados quando a conexão voltar.</span></div>' +
+      (r.length ? '<div class="procs">' + r.map(function (p) {
+        var sv = p.turmas.some(function (t) { return g[t.id]; });
+        return '<div class="card proc' + (sv ? '' : ' proc-off') + '" style="--sc:#ee7330"><div class="proc-cab"><div class="proc-tit"><h3>' + esc(p.empresa || 'Empresa') + '</h3><small>' + esc(p.vaga + (p.identificacao ? ' · ' + p.identificacao : '')) + '</small></div></div>' +
+          '<div class="nums"><div><b>' + p.turmas.length + '</b><span>turmas</span></div></div>' + areaAvaliar(p, p.turmas) + '</div>';
+      }).join('') + '</div>' : '<div class="card vazio">Nenhum processo salvo neste aparelho. Com internet, use "⬇ Baixar para usar sem internet" no cartão do processo.</div>');
+    ligarCartoes(box, function () { semInternet(area); });
+  }
+
+  /* ================================================================
      LISTA
      ================================================================ */
   async function lista(area, ctx) {
@@ -72,7 +160,11 @@
     try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar().catch(function () { return []; }), dados.agenda.carregarTudo().catch(function () { return null; }), dados.jovens.todasParticipacoes().catch(function () { return []; })]); procs = r[0]; empresas = r[1]; ag = r[2];
       r[3].forEach(function (x) { nJovens[x.processo_id] = (nJovens[x.processo_id] || 0) + 1; });
       if (!empresas.length && ag) empresas = ag.empresas; }
-    catch (e) { erro(e); area.querySelector('#procs').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
+    catch (e) {
+      if (!navigator.onLine || /fetch|network|internet/i.test(String(e && e.message))) { semInternet(area); return; }
+      erro(e); area.querySelector('#procs').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return;
+    }
+    guardarResumo(procs, empresas, ag);
     if (admin) area.querySelector('#b-novo').addEventListener('click', function () { assistente(null, 1, ctx); });
     area.querySelector('#busca-p').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
 
@@ -105,12 +197,14 @@
       }
       box.innerHTML = '<div class="procs">' + itens.map(function (p) {
         var e = porId(empresas, p.empresa_id) || {}, cor = (SITUACOES[p.situacao] || SITUACOES.montagem)[1];
-        return '<a class="card proc" href="#/processos/' + p.id + '" style="--sc:' + cor + '">' +
+        return '<div class="card proc" role="link" tabindex="0" data-href="#/processos/' + p.id + '" style="--sc:' + cor + '">' +
           '<div class="proc-cab">' + logoHTML(e) + '<div class="proc-tit"><h3>' + esc(e.nome_fantasia || 'Empresa') + '</h3><small>' + esc(p.vaga) + ' · ' + esc(p.identificacao) + '</small>' +
           '<div>' + selo(p.situacao) + '</div></div></div>' +
-          '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>' + (nJovens[p.id] || 0) + '</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div></a>';
+          '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>' + (nJovens[p.id] || 0) + '</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div>' +
+          areaAvaliar(p, turmasDe(ag, p.id).map(function (t) { return { id: t.id, nome: t.nome, dias: diasDaTurma(ag, t.id) }; })) + '</div>';
       }).join('') + '</div>';
       carregarLogos(box);
+      ligarCartoes(box, function () { desenhar(); });
     }
     // Finalizados: por empresa (A–Z) e, dentro dela, do mais recente para o mais antigo
     function finalizados(fins, selAno) {
@@ -252,12 +346,12 @@
     var usados = turmasDe(ag, p.id).map(function (x) { return ui.maiusculas(x.nome); });
     var sugestao = 'TURMA A';
     for (var i = 0; i < 26; i++) { var n = 'TURMA ' + String.fromCharCode(65 + i); if (usados.indexOf(n) < 0) { sugestao = n; break; } }
-    var qtd = dias.length === 2 ? 2 : 1;
+    var qtd = Math.max(1, dias.length || 1);
     var e = porId(empresas, p.empresa_id) || {};
     var j = ui.janela({
       titulo: (novo ? 'Nova turma' : 'Editar ' + t.nome) + ' · ' + (e.nome_fantasia || ''),
       corpo: '<div class="form-grade"><label class="campo" for="tu-nome"><span>Nome <span class="obrig">*</span></span><input class="entrada" id="tu-nome" maxlength="40" value="' + esc(t ? t.nome : sugestao) + '"></label>' +
-        '<div class="campo"><span>Quantos dias?</span><div class="segmentos" role="group" aria-label="Quantos dias"><button type="button" data-qtd="1" aria-pressed="' + (qtd === 1) + '">1 dia</button><button type="button" data-qtd="2" aria-pressed="' + (qtd === 2) + '">2 dias</button></div></div></div>' +
+        '<div class="campo"><span>Quantos dias?</span><div class="tu-qtd" role="group" aria-label="Quantos dias"><button type="button" class="btn btn-p" data-qmenos aria-label="Menos um dia">−</button><b id="tu-qn">' + qtd + (qtd === 1 ? ' dia' : ' dias') + '</b><button type="button" class="btn btn-p" data-qmais aria-label="Mais um dia">+</button></div></div></div>' +
         '<div id="tu-cal" class="cal-escolha"></div><div id="tu-esc"></div>' +
         '<div class="form-grade"><label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
         '<p class="dica" style="margin:0">Riscado: o dia já tem outra turma. Em azul: evento da Google Agenda; em cinza, lilás e laranja: feriado, ponto facultativo e evento da Kolping Estadual (o sistema pergunta antes de marcar).</p>',
@@ -265,7 +359,7 @@
         var nome = ui.maiusculas(f.querySelector('#tu-nome').value.trim().replace(/\s+/g, ' ')), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#tu-vagas').value, 10);
         if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
         if (usados.some(function (u) { return u === ui.maiusculas(nome) && (!t || ui.maiusculas(t.nome) !== ui.maiusculas(nome)); })) { ui.toast('Já existe uma turma com este nome neste processo.', 'erro'); return false; }
-        if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os 2 dias da turma.', 'erro'); return false; }
+        if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os ' + qtd + ' dias da turma.', 'erro'); return false; }
         if (isNaN(vagas) || vagas < 1 || vagas > 60) { ui.toast('Vagas entre 1 e 60.', 'erro'); return false; }
         try {
           var diasH = escolhidos.map(function (d) { var h = horas[d] || { inicio: '08:00', fim: '17:00' }; return { data: d, inicio: h.inicio, fim: h.fim }; });
@@ -295,13 +389,13 @@
     var espLista = [];
     if (window.CF.agendaG) window.CF.agendaG.especiais().then(function (l) { espLista = l; if (l.length) cal.definirEspeciais(window.CF.agendaG.mapaEspeciais(l)); });
     mostrar(dias);
-    j.elemento.querySelectorAll('[data-qtd]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        qtd = +b.getAttribute('data-qtd');
-        j.elemento.querySelectorAll('[data-qtd]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-        cal.definirMax(qtd);
-      });
-    });
+    function mudarQtd(n) {   // turmas podem ter quantos dias forem precisos (até 10)
+      qtd = Math.min(10, Math.max(1, n));
+      j.elemento.querySelector('#tu-qn').textContent = qtd + (qtd === 1 ? ' dia' : ' dias');
+      cal.definirMax(qtd);
+    }
+    j.elemento.querySelector('[data-qmenos]').addEventListener('click', function () { mudarQtd(qtd - 1); });
+    j.elemento.querySelector('[data-qmais]').addEventListener('click', function () { mudarQtd(qtd + 1); });
   }
 
   /* ---------- Materiais do processo ---------- */

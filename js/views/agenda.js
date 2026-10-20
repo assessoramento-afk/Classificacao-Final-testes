@@ -74,7 +74,7 @@
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.agenda = async function (area) {
     var G = window.CF.agendaG, hojeS = D.hoje(), hojeD = D.data(hojeS);
-    var ano = hojeD.getFullYear(), mes = hojeD.getMonth(), a = null, gev = [], linkG = null, esp = [];
+    var ano = hojeD.getFullYear(), mes = hojeD.getMonth(), a = null, gev = [], linkG = null, esp = [], cores = {};
     var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     var SEM = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
     area.innerHTML = '<header class="cabecalho"><div><h1>Agenda</h1><p>Turmas do sistema e eventos da Google Agenda "Classificação Final · Turmas"</p></div>' +
@@ -85,8 +85,8 @@
     function hm(x) { return String(x || '').slice(0, 5); }
     async function carregar() {
       try {
-        var r = await Promise.all([dados.agenda.carregarTudo(), G ? G.eventosGoogle() : [], window.CF.sb.rpc('agenda_google_link').then(function (x) { return x.error ? null : x.data; }).catch(function () { return null; }), G ? G.especiais() : []]);
-        a = r[0]; gev = r[1] || []; linkG = r[2]; esp = r[3] || [];
+        var r = await Promise.all([dados.agenda.carregarTudo(), G ? G.eventosGoogle() : [], window.CF.sb.rpc('agenda_google_link').then(function (x) { return x.error ? null : x.data; }).catch(function () { return null; }), G ? G.especiais() : [], G ? G.coresAgendas() : {}]);
+        a = r[0]; gev = r[1] || []; linkG = r[2]; esp = r[3] || []; cores = r[4] || {};
         if (linkG) area.querySelector('#ag-google').href = 'https://calendar.google.com/calendar/r?cid=' + encodeURIComponent(linkG);
         desenhar();
       } catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; }
@@ -110,17 +110,23 @@
       });
       return l.sort(function (x, y) { return (x.hora || '00').localeCompare(y.hora || '00'); });
     }
+    function corG(g) { var c = (g && cores[g.agenda_id] && cores[g.agenda_id].cor) || '#5b6b8c'; return '--cg:' + c + ';--cgt:' + G.textoSobre(c); }
+    function legenda() {
+      var vistos = {}, itens = '';
+      gev.forEach(function (g) { if (vistos[g.agenda_id]) return; vistos[g.agenda_id] = true; var c = cores[g.agenda_id]; itens += '<i style="background:' + ((c && c.cor) || '#5b6b8c') + '"></i>' + esc((c && c.nome) || g.agenda_nome || 'Google'); });
+      return '<span class="ag-leg"><i class="t"></i>Turma ' + itens + ' <i style="background:#7d7577"></i>Feriado <i style="background:#8b7fd0"></i>Ponto facultativo <i style="background:#d96a1f"></i>Kolping Estadual <i style="background:#a07850"></i>Lembrete</span>';
+    }
     function item(x, i, ds) {
       var tx = (x.hora ? '<b>' + esc(x.hora) + '</b> ' : '') + esc(x.titulo);
       if (x.tipo === 'esp') return '<span class="ag-it ag-esp" style="background:' + G.TIPOS_ESP[x.esp.tipo].cor + '" title="' + esc(x.titulo + ' · ' + x.sub) + '">' + esc(x.titulo) + '<small>' + esc(x.sub) + '</small></span>';
       return x.tipo === 'turma'
         ? '<a class="ag-it ag-turma" href="' + x.link + '" title="' + esc(x.titulo + ' · ' + x.sub + (x.hora ? ' · ' + x.hora + '–' + x.fim : '')) + '">' + tx + '<small>' + esc(x.sub) + '</small></a>'
-        : '<button type="button" class="ag-it ag-google" data-g="' + ds + '|' + i + '" title="' + esc(x.titulo + ' · na Google Agenda') + '">' + tx + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>';
+        : '<button type="button" class="ag-it ag-google" style="' + corG(x.g) + '" data-g="' + ds + '|' + i + '" title="' + esc(x.titulo + ' · na Google Agenda') + '">' + tx + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>';
     }
     function desenhar() {
       var primeiro = new Date(ano, mes, 1), nDias = new Date(ano, mes + 1, 0).getDate(), estreito = window.matchMedia('(max-width: 720px)').matches;
       var nav = '<div class="ag-nav"><button type="button" class="btn btn-p" data-m="-1" aria-label="Mês anterior">‹</button><b>' + MESES[mes].charAt(0).toUpperCase() + MESES[mes].slice(1) + ' de ' + ano + '</b><button type="button" class="btn btn-p" data-m="1" aria-label="Próximo mês">›</button>' +
-        '<button type="button" class="btn btn-p" data-m="0">Hoje</button><span class="ag-leg"><i class="t"></i>Turma <i class="g"></i>Google <i style="background:#7d7577"></i>Feriado <i style="background:#8b7fd0"></i>Ponto facultativo <i style="background:#d96a1f"></i>Kolping Estadual</span></div>';
+        '<button type="button" class="btn btn-p" data-m="0">Hoje</button>' + legenda() + '</div>';
       var corpo = '';
       if (estreito) {   // celular: lista dos dias que têm algo
         for (var d = 1; d <= nDias; d++) {
@@ -137,7 +143,7 @@
         }
         corpo = '<section class="card ag-mes">' + '<div class="ag-grade">' + cel + '</div></section>';
       }
-      box.innerHTML = nav + corpo + '<p class="dica">Para marcar ou mudar uma turma, use o processo (Processos › turma). Eventos criados direto no Google aparecem em azul e não travam dias; em Cadastros › Turmas dá para criar uma turma a partir deles.</p>';
+      box.innerHTML = nav + corpo + '<p class="dica">Para marcar ou mudar uma turma, use o Profiling Empresas (processo › turma). Eventos das agendas do Google aparecem na cor de cada agenda (escolhida em Integrações) e não travam dias; em Cadastros › Turmas dá para criar uma turma a partir deles.</p>';
       box.querySelectorAll('[data-m]').forEach(function (b) {
         b.addEventListener('click', function () { var m = +b.getAttribute('data-m'); if (!m) { ano = hojeD.getFullYear(); mes = hojeD.getMonth(); } else { mes += m; if (mes < 0) { mes = 11; ano--; } if (mes > 11) { mes = 0; ano++; } } desenhar(); });
       });

@@ -132,8 +132,8 @@
     try {
       var r = await Promise.all([dados.agenda.carregarTudo(), dados.jovens.todasParticipacoes(),
         admin ? window.CF.sb.rpc('acomp_listar', { p_proc: null }).then(function (x) { return x.error ? [] : x.data; }) : Promise.resolve([]),
-        window.CF.agendaG ? window.CF.agendaG.eventosGoogle() : Promise.resolve([])]);
-      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {}, gev: r[3] || [] };
+        window.CF.agendaG ? window.CF.agendaG.eventosGoogle() : Promise.resolve([]), window.CF.agendaG ? window.CF.agendaG.coresAgendas() : Promise.resolve({})]);
+      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {}, gev: r[3] || [], coresG: r[4] || {} };
     } catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
     var ag = base.ag, procs = ag.processos || [], empresas = ag.empresas || [];
     function nomeEmp(id) { var e = empresas.filter(function (x) { return x.id === id; })[0]; return e ? (e.nome_fantasia || e.razao_social || '') : ''; }
@@ -194,12 +194,12 @@
       var proximas = turmasF.map(function (x) { return { t: x, ds: diasTurma(x.id), p: ps.filter(function (y) { return y.id === x.processo_id; })[0] }; })
         .filter(function (x) { return x.ds.length && x.ds[x.ds.length - 1] >= h; });
       // eventos criados direto na Google Agenda também aparecem (marcados)
-      if (!st.empresa) (base.gev || []).forEach(function (g) { if ((g.data_fim || g.data_ini) >= h) proximas.push({ g: g, ds: g.data_fim && g.data_fim !== g.data_ini ? [g.data_ini, g.data_fim] : [g.data_ini] }); });
+      var coresG = base.coresG || {}; if (!st.empresa) (base.gev || []).forEach(function (g) { var nm = ((coresG[g.agenda_id] || {}).nome || g.agenda_nome || '').toLowerCase(); if (/assessoramento/.test(nm)) return; if ((g.data_fim || g.data_ini) >= h) proximas.push({ g: g, ds: g.data_fim && g.data_fim !== g.data_ini ? [g.data_ini, g.data_fim] : [g.data_ini] }); });
       proximas.sort(function (a, b) { return a.ds[0].localeCompare(b.ds[0]); });
       var em15 = proximas.filter(function (x) { return !x.g && x.ds[0] <= limISO; });
       return {
         sit: { andamento: ps.filter(function (x) { return x.situacao === 'andamento'; }).length, montagem: ps.filter(function (x) { return x.situacao === 'montagem'; }).length, revisao: ps.filter(function (x) { return x.situacao === 'revisao'; }).length },
-        em15: em15, proximas: proximas.slice(0, 5), avaliados: avaliados, nProcPeriodo: noPeriodo.length, tot: tot, totAll: totAll,
+        em15: em15, proximas: proximas.slice(0, 10), avaliados: avaliados, nProcPeriodo: noPeriodo.length, tot: tot, totAll: totAll,
         res: res, meses: meses, areas: areas, ac: ac
       };
     }

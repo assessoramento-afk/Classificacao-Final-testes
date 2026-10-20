@@ -17,10 +17,10 @@
     var st = { filtro: 'proximas', busca: '' }, ag, parts;
     area.innerHTML = '<a class="voltar" href="#/cadastros">← Cadastros</a><div id="tt"><div class="girando" style="margin:30px auto"></div></div>';
     var box = area.querySelector('#tt');
-    var G = window.CF.agendaG, gev = [], pend = [];
+    var G = window.CF.agendaG, gev = [], pend = [], coresAg = {};
     async function carregar() {
       var r = await Promise.all([dados.agenda.carregarTudo(), dados.jovens.todasParticipacoes(), G ? G.eventosGoogle() : [], G ? G.pendentes() : []]);
-      ag = r[0]; parts = r[1]; gev = r[2]; pend = r[3];
+      ag = r[0]; parts = r[1]; gev = r[2]; pend = r[3]; coresAg = G ? await G.coresAgendas() : {};
     }
     try { await carregar(); }
     catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
@@ -47,12 +47,15 @@
         var da = a.dias[0] || '9999', db = b.dias[0] || '9999';
         return st.filtro === 'encerradas' ? db.localeCompare(da) : da.localeCompare(db);
       });
-      var gVis = gev.filter(function (g) {
+      var gTodos = gev.filter(function (g) {
         if (st.filtro === 'proximas' && (g.data_fim || g.data_ini) < hoje) return false;
         if (st.filtro === 'encerradas' && (g.data_fim || g.data_ini) >= hoje) return false;
         if (st.busca && ui.normalizar(g.titulo).indexOf(ui.normalizar(st.busca)) < 0) return false;
+        if (st.filtro !== 'encerradas' && (g.data_fim || g.data_ini) < hoje) return false;   // os que já passaram não aparecem
         return true;
-      });
+      }).sort(function (a, b) { return String(a.inicio || a.data_ini).localeCompare(String(b.inicio || b.data_ini)); });
+      st.gMax = st.gMax || 10;
+      var gVis = gTodos.slice(0, st.gMax);
       var porTurma = {}; pend.forEach(function (x) { (porTurma[x.turma_id] = porTurma[x.turma_id] || []).push(x); });
       var avisos = Object.keys(porTurma).map(function (tid) {
         var x = lista.filter(function (l) { return l.t.id === tid; })[0]; if (!x) return '';
@@ -80,9 +83,9 @@
         (gVis.length ? '<section class="card pt-tab"><h2 style="font-size:16px;margin:0 0 4px">Na Google Agenda <span class="gtag">criados direto no Google</span></h2><p class="dica" style="margin:0 0 6px">Eventos da agenda "Classificação Final · Turmas" e das agendas escolhidas em Integrações. Só aparecem: não travam dias. Se um deles for uma turma, crie a turma a partir dele, sem digitar de novo.</p>' +
           '<div class="tabela-rolar"><table class="pt-rk"><tbody>' + gVis.map(function (g, i) {
             var quando = g.dia_inteiro ? dataBR(g.data_ini) + (g.data_fim && g.data_fim !== g.data_ini ? ' a ' + dataBR(g.data_fim) : '') + ' <small class="dica">dia inteiro</small>' : G.dia(g.inicio) + ' <small class="dica">' + G.hora(g.inicio) + '–' + G.hora(g.fim) + '</small>' + (g.data_fim !== g.data_ini ? ' a ' + dataBR(g.data_fim) : '');
-            return '<tr style="--c:#1a56b8"><td class="pt-nm pt-barra"><b>' + esc(g.titulo) + '</b><span class="gtag">' + esc(g.agenda_nome || 'na Google Agenda') + '</span></td><td>' + quando + '</td>' +
+            return '<tr style="--c:' + ((coresAg[g.agenda_id] || {}).cor || '#5b6b8c') + '"><td class="pt-nm pt-barra"><b>' + esc(g.titulo) + '</b><span class="gtag"' + (coresAg[g.agenda_id] ? ' style="background:' + coresAg[g.agenda_id].cor + ';color:' + G.textoSobre(coresAg[g.agenda_id].cor) + '"' : '') + '>' + esc(g.agenda_nome || 'na Google Agenda') + '</span></td><td>' + quando + '</td>' +
               '<td style="text-align:right;white-space:nowrap">' + (window.CF.perm.pode('processos_editar') ? '<button type="button" class="btn btn-p btn-perigo" data-gex="' + i + '">Excluir</button> <button type="button" class="btn btn-p" data-criar="' + i + '">Criar turma a partir deste evento</button>' : '') + '</td></tr>';
-          }).join('') + '</tbody></table></div></section>' : '');
+          }).join('') + '</tbody></table></div>' + (gTodos.length > gVis.length ? '<div style="text-align:center;margin-top:8px"><button type="button" class="btn btn-p" id="tt-gmais">Mostrar mais 10 (' + (gTodos.length - gVis.length) + ' restantes)</button></div>' : '') + '</section>' : '');
       box.querySelectorAll('[data-f]').forEach(function (b) { b.addEventListener('click', function () { st.filtro = b.getAttribute('data-f'); desenhar(); }); });
       var bs = box.querySelector('#tt-sinc');
       if (bs) bs.addEventListener('click', function (ev) { ui.executar(ev.currentTarget, 'Atualizando…', async function () { await G.sincronizar(false); await recarregar(); }); });
@@ -97,6 +100,7 @@
         b.addEventListener('click', function (ev) { ui.executar(ev.currentTarget, 'Desfazendo…', async function () { await G.desfazer(b.getAttribute('data-desfazer')); await recarregar(); }); });
       });
       box.querySelectorAll('[data-criar]').forEach(function (b) { b.addEventListener('click', function () { criarDeEvento(gVis[+b.getAttribute('data-criar')]); }); });
+      var gm = box.querySelector('#tt-gmais'); if (gm) gm.addEventListener('click', function () { st.gMax += 10; desenhar(); });
       box.querySelectorAll('[data-gex]').forEach(function (b) { b.addEventListener('click', async function () { if (await G.excluirEvento(gVis[+b.getAttribute('data-gex')])) recarregar(); }); });
       var bus = box.querySelector('#tt-busca');
       bus.addEventListener('input', function () { st.busca = bus.value; var pos = bus.selectionStart; desenhar(); var n = box.querySelector('#tt-busca'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { /* ok */ } });
@@ -106,8 +110,8 @@
     // Turma agendada direto no Google: nome, datas e horários vêm do evento
     function criarDeEvento(g) {
       var dias = [], d = new Date(g.data_ini + 'T12:00:00'), f = new Date((g.data_fim || g.data_ini) + 'T12:00:00');
-      while (d <= f && dias.length < 3) { dias.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
-      if (dias.length > 2) { ui.toast('Este evento tem mais de 2 dias. Uma turma tem 1 ou 2 dias: ajuste o evento no Google ou crie a turma pelo processo.', 'erro'); return; }
+      while (d <= f && dias.length < 11) { dias.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      if (dias.length > 10) { ui.toast('Este evento tem mais de 10 dias. Ajuste o evento no Google ou crie a turma pelo processo.', 'erro'); return; }
       var ini = g.dia_inteiro ? '08:00' : G.hora(g.inicio), fim = g.dia_inteiro ? '17:00' : G.hora(g.fim);
       var procs = (ag.processos || []).filter(function (p) { return p.situacao === 'montagem' || p.situacao === 'andamento'; });
       if (!procs.length) { ui.toast('Não há processo em montagem ou em andamento para receber a turma.', 'erro'); return; }

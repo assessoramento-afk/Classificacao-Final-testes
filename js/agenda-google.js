@@ -64,7 +64,7 @@
   }
   function listarAgendas() { return window.CF.drive.chamar('agenda-sincronizar', { acao: 'listar_agendas' }); }
   // Feriados, pontos facultativos, eventos da Kolping Estadual e lembretes do mês
-  var TIPOS_ESP = { feriado: { nome: 'Feriado', cor: '#7d7577' }, ponto: { nome: 'Ponto facultativo', cor: '#8b7fd0' }, kolping: { nome: 'Kolping Estadual', cor: '#d96a1f' }, lembrete: { nome: 'Lembrete do mês', cor: '#b8901a' } };
+  var TIPOS_ESP = { feriado: { nome: 'Feriado', cor: '#7d7577' }, ponto: { nome: 'Ponto facultativo', cor: '#8b7fd0' }, kolping: { nome: 'Kolping Estadual', cor: '#d96a1f' }, lembrete: { nome: 'Lembrete do mês', cor: '#a07850' } };
   async function especiais() {
     var r = await window.CF.sb.from('agenda_especiais').select('*').order('data_ini');
     return r.error ? [] : (r.data || []);
@@ -86,6 +86,16 @@
     if (!achados.length) return true;
     return window.CF.ui.confirmar('Marcar a turma assim mesmo?', achados.join('\n'), 'Marcar assim mesmo', 'Escolher outro dia');
   }
-  window.CF.agendaG = { especiais: especiais, mapaEspeciais: mapaEspeciais, confirmarDias: confirmarDias, TIPOS_ESP: TIPOS_ESP, sincronizar: sincronizar, sincronizarSeVelho: sincronizarSeVelho, eventosGoogle: eventosGoogle, pendentes: pendentes,
+  // Cores das agendas lidas (escolhidas em Integrações): { id: {nome, cor} }
+  var CORES_AG = { amarelo: '#e8b400', verde: '#2e9e4f', vermelho: '#d64545', roxo: '#7b52c7', rosa: '#d14d8b', cinza: '#6b7280', azul: '#5b6b8c' };
+  var cacheCores = null;
+  async function coresAgendas() {
+    if (cacheCores) return cacheCores;
+    try { var r = await window.CF.sb.rpc('agenda_cores'); var m = {}; ((r && r.data) || []).forEach(function (a) { m[a.id] = { nome: a.nome, cor: CORES_AG[a.cor] || a.cor || CORES_AG.azul }; }); cacheCores = m; }
+    catch (e) { cacheCores = {}; }
+    return cacheCores;
+  }
+  function textoSobre(cor) { var c = String(cor).replace('#', ''); var r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16); return (r * 299 + g * 587 + b * 114) / 1000 > 165 ? '#272323' : '#fff'; }
+  window.CF.agendaG = { coresAgendas: coresAgendas, CORES_AG: CORES_AG, textoSobre: textoSobre, especiais: especiais, mapaEspeciais: mapaEspeciais, confirmarDias: confirmarDias, TIPOS_ESP: TIPOS_ESP, sincronizar: sincronizar, sincronizarSeVelho: sincronizarSeVelho, eventosGoogle: eventosGoogle, pendentes: pendentes,
     mapaEventos: mapaEventos, aplicar: aplicar, desfazer: desfazer, vincular: vincular, excluirEvento: excluirEvento, listarAgendas: listarAgendas, hora: hora, dia: dia };
 })();
