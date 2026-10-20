@@ -52,7 +52,17 @@
     await sincronizar(true);
   }
   function desfazer(turmaId) { return sincronizar(false, { acao: 'desfazer', turma_id: turmaId }); }
-  function vincular(eventoId, turmaId) { return sincronizar(true, { acao: 'vincular', evento_id: eventoId, turma_id: turmaId }); }
+  function vincular(eventoId, turmaId, agendaId) { return sincronizar(true, { acao: 'vincular', evento_id: eventoId, turma_id: turmaId, agenda_id: agendaId || null }); }
+  // Excluir um evento criado direto no Google (pede confirmação; some também do Google Agenda)
+  async function excluirEvento(g) {
+    var quando = g.dia_inteiro ? (g.data_ini.slice(8) + '/' + g.data_ini.slice(5, 7) + (g.data_fim !== g.data_ini ? ' a ' + g.data_fim.slice(8) + '/' + g.data_fim.slice(5, 7) : '')) : dia(g.inicio) + ' ' + hora(g.inicio);
+    if (!(await ui.confirmar('Excluir "' + g.titulo + '"?', quando + ' · agenda ' + (g.agenda_nome || 'Google') + '\nEle some também do Google Agenda. Não dá para desfazer pelo sistema.', 'Excluir', 'Cancelar'))) return false;
+    try {
+      await window.CF.drive.chamar('agenda-sincronizar', { acao: 'excluir_evento', evento_id: g.evento_id, agenda_id: g.agenda_id || null });
+      ui.toast('Evento excluído.', 'ok'); return true;
+    } catch (e) { ui.toast(e.message, 'erro'); return false; }
+  }
+  function listarAgendas() { return window.CF.drive.chamar('agenda-sincronizar', { acao: 'listar_agendas' }); }
   // Feriados, pontos facultativos, eventos da Kolping Estadual e lembretes do mês
   var TIPOS_ESP = { feriado: { nome: 'Feriado', cor: '#7d7577' }, ponto: { nome: 'Ponto facultativo', cor: '#8b7fd0' }, kolping: { nome: 'Kolping Estadual', cor: '#d96a1f' }, lembrete: { nome: 'Lembrete do mês', cor: '#b8901a' } };
   async function especiais() {
@@ -77,5 +87,5 @@
     return window.CF.ui.confirmar('Marcar a turma assim mesmo?', achados.join('\n'), 'Marcar assim mesmo', 'Escolher outro dia');
   }
   window.CF.agendaG = { especiais: especiais, mapaEspeciais: mapaEspeciais, confirmarDias: confirmarDias, TIPOS_ESP: TIPOS_ESP, sincronizar: sincronizar, sincronizarSeVelho: sincronizarSeVelho, eventosGoogle: eventosGoogle, pendentes: pendentes,
-    mapaEventos: mapaEventos, aplicar: aplicar, desfazer: desfazer, vincular: vincular, hora: hora, dia: dia };
+    mapaEventos: mapaEventos, aplicar: aplicar, desfazer: desfazer, vincular: vincular, excluirEvento: excluirEvento, listarAgendas: listarAgendas, hora: hora, dia: dia };
 })();

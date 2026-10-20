@@ -77,11 +77,11 @@
               '<td>' + selo(x.p.situacao) + '</td>' +
               '<td style="text-align:right"><a class="btn btn-p" href="#/processos/' + x.p.id + '/jovens?turma=' + x.t.id + '">Abrir turma</a></td></tr>';
           }).join('') + '</tbody></table></div>' : '<p class="dica" style="margin:6px 0 0">Nenhuma turma neste filtro.</p>') + '</section>' +
-        (gVis.length ? '<section class="card pt-tab"><h2 style="font-size:16px;margin:0 0 4px">Na Google Agenda <span class="gtag">criados direto no Google</span></h2><p class="dica" style="margin:0 0 6px">Só aparecem aqui: não travam dias. Se um deles for uma turma, crie a turma a partir dele, sem digitar de novo.</p>' +
+        (gVis.length ? '<section class="card pt-tab"><h2 style="font-size:16px;margin:0 0 4px">Na Google Agenda <span class="gtag">criados direto no Google</span></h2><p class="dica" style="margin:0 0 6px">Eventos da agenda "Classificação Final · Turmas" e das agendas escolhidas em Integrações. Só aparecem: não travam dias. Se um deles for uma turma, crie a turma a partir dele, sem digitar de novo.</p>' +
           '<div class="tabela-rolar"><table class="pt-rk"><tbody>' + gVis.map(function (g, i) {
             var quando = g.dia_inteiro ? dataBR(g.data_ini) + (g.data_fim && g.data_fim !== g.data_ini ? ' a ' + dataBR(g.data_fim) : '') + ' <small class="dica">dia inteiro</small>' : G.dia(g.inicio) + ' <small class="dica">' + G.hora(g.inicio) + '–' + G.hora(g.fim) + '</small>' + (g.data_fim !== g.data_ini ? ' a ' + dataBR(g.data_fim) : '');
-            return '<tr style="--c:#1a56b8"><td class="pt-nm pt-barra"><b>' + esc(g.titulo) + '</b><span class="gtag">na Google Agenda</span></td><td>' + quando + '</td>' +
-              '<td style="text-align:right">' + (window.CF.perm.pode('processos_editar') ? '<button type="button" class="btn btn-p" data-criar="' + i + '">Criar turma a partir deste evento</button>' : '') + '</td></tr>';
+            return '<tr style="--c:#1a56b8"><td class="pt-nm pt-barra"><b>' + esc(g.titulo) + '</b><span class="gtag">' + esc(g.agenda_nome || 'na Google Agenda') + '</span></td><td>' + quando + '</td>' +
+              '<td style="text-align:right;white-space:nowrap">' + (window.CF.perm.pode('processos_editar') ? '<button type="button" class="btn btn-p btn-perigo" data-gex="' + i + '">Excluir</button> <button type="button" class="btn btn-p" data-criar="' + i + '">Criar turma a partir deste evento</button>' : '') + '</td></tr>';
           }).join('') + '</tbody></table></div></section>' : '');
       box.querySelectorAll('[data-f]').forEach(function (b) { b.addEventListener('click', function () { st.filtro = b.getAttribute('data-f'); desenhar(); }); });
       var bs = box.querySelector('#tt-sinc');
@@ -97,6 +97,7 @@
         b.addEventListener('click', function (ev) { ui.executar(ev.currentTarget, 'Desfazendo…', async function () { await G.desfazer(b.getAttribute('data-desfazer')); await recarregar(); }); });
       });
       box.querySelectorAll('[data-criar]').forEach(function (b) { b.addEventListener('click', function () { criarDeEvento(gVis[+b.getAttribute('data-criar')]); }); });
+      box.querySelectorAll('[data-gex]').forEach(function (b) { b.addEventListener('click', async function () { if (await G.excluirEvento(gVis[+b.getAttribute('data-gex')])) recarregar(); }); });
       var bus = box.querySelector('#tt-busca');
       bus.addEventListener('input', function () { st.busca = bus.value; var pos = bus.selectionStart; desenhar(); var n = box.querySelector('#tt-busca'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { /* ok */ } });
     }
@@ -129,7 +130,7 @@
           if (!(await G.confirmarDias(dias))) return false;
           try {
             var id = await dados.agenda.salvarTurma({ processo_id: proc, nome: nome, vagas: parseInt(el.querySelector('#ce-vagas').value, 10) || 20, dias: ds });
-            await G.vincular(g.evento_id, id);
+            await G.vincular(g.evento_id, id, g.agenda_id);
             ui.toast('Turma criada e ligada ao evento da Google Agenda.', 'ok'); await recarregar(); return true;
           } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; }
         } }]

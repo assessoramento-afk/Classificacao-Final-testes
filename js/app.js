@@ -11,8 +11,8 @@
   // Menu de cada perfil: [rota, texto, ícone]
   var esc = ui.esc;
   var MENUS = {
-    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
-    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco']],
+    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Profiling Empresas', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
+    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Profiling Empresas', 'processos'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco']],
     empresa: [['portal', 'Resultados', 'portal']]
   };
 

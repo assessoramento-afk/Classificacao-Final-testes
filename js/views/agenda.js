@@ -144,10 +144,11 @@
       box.querySelectorAll('[data-g]').forEach(function (b) {
         b.addEventListener('click', function () {
           var pr = b.getAttribute('data-g').split('|'), x = itensDoDia(pr[0])[+pr[1]], g = x.g;
-          ui.janela({ titulo: g.titulo, confirmarDescarte: false,
-            corpo: '<p style="margin:0 0 6px"><span class="gtag" style="margin:0">na Google Agenda</span></p><p style="margin:0">' + (g.dia_inteiro ? D.longa(g.data_ini) + (g.data_fim !== g.data_ini ? ' a ' + D.longa(g.data_fim) : '') + ' · dia inteiro' : G.dia(g.inicio) + ' · ' + G.hora(g.inicio) + '–' + G.hora(g.fim)) + '</p>' +
+          var podeEx = window.CF.perm && window.CF.perm.pode('processos_editar');
+          var jg = ui.janela({ titulo: g.titulo, confirmarDescarte: false,
+            corpo: '<p style="margin:0 0 6px"><span class="gtag" style="margin:0">' + esc(g.agenda_nome || 'na Google Agenda') + '</span></p><p style="margin:0">' + (g.dia_inteiro ? D.longa(g.data_ini) + (g.data_fim !== g.data_ini ? ' a ' + D.longa(g.data_fim) : '') + ' · dia inteiro' : G.dia(g.inicio) + ' · ' + G.hora(g.inicio) + '–' + G.hora(g.fim)) + '</p>' +
               '<p class="dica">Criado direto no Google. Se for uma turma, use "Criar turma a partir deste evento" em Cadastros › Turmas.</p>',
-            botoes: [{ texto: 'Fechar', acao: 'fechar' }, { texto: 'Ir para Turmas', principal: true, aoClicar: function () { window.location.hash = '#/cadastros/turmas'; return true; } }] });
+            botoes: (podeEx ? [{ texto: 'Excluir evento', aoClicar: async function () { if (await G.excluirEvento(g)) { carregar(); return true; } return false; } }] : []).concat([{ texto: 'Fechar', acao: 'fechar' }, { texto: 'Ir para Turmas', principal: true, aoClicar: function () { window.location.hash = '#/cadastros/turmas'; return true; } }]) });
         });
       });
     }

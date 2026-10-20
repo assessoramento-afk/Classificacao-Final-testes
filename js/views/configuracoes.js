@@ -436,6 +436,7 @@
           '</div><div class="drv-bts"><button type="button" class="btn btn-p" id="ag-sinc">Sincronizar agora</button>' +
           (st.agenda_id ? '<a class="btn btn-p" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/u/0/r/settings/calendar/' + btoa(st.agenda_id).replace(/=+$/, '') + '">Compartilhar / link Outlook</a>' : '') +
           '<button type="button" class="btn btn-p" id="ag-recon">Reconectar Google</button></div></section>' +
+          (st.agenda_id ? '<section class="card" style="padding:12px 18px"><b>Agendas que o sistema lê</b><p class="dica" style="margin:2px 0 6px">As agendas marcadas aparecem em azul na Agenda do sistema, com o nome da agenda, e podem virar turma ou ser excluídas pelo sistema (com confirmação).</p><div id="ag-lidas"><div class="girando" style="margin:10px auto"></div></div></section>' : '') +
           '<p class="dica">Para a equipe ver a agenda: no Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
           'Para quem usa o Outlook: copie o <b>Endereço secreto no formato iCal</b> e, no Outlook, use <b>Adicionar calendário › Assinar da Web</b>. ' +
           'Se aparecer "ainda não autorizou a agenda", clique em <b>Reconectar Google</b> e entre com projetogol@kolpingsp.org.</p>' : '');
@@ -445,6 +446,26 @@
           try { var r = await window.CF.drive.chamar('drive-conectar', { acao: 'inicio' }); window.location.href = r.url; } catch (e) { ui.toast(e.message, 'erro'); }
         });
       });
+      var boxL = box.querySelector('#ag-lidas');
+      if (boxL) (async function () {
+        var lidas = Array.isArray(st.agendas_lidas) ? st.agendas_lidas : [], ids = {}; lidas.forEach(function (a) { ids[a.id] = true; });
+        try {
+          var r = await window.CF.agendaG.listarAgendas();
+          var lista = (r.agendas || []).filter(function (a) { return a.id !== r.propria; });
+          boxL.innerHTML = '<div class="ag-lista-agendas">' + '<div class="ag-li"><span>🔒</span><div><b>Classificação Final · Turmas</b><small>mantida pelo sistema (turmas, feriados, Kolping Estadual)</small></div><span class="pill" style="background:#3FA66B">Mantida pelo sistema</span></div>' +
+            lista.map(function (a, i) {
+              return '<label class="ag-li"><input type="checkbox" data-ag="' + i + '"' + (ids[a.id] ? ' checked' : '') + '><div><b>' + esc(a.nome) + (a.principal ? ' (principal)' : '') + '</b><small>' + (/holiday|feriado/i.test(a.id + a.nome) ? 'agenda do Google · o sistema já tem os feriados' : (/contacts|anivers/i.test(a.id + a.nome) ? 'agenda automática do Google' : 'agenda da conta')) + '</small></div></label>';
+            }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="btn btn-pri btn-p" id="ag-lidas-salvar">Salvar agendas lidas</button></div>';
+          boxL.querySelector('#ag-lidas-salvar').addEventListener('click', function (ev) {
+            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var a = lista[+c.getAttribute('data-ag')]; sel.push({ id: a.id, nome: a.nome }); } });
+            ui.executar(ev.currentTarget, 'Salvando…', async function () {
+              try { var x = await window.CF.sb.rpc('agendas_lidas_salvar', { p: sel }); if (x.error) throw x.error; ui.toast('Agendas salvas. Atualizando…', 'ok'); await window.CF.agendaG.sincronizar(false); } catch (e) { erro(e); }
+            });
+          });
+        } catch (e) {
+          boxL.innerHTML = '<p class="dica" style="margin:4px 0">' + esc(/autorizou|scope|insufficient|403/i.test(e.message) ? 'Para listar as agendas, clique em "Reconectar Google" e autorize de novo (a permissão nova de agendas).' : e.message) + '</p>';
+        }
+      })();
       var as = box.querySelector('#ag-sinc');
       if (as) as.addEventListener('click', function (ev) { ui.executar(ev.currentTarget, 'Sincronizando…', async function () { await window.CF.agendaG.sincronizar(false); desenhar(); }); });
       var ar = box.querySelector('#ag-recon');

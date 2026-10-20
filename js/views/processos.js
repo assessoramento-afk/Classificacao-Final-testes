@@ -63,8 +63,8 @@
   async function lista(area, ctx) {
     var admin = ctx.perfil.perfil === 'admin';
     var filtroSit = 'todos', busca = '', aba = 'aberto', ano = '';
-    area.innerHTML = '<header class="cabecalho"><div><h1>Processos</h1><p>Processos seletivos de cada empresa</p></div>' +
-      (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + 'Novo processo</button>' : '') + '</header>' +
+    area.innerHTML = '<header class="cabecalho"><div><h1>Profiling Empresas</h1><p>Processos seletivos de cada empresa parceira</p></div>' +
+      (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + 'Novo Profiling Empresa</button>' : '') + '</header>' +
       '<div class="segmentos abas-proc" role="tablist" id="abas-p"></div>' +
       '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-p" placeholder="Buscar por empresa, vaga ou processo"></label><select class="entrada oculto" id="ano-p" aria-label="Ano" style="width:170px"></select></div>' +
       '<div class="filtros" id="filtros" role="group" aria-label="Situação"></div><div id="procs"><div class="girando" style="margin:30px auto"></div></div>';
@@ -100,7 +100,7 @@
       });
       var box = area.querySelector('#procs');
       if (!itens.length) {
-        box.innerHTML = '<div class="card vazio">' + (procs.length ? 'Nenhum processo encontrado.' : 'Nenhum processo ainda.' + (admin ? ' Use "Novo processo" para começar.' : '')) + '</div>';
+        box.innerHTML = '<div class="card vazio">' + (procs.length ? 'Nenhum processo encontrado.' : 'Nenhum processo ainda.' + (admin ? ' Use "Novo Profiling Empresa" para começar.' : '')) + '</div>';
         return;
       }
       box.innerHTML = '<div class="procs">' + itens.map(function (p) {
@@ -143,7 +143,7 @@
      ================================================================ */
   async function painel(area, ctx, id) {
     var admin = ctx.perfil.perfil === 'admin';
-    area.innerHTML = '<a class="voltar" href="#/processos">← Processos</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
+    area.innerHTML = '<a class="voltar" href="#/processos">← Profiling Empresas</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
     var p, testesProc, empresas, b, ag;
     try {
       var r = await Promise.all([dados.processos.obter(id), dados.processos.testes(id), dados.empresas.listar().catch(function () { return []; }), dados.banco.carregarTudo(), dados.agenda.carregarTudo(), dados.jovens.doProcesso(id).catch(function () { return []; })]);
@@ -366,7 +366,7 @@
     var empresasOp = empresas.filter(function (x) { return x.ativa || x.id === st.empresa_id; }).sort(function (x, y) { return x.nome_fantasia.localeCompare(y.nome_fantasia, 'pt-BR'); });
 
     var j = ui.janela({
-      titulo: novo ? 'Novo processo' : 'Editar processo',
+      titulo: novo ? 'Novo Profiling Empresa' : 'Editar Profiling Empresa',
       corpo: '<div class="passos" id="w-passos"></div><div id="w-corpo"></div>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: '← Voltar', aoClicar: function () { if (!ler()) return false; passo--; desenhar(); return false; } },
                { texto: 'Continuar →', principal: true, aoClicar: function () { return avancar(); } }]
