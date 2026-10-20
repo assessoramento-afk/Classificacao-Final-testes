@@ -1335,3 +1335,12 @@ tr.ie-off td { opacity: .45; }
 .proc-off { opacity: .55; }
 .proc-tlin { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borda-2); text-decoration: none; color: var(--texto); }
 .proc-tlin > div { flex: 1; } .proc-tlin small { display: block; color: var(--texto-3); } .proc-tlin .pill { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+
+/* Cópias de segurança */
+#sd-bk { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.bk-card { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 16px 18px; border-left: 5px solid var(--c); }
+.bk-card small { display: block; color: var(--texto-3); margin-top: 2px; }
+.bk-ic { width: 44px; height: 44px; border-radius: 12px; background: #e8f5ec; display: flex; align-items: center; justify-content: center; font-size: 22px; flex: none; }
+.bk-ok { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #e8f5ec; color: #1f6b40; font-size: 11.5px; font-weight: 700; }
+.bk-bts { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.bk-hist { width: 100%; border-collapse: collapse; font-size: 13.5px; } .bk-hist td { padding: 8px 6px; border-bottom: 1px solid var(--borda-2); }

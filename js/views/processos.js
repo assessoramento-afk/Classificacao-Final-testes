@@ -510,7 +510,7 @@
                   Object.keys(NIVEIS).map(function (k) { return '<option value="' + k + '"' + (st.testes[t.id].nivel === k ? ' selected' : '') + '>' + NIVEIS[k] + '</option>'; }).join('') + '</select>' : '') + '</label>';
             }).join('') + '</div></div>' : '';
           }).join('') + '</div>' +
-          '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>A Entrevista Biográfica entra em todo processo e pode ser removida. Ao <b>iniciar</b> o processo, a lista de testes e as competências de cada um ficam guardadas: mudanças futuras no Banco de testes não alteram este processo.</span></div>';
+          '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Escolha os testes deste processo. Ao <b>iniciar</b> o processo, a lista de testes e as competências de cada um ficam guardadas: mudanças futuras no Banco de testes não alteram este processo.</span></div>';
         resumoTestes();
         var lt2 = c.querySelector('.lista-testes-proc'); if (lt2) lt2.scrollTop = rolagem;
         c.querySelectorAll('[data-teste]').forEach(function (x) {

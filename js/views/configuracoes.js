@@ -180,8 +180,44 @@
     var pct = limiteMb ? bytes * 100 / (limiteMb * 1048576) : 0, cls = pct >= 95 ? 'uso-verm' : (pct >= 80 ? 'uso-amar' : 'uso-verde');
     return '<div class="uso-l"><b>' + rotulo + '</b><div class="uso-barra ' + cls + '"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></div><span class="' + cls + '-tx">' + mb(bytes) + ' de ' + mb(limiteMb * 1048576) + ' · ' + Math.round(pct) + '%</span></div>';
   }
+  /* ---------- Cópias de segurança (Saúde do sistema) ---------- */
+  function proximoDomingo() {
+    var d = new Date(); d.setHours(3, 0, 0, 0);
+    var falta = (7 - d.getDay()) % 7; if (falta === 0 && new Date() >= d) falta = 7;
+    d.setDate(d.getDate() + falta); return d;
+  }
+  async function blocoCopias(box) {
+    var r = await window.CF.sb.from('backups').select('*').order('iniciado_em', { ascending: false }).limit(9);
+    if (r.error) { box.innerHTML = '<section class="card bloco sd-bloco"><span class="lbl">Cópias de segurança</span><p class="dica" style="margin:0">Rode o SQL fase6_11 no Supabase para ativar as cópias.</p></section>'; return; }
+    var l = r.data || [], u = l.filter(function (x) { return x.situacao === 'ok'; })[0], ult = l[0];
+    function kb(n) { return n == null ? '—' : n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+    function quando(s) { return new Date(s).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    var cor = ult && ult.situacao === 'erro' ? '#D9534F' : (u ? '#3FA66B' : '#8a8486');
+    var px = proximoDomingo();
+    box.innerHTML = '<section class="card bk-card" style="--c:' + cor + '"><span class="bk-ic">🗄️</span><div style="flex:1;min-width:220px">' +
+      (u ? '<b>Última cópia: ' + esc(quando(u.concluido_em || u.iniciado_em)) + ' <span class="bk-ok">ok</span></b><small>Banco: ' + kb(u.tamanho_bytes) + ' · ' + (u.registros || 0).toLocaleString('pt-BR') + ' registros · Fotos no espelho: ' + (u.fotos_total || 0) + ' (' + (u.fotos_novas || 0) + ' novas)</small>'
+         : '<b>Nenhuma cópia feita ainda</b><small>A primeira sai no próximo domingo, ou clique em "Fazer cópia agora".</small>') +
+      (ult && ult.situacao === 'erro' ? '<small style="color:#D9534F">A última tentativa falhou: ' + esc(ult.erro || '') + '</small>' : '') +
+      (ult && ult.situacao === 'rodando' ? '<small>Uma cópia está em andamento…</small>' : '') +
+      '<small>Próxima: ' + esc(quando(px.toISOString())) + ' · Drive › Classificação Final › Backups</small></div>' +
+      '<div class="bk-bts">' + (u && u.pasta_link ? '<a class="btn btn-p" target="_blank" rel="noopener" href="' + esc(u.pasta_link) + '">Abrir no Drive</a>' : '') + '<button type="button" class="btn btn-p" id="bk-agora">Fazer cópia agora</button></div></section>' +
+      (l.length ? '<section class="card bloco sd-bloco"><span class="lbl">Cópias anteriores</span><table class="bk-hist"><tbody>' + l.map(function (x) {
+        var dt = new Date(x.iniciado_em);
+        return '<tr><td>' + dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' <small class="dica">' + (x.origem === 'manual' ? 'manual' : 'automática') + '</small></td><td>' + kb(x.tamanho_bytes) + '</td><td>' +
+          (x.situacao === 'ok' ? (x.registros || 0).toLocaleString('pt-BR') + ' registros' : (x.situacao === 'erro' ? '<span style="color:#D9534F">falhou</span>' : 'em andamento')) + '</td><td style="text-align:right">' + (x.pasta_link ? '<a class="btn btn-p" target="_blank" rel="noopener" href="' + esc(x.pasta_link) + '">Abrir</a>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></section>' : '');
+    box.querySelector('#bk-agora').addEventListener('click', function (ev) {
+      ui.executar(ev.currentTarget, 'Fazendo a cópia…', async function () {
+        try { var x = await window.CF.drive.chamar('backup-semanal', { acao: 'executar' }); ui.toast('Cópia feita: ' + x.registros.toLocaleString('pt-BR') + ' registros, ' + x.fotos_novas + ' foto(s) nova(s).', 'ok'); }
+        catch (e) { ui.toast(e.message, 'erro'); }
+        blocoCopias(box);
+      });
+    });
+  }
+
   async function paginaSaude(area) {
-    area.innerHTML = cabecalho('Saúde do sistema', 'Só para administradores · atualizado ao abrir esta tela') + '<div id="sd"><div class="girando" style="margin:30px auto"></div></div>';
+    area.innerHTML = cabecalho('Saúde do sistema', 'Só para administradores · atualizado ao abrir esta tela') + '<div id="sd-bk"></div><div id="sd"><div class="girando" style="margin:30px auto"></div></div>';
+    blocoCopias(area.querySelector('#sd-bk'));
     var cab = area.querySelector('.cabecalho');
     cab.insertAdjacentHTML('beforeend', '<div class="botoes-topo"><button type="button" class="btn" id="sd-atual">⟳ Atualizar</button><button type="button" class="btn" id="sd-manut">🛠 Modo manutenção</button></div>');
     var sd, cfg;
