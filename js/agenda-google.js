@@ -53,6 +53,29 @@
   }
   function desfazer(turmaId) { return sincronizar(false, { acao: 'desfazer', turma_id: turmaId }); }
   function vincular(eventoId, turmaId) { return sincronizar(true, { acao: 'vincular', evento_id: eventoId, turma_id: turmaId }); }
-  window.CF.agendaG = { sincronizar: sincronizar, sincronizarSeVelho: sincronizarSeVelho, eventosGoogle: eventosGoogle, pendentes: pendentes,
+  // Feriados, pontos facultativos, eventos da Kolping Estadual e lembretes do mês
+  var TIPOS_ESP = { feriado: { nome: 'Feriado', cor: '#7d7577' }, ponto: { nome: 'Ponto facultativo', cor: '#8b7fd0' }, kolping: { nome: 'Kolping Estadual', cor: '#d96a1f' }, lembrete: { nome: 'Lembrete do mês', cor: '#b8901a' } };
+  async function especiais() {
+    var r = await window.CF.sb.from('agenda_especiais').select('*').order('data_ini');
+    return r.error ? [] : (r.data || []);
+  }
+  // { 'AAAA-MM-DD': [especial, ...] } (lembretes do mês ficam de fora: não marcam dias)
+  function mapaEspeciais(lista) {
+    var m = {};
+    (lista || []).forEach(function (e) {
+      if (e.tipo === 'lembrete') return;
+      var d = new Date(e.data_ini + 'T12:00:00'), f = new Date(e.data_fim + 'T12:00:00'), n = 0;
+      while (d <= f && n < 40) { var k = d.toISOString().slice(0, 10); (m[k] = m[k] || []).push(e); d.setDate(d.getDate() + 1); n++; }
+    });
+    return m;
+  }
+  // Antes de marcar uma turma: pergunta se algum dia é feriado, ponto facultativo ou evento da Kolping Estadual
+  async function confirmarDias(dias, lista) {
+    var m = mapaEspeciais(lista || await especiais()), achados = [];
+    (dias || []).forEach(function (d) { (m[d] || []).forEach(function (e) { achados.push(d.slice(8, 10) + '/' + d.slice(5, 7) + ' · ' + TIPOS_ESP[e.tipo].nome + ': ' + e.titulo); }); });
+    if (!achados.length) return true;
+    return window.CF.ui.confirmar('Marcar a turma assim mesmo?', achados.join('\n'), 'Marcar assim mesmo', 'Escolher outro dia');
+  }
+  window.CF.agendaG = { especiais: especiais, mapaEspeciais: mapaEspeciais, confirmarDias: confirmarDias, TIPOS_ESP: TIPOS_ESP, sincronizar: sincronizar, sincronizarSeVelho: sincronizarSeVelho, eventosGoogle: eventosGoogle, pendentes: pendentes,
     mapaEventos: mapaEventos, aplicar: aplicar, desfazer: desfazer, vincular: vincular, hora: hora, dia: dia };
 })();

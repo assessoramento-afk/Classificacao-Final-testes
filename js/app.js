@@ -11,8 +11,8 @@
   // Menu de cada perfil: [rota, texto, ícone]
   var esc = ui.esc;
   var MENUS = {
-    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
-    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['banco', 'Banco de testes', 'banco']],
+    admin: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
+    avaliador: [['painel', 'Gráficos', 'graficos'], ['avaliar', 'Avaliar', 'avaliar'], ['processos', 'Processos', 'processos'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco']],
     empresa: [['portal', 'Resultados', 'portal']]
   };
 
@@ -187,7 +187,6 @@
     var p = estado.perfil;
     var conteudo = document.getElementById('conteudo');
     if (!p || !conteudo) return;
-    if (rotaAtual() === 'agenda') { window.location.hash = '#/cadastros/turmas'; return; }   // a Agenda agora fica no Google
     var permitidas = (MENUS[p.perfil] || []).map(function (m) { return m[0]; })
       .filter(function (r) { return !window.CF.perm || window.CF.perm.rotaPermitida(r); })
       .concat(['conta']).concat(p.perfil === 'empresa' ? [] : ['envios']);

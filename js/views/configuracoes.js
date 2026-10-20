@@ -10,6 +10,9 @@
   var TEXTO_PADRAO = 'A Kolping Estadual de São Paulo agradece à {empresa} pela confiança e pela parceria neste processo seletivo para a vaga de {vaga}.\n\n' +
     'Juntos, abrimos portas para que jovens deem o primeiro passo no mundo do trabalho, com oportunidade, preparo e dignidade.';
   var ICONES = {
+    feriados: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/>',
+    'email-acomp': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    integracoes: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
     permissoes: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.5"/>',
     empresas: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
     avaliadores: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
@@ -47,6 +50,7 @@
     if (sub === 'saude') return paginaSaude(area);
     if (sub === 'permissoes') return window.CF.telas.permissoes(area);
     if (sub === 'integracoes') return paginaIntegracoes(area);
+    if (sub === 'feriados') return paginaFeriados(area);
     paginaInicial(area);
   };
 
@@ -81,16 +85,18 @@
       '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
         card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
         card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') +
-        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'padrao', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
-        (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'aval', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') + '</div></section>' +
+        '</div></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'padrao', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
+        card('feriados', 'padrao', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
         '</div></section>' +
       '<section class="grupo"><h2>Documentos</h2><div class="cards-cfg">' +
         card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'padrao', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
       '<section class="grupo"><h2>Sistema</h2><div class="cards-cfg">' +
+        (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'aval', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
+        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'padrao', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
         card('saude', 'padrao', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
@@ -354,6 +360,54 @@
     previa();
   }
 
+  /* ---------- Feriados e eventos (feriados, pontos facultativos, Kolping Estadual, lembretes) ---------- */
+  async function paginaFeriados(area) {
+    var G = window.CF.agendaG, T = G.TIPOS_ESP, pode = window.CF.perm.pode('config_modelos');
+    var st = { ano: String(new Date().getFullYear()), tipo: '' }, lista = [];
+    area.innerHTML = cabecalho('Feriados e eventos', 'Aparecem na Agenda e na Google Agenda. Não travam dias, mas o sistema pergunta antes de marcar uma turma num feriado, ponto facultativo ou evento da Kolping Estadual.') + '<div id="fe"></div>';
+    var box = area.querySelector('#fe');
+    function br(d) { return d.slice(8, 10) + '/' + d.slice(5, 7); }
+    async function carregar() { lista = await G.especiais(); desenhar(); }
+    function desenhar() {
+      var anos = {}; lista.forEach(function (e) { anos[e.data_ini.slice(0, 4)] = true; }); anos[st.ano] = true;
+      var vis = lista.filter(function (e) { return e.data_ini.slice(0, 4) === st.ano && (!st.tipo || e.tipo === st.tipo); });
+      box.innerHTML = '<div class="pt-filtros">' + Object.keys(anos).sort().map(function (a) { return '<button type="button" class="pt-chip' + (a === st.ano ? ' on' : '') + '" data-ano="' + a + '">' + a + '</button>'; }).join('') +
+        '<span style="width:12px"></span>' + [['', 'Todos']].concat(Object.keys(T).map(function (k) { return [k, T[k].nome]; })).map(function (t) { return '<button type="button" class="pt-chip' + (st.tipo === t[0] ? ' on' : '') + '" data-tipo="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') +
+        (pode ? '<span style="margin-left:auto;display:flex;gap:8px"><button type="button" class="btn btn-p" id="fe-pdf">⬆ Importar eventos (PDF)</button><button type="button" class="btn btn-pri btn-p" id="fe-novo">+ Adicionar</button></span>' : '') + '</div>' +
+        '<section class="card tabela-card">' + (vis.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Data</th><th>Evento</th><th>Tipo</th><th></th></tr></thead><tbody>' + vis.map(function (e) {
+          return '<tr><td style="white-space:nowrap">' + br(e.data_ini) + (e.data_fim !== e.data_ini ? ' a ' + br(e.data_fim) : '') + '</td><td><b>' + esc(e.titulo) + '</b>' + (e.detalhe ? '<small class="dica" style="display:block">' + esc(e.detalhe) + '</small>' : '') + '</td>' +
+            '<td><span class="fe-tipo" style="--c:' + T[e.tipo].cor + '">' + esc(T[e.tipo].nome) + '</span></td><td style="text-align:right;white-space:nowrap">' +
+            (pode ? '<button type="button" class="btn btn-p" data-ed="' + e.id + '">Editar</button> <button type="button" class="btn btn-p btn-perigo" data-ex="' + e.id + '">Excluir</button>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '<p class="dica" style="margin:8px 0">Nada cadastrado neste ano' + (st.tipo ? ' para este tipo' : '') + '.</p>') + '</section>';
+      box.querySelectorAll('[data-ano]').forEach(function (b) { b.addEventListener('click', function () { st.ano = b.getAttribute('data-ano'); desenhar(); }); });
+      box.querySelectorAll('[data-tipo]').forEach(function (b) { b.addEventListener('click', function () { st.tipo = b.getAttribute('data-tipo'); desenhar(); }); });
+      var bp = box.querySelector('#fe-pdf'); if (bp) bp.addEventListener('click', function () { window.CF.importarEventos.abrir(function () { carregar(); G.sincronizar(true); }); });
+      var bn = box.querySelector('#fe-novo'); if (bn) bn.addEventListener('click', function () { editar({ tipo: st.tipo || 'feriado', titulo: '', detalhe: '', data_ini: '', data_fim: '' }); });
+      box.querySelectorAll('[data-ed]').forEach(function (b) { b.addEventListener('click', function () { editar(lista.filter(function (e) { return e.id === b.getAttribute('data-ed'); })[0]); }); });
+      box.querySelectorAll('[data-ex]').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          var e = lista.filter(function (x) { return x.id === b.getAttribute('data-ex'); })[0];
+          if (!(await ui.confirmar('Excluir "' + e.titulo + '"?', 'Sai também da Google Agenda na próxima atualização.', 'Excluir', 'Cancelar'))) return;
+          try { var r = await window.CF.sb.rpc('especiais_excluir', { p_ids: [e.id] }); if (r.error) throw r.error; ui.toast('Excluído.', 'ok'); await carregar(); G.sincronizar(true); } catch (x) { erro(x); }
+        });
+      });
+    }
+    function editar(e) {
+      ui.janela({ titulo: e.id ? 'Editar' : 'Adicionar feriado ou evento',
+        corpo: '<div class="form-grade"><label class="campo"><span>Tipo</span><select class="entrada" id="fe-t">' + Object.keys(T).map(function (k) { return '<option value="' + k + '"' + (e.tipo === k ? ' selected' : '') + '>' + esc(T[k].nome) + '</option>'; }).join('') + '</select></label>' +
+          '<label class="campo"><span>Nome *</span><input class="entrada" id="fe-n" maxlength="160" value="' + esc(e.titulo) + '"></label></div>' +
+          '<div class="form-grade"><label class="campo"><span>De *</span><input class="entrada" type="date" id="fe-di" value="' + e.data_ini + '"></label><label class="campo"><span>Até</span><input class="entrada" type="date" id="fe-df" value="' + (e.data_fim !== e.data_ini ? e.data_fim : '') + '"></label></div>' +
+          '<label class="campo"><span>Observação</span><input class="entrada" id="fe-o" maxlength="200" value="' + esc(e.detalhe || '') + '" placeholder="Ex.: Municipal · após 14h · a confirmar"></label>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (el) {
+          var x = { id: e.id || null, tipo: el.querySelector('#fe-t').value, titulo: el.querySelector('#fe-n').value.trim(), detalhe: el.querySelector('#fe-o').value.trim(), data_ini: el.querySelector('#fe-di').value, data_fim: el.querySelector('#fe-df').value || el.querySelector('#fe-di').value };
+          if (!x.titulo || !x.data_ini) { ui.toast('Informe o nome e a data.', 'erro'); return false; }
+          if (x.data_fim < x.data_ini) { ui.toast('A data final precisa ser depois da inicial.', 'erro'); return false; }
+          try { var r = await window.CF.sb.rpc('especiais_salvar', { p: [x] }); if (r.error) throw r.error; ui.toast('Salvo.', 'ok'); await carregar(); G.sincronizar(true); return true; } catch (z) { erro(z); return false; }
+        } }] });
+    }
+    await carregar();
+  }
+
   /* ---------- Integrações (Google Drive) · só o responsável ---------- */
   async function paginaIntegracoes(area) {
     var q = (window.location.hash.split('?')[1] || ''), pr = {};
@@ -374,7 +428,7 @@
           : '<b>Google Drive</b><small>Não conectado. Os arquivos baixados não estão sendo salvos no Drive.</small><small>Ao clicar, entre com <b>projetogol@kolpingsp.org</b> e autorize.</small>') +
         '</div><div class="drv-bts">' + (st.conectado ? '<button type="button" class="btn btn-p" id="drv-testar">Testar</button><button type="button" class="btn btn-p btn-perigo" id="drv-sair">Desconectar</button>'
           : '<button type="button" class="btn btn-pri" id="drv-con">Conectar Google Drive</button>') + '</div></section>' +
-        '<p class="dica">Tudo o que a equipe baixa no sistema (PDFs, planilhas, fichas, históricos e gráficos) também é salvo no Drive compartilhado, em pastas por empresa e processo. Gerar de novo o mesmo documento substitui o anterior; o Drive guarda as versões antigas.</p>'; +
+        '<p class="dica">Tudo o que a equipe baixa no sistema (PDFs, planilhas, fichas, históricos e gráficos) também é salvo no Drive compartilhado, em pastas por empresa e processo. Gerar de novo o mesmo documento substitui o anterior; o Drive guarda as versões antigas.</p>' +
         (st.conectado ? '<section class="card drv-card" style="--c:' + (st.agenda_erro ? '#D9534F' : (st.agenda_id ? '#3FA66B' : '#8a8486')) + '"><span class="drv-ic">📅</span><div style="flex:1;min-width:0">' +
           '<b>Google Agenda · ' + (st.agenda_id ? '"Classificação Final · Turmas"' : 'ainda não criada') + '</b>' +
           (st.agenda_id ? '<small>' + st.agenda_eventos + ' dia(s) de turma na agenda · ' + st.agenda_google + ' evento(s) criados direto no Google' + (st.agenda_sinc_em ? ' · última atualização ' + new Date(st.agenda_sinc_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '') + '</small>' : '<small>Clique em "Sincronizar agora" para criar a agenda e levar as turmas.</small>') +

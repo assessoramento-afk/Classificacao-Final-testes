@@ -1237,3 +1237,66 @@ tr.pm-mod td { background: var(--surface-2) !important; font-weight: 700; text-a
 [data-tema="escuro"] .gtag { background: #1d2b45; color: #9cc0ff; }
 .ag-pend { border-left: 5px solid var(--laranja); padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
 .ag-pend p { margin: 4px 0 0; }
+
+/* Integrações no celular: texto na largura toda, botões embaixo */
+@media (max-width: 640px) {
+  .drv-card { align-items: flex-start; }
+  .drv-card > div[style*="flex:1"] { flex: 1 1 calc(100% - 60px); }
+  .drv-bts { flex: 1 1 100%; }
+  .drv-bts .btn { flex: 1 1 auto; }
+}
+
+/* ---------- Agenda (turmas + Google Agenda) ---------- */
+.ag-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ag-nav b { font-size: 18px; min-width: 190px; text-align: center; }
+.ag-leg { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--texto-2); }
+.ag-leg i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-left: 8px; }
+.ag-leg i.t { background: #3f8f9a; } .ag-leg i.g { background: #1a56b8; }
+.ag-mes { padding: 8px; }
+.ag-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.ag-cab { text-align: center; font-size: 11px; font-weight: 700; color: var(--texto-3); padding: 6px 0; letter-spacing: .04em; }
+.ag-cel { min-height: 104px; border: 1px solid var(--borda-2); border-radius: 10px; padding: 4px; background: var(--entrada); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ag-cel.vazio { border: 0; background: transparent; }
+.ag-cel.fds { background: transparent; }
+.ag-cel.hoje { box-shadow: inset 0 0 0 2px var(--laranja); }
+.ag-n { font-size: 12px; font-weight: 700; color: var(--texto-2); padding: 2px 4px; }
+.ag-it { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 11.5px; line-height: 1.25; color: #fff; text-decoration: none; cursor: pointer; overflow: hidden; }
+.ag-it small { display: block; font-size: 10.5px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-turma { background: #3f8f9a; } .ag-google { background: #1a56b8; }
+.ag-it:hover { filter: brightness(1.08); }
+.ag-lista { padding: 6px 12px; }
+.ag-ldia { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--borda-2); }
+.ag-ldia:last-child { border-bottom: 0; }
+.ag-ldia.hoje .ag-ld { color: var(--laranja); }
+.ag-ld { width: 44px; flex: none; text-align: center; font-size: 11px; font-weight: 700; color: var(--texto-3); }
+.ag-ld b { display: block; font-size: 20px; color: inherit; }
+.ag-ldia > div { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ag-ldia .ag-it { font-size: 13px; padding: 6px 8px; } .ag-ldia .ag-it small { font-size: 11.5px; }
+
+/* Minha conta · Aparência: as três opções cabem dentro da caixa */
+.conta-grade .segmentos { display: flex; width: 100%; box-sizing: border-box; }
+.conta-grade .segmentos { gap: 2px; padding: 3px; }
+.conta-grade .segmentos button { flex: 1 1 auto; min-width: 0; padding: 0 4px; font-size: 12.5px; }
+
+/* Jovens do processo: espaço entre turma, busca e tabela */
+#jv { display: flex; flex-direction: column; gap: 16px; }
+#jv > .cabecalho { margin-bottom: 0; }
+
+/* Feriados, pontos facultativos e Kolping Estadual no calendário da turma */
+.cal-dia.esp-feriado:not(.sel) { background: #ecebeb; border-color: #cfcaca; color: #5b5455; }
+.cal-dia.esp-ponto:not(.sel) { background: #efecfb; border-color: #d3cdf2; color: #5d50a8; }
+.cal-dia.esp-kolping:not(.sel) { background: #fdeee3; border-color: #f4c9a8; color: #a54c12; }
+[data-tema="escuro"] .cal-dia.esp-feriado:not(.sel) { background: #36302f; border-color: #4a4342; color: #d8d0cf; }
+[data-tema="escuro"] .cal-dia.esp-ponto:not(.sel) { background: #2c2840; border-color: #433b66; color: #c3b9ff; }
+[data-tema="escuro"] .cal-dia.esp-kolping:not(.sel) { background: #3d2a1c; border-color: #6a4426; color: #ffbf8f; }
+.ag-esp { cursor: default; }
+
+/* Importar eventos (PDF) */
+.ie-tab { max-height: 60vh; overflow: auto; }
+.ie-tab td { padding: 4px 6px; vertical-align: middle; }
+.ie-tab .entrada { min-height: 34px; padding: 4px 8px; font-size: 13px; }
+.ie-tab .ie-d { width: 150px; }
+.ie-tab td:nth-child(4) .entrada { min-width: 300px; }
+.ie-av { font-size: 12px; color: #a54c12; max-width: 240px; }
+tr.ie-off td { opacity: .45; }
+.fe-tipo { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; white-space: nowrap; } .fe-tipo::before { content: ''; width: 10px; height: 10px; border-radius: 3px; background: var(--c); }

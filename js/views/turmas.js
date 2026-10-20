@@ -126,6 +126,7 @@
           if (!proc) { ui.toast('Escolha o processo.', 'erro'); return false; }
           if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
           var ds = dias.map(function (x, i) { return { data: x, inicio: el.querySelector('[data-ci="' + i + '"]').value, fim: el.querySelector('[data-cf="' + i + '"]').value }; });
+          if (!(await G.confirmarDias(dias))) return false;
           try {
             var id = await dados.agenda.salvarTurma({ processo_id: proc, nome: nome, vagas: parseInt(el.querySelector('#ce-vagas').value, 10) || 20, dias: ds });
             await G.vincular(g.evento_id, id);

@@ -260,7 +260,7 @@
         '<div class="campo"><span>Quantos dias?</span><div class="segmentos" role="group" aria-label="Quantos dias"><button type="button" data-qtd="1" aria-pressed="' + (qtd === 1) + '">1 dia</button><button type="button" data-qtd="2" aria-pressed="' + (qtd === 2) + '">2 dias</button></div></div></div>' +
         '<div id="tu-cal" class="cal-escolha"></div><div id="tu-esc"></div>' +
         '<div class="form-grade"><label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
-        '<p class="dica" style="margin:0">Riscado: o dia já tem outra turma. Em azul: evento da Google Agenda (só aparece, não impede). Fins de semana podem ser escolhidos.</p>',
+        '<p class="dica" style="margin:0">Riscado: o dia já tem outra turma. Em azul: evento da Google Agenda; em cinza, lilás e laranja: feriado, ponto facultativo e evento da Kolping Estadual (o sistema pergunta antes de marcar).</p>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Criar turma' : 'Salvar turma', principal: true, aoClicar: async function (f) {
         var nome = ui.maiusculas(f.querySelector('#tu-nome').value.trim().replace(/\s+/g, ' ')), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#tu-vagas').value, 10);
         if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
@@ -271,6 +271,7 @@
           var diasH = escolhidos.map(function (d) { var h = horas[d] || { inicio: '08:00', fim: '17:00' }; return { data: d, inicio: h.inicio, fim: h.fim }; });
           var ruim = diasH.filter(function (d) { return !d.inicio || !d.fim || d.fim <= d.inicio; })[0];
           if (ruim) { ui.toast('No dia ' + D.curta(ruim.data) + ', o horário de fim precisa ser depois do início.', 'erro'); return false; }
+          if (window.CF.agendaG && !(await window.CF.agendaG.confirmarDias(escolhidos, espLista))) return false;
           await dados.agenda.salvarTurma({ id: t ? t.id : null, processo_id: p.id, nome: nome, vagas: vagas, dias: diasH });
           if (window.CF.agendaG) window.CF.agendaG.sincronizar(true);
           ui.toast(novo ? 'Turma criada: ' + D.listaDias(escolhidos) + '.' : 'Turma atualizada.', 'ok');
@@ -291,6 +292,8 @@
     }
     var cal = window.CF.calendario.escolher(j.elemento.querySelector('#tu-cal'), { max: qtd, selecionados: dias, ocupados: window.CF.agendaUtil.ocupados(ag, t ? t.id : null), eventos: {}, aoMudar: mostrar });
     if (window.CF.agendaG) window.CF.agendaG.eventosGoogle().then(function (l) { if (!l.length) return; cal.definirEventos(window.CF.agendaG.mapaEventos(l)); });
+    var espLista = [];
+    if (window.CF.agendaG) window.CF.agendaG.especiais().then(function (l) { espLista = l; if (l.length) cal.definirEspeciais(window.CF.agendaG.mapaEspeciais(l)); });
     mostrar(dias);
     j.elemento.querySelectorAll('[data-qtd]').forEach(function (b) {
       b.addEventListener('click', function () {

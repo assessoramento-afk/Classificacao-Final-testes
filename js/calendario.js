@@ -37,9 +37,12 @@
         var s = iso(new Date(ano, mes, d)), dow = new Date(ano, mes, d).getDay();
         var ocup = opcoes.ocupados && opcoes.ocupados[s], passado = s < h, escolhido = sel.indexOf(s) >= 0;
         var gev = opcoes.eventos && opcoes.eventos[s];   // evento criado na Google Agenda: só aparece, não trava
-        var cls = 'cal-dia' + (escolhido ? ' sel' : '') + (ocup ? ' ocup' : '') + (gev && !ocup ? ' gev' : '') + (passado ? ' passado' : '') + (dow === 0 || dow === 6 ? ' fds' : '') + (s === h ? ' hoje' : '');
-        var tit = ocup ? 'Ocupado: ' + ocup : (passado ? 'Data passada' : longa(s) + (gev ? ' · Na Google Agenda: ' + gev : ''));
-        var rot = ocup || gev ? '<small class="cal-rot">' + esc(String(ocup || gev).split(' · ')[0]) + '</small>' : '';
+        var esp = opcoes.especiais && opcoes.especiais[s];   // feriado, ponto facultativo ou evento da Kolping Estadual
+        var tipoEsp = esp ? (esp.some(function (e) { return e.tipo === 'feriado'; }) ? 'feriado' : (esp.some(function (e) { return e.tipo === 'kolping'; }) ? 'kolping' : 'ponto')) : '';
+        var marca = esp ? esp.map(function (e) { return e.titulo; }).join(' · ') : gev;
+        var cls = 'cal-dia' + (escolhido ? ' sel' : '') + (ocup ? ' ocup' : '') + (!ocup && esp ? ' esp-' + tipoEsp : (gev && !ocup ? ' gev' : '')) + (passado ? ' passado' : '') + (dow === 0 || dow === 6 ? ' fds' : '') + (s === h ? ' hoje' : '');
+        var tit = ocup ? 'Ocupado: ' + ocup : (passado ? 'Data passada' : longa(s) + (esp ? ' · ' + marca : '') + (gev ? ' · Na Google Agenda: ' + gev : ''));
+        var rot = ocup || marca ? '<small class="cal-rot">' + esc(String(ocup || marca).split(' · ')[0]) + '</small>' : '';
         celulas += '<button type="button" class="' + cls + (rot ? ' com-rot' : '') + '" data-dia="' + s + '"' + (ocup || passado ? ' disabled' : '') + ' aria-pressed="' + escolhido + '" title="' + esc(tit) + '" aria-label="' + esc(tit) + '">' + d + rot + '</button>';
       }
       el.innerHTML = '<div class="cal-nav"><button type="button" class="btn btn-p" data-nav="-1" aria-label="Mês anterior">‹</button><b>' + esc(mesAno(ano, mes)) + '</b><button type="button" class="btn btn-p" data-nav="1" aria-label="Próximo mês">›</button></div>' +
@@ -64,6 +67,7 @@
     return {
       valor: function () { return sel.slice(); },
       definirEventos: function (m) { opcoes.eventos = m || {}; desenhar(); },
+      definirEspeciais: function (m) { opcoes.especiais = m || {}; desenhar(); },
       definirMax: function (m) { opcoes.max = m; if (sel.length > m) { sel = sel.slice(0, m); desenhar(); if (opcoes.aoMudar) opcoes.aoMudar(sel.slice()); } }
     };
   }

@@ -66,7 +66,7 @@
     fundo.className = 'janela-fundo';
     var id = 'j' + Date.now();
     fundo.innerHTML =
-      '<div class="janela card" role="dialog" aria-modal="true" aria-labelledby="' + id + '">' +
+      '<div class="janela card" role="dialog" aria-modal="true" aria-labelledby="' + id + '"' + (opcoes.largura ? ' style="max-width:' + opcoes.largura + 'px;width:calc(100% - 24px)"' : '') + '>' +
         '<div class="janela-cab"><h2 id="' + id + '">' + esc(opcoes.titulo) + '</h2>' +
         '<button type="button" class="janela-x" aria-label="Fechar">×</button></div>' +
         '<div class="janela-corpo">' + (opcoes.corpo || '') + '</div>' +
@@ -116,7 +116,7 @@
       fundo.style.zIndex = '60';
       fundo.innerHTML =
         '<div class="janela card" role="alertdialog" aria-modal="true" style="max-width:420px">' +
-          '<div class="janela-corpo"><h2 style="font-size:18px">' + esc(titulo) + '</h2><p style="margin:0;color:var(--texto-2)">' + esc(mensagem) + '</p></div>' +
+          '<div class="janela-corpo"><h2 style="font-size:18px">' + esc(titulo) + '</h2><p style="margin:0;color:var(--texto-2);white-space:pre-line">' + esc(mensagem) + '</p></div>' +
           '<div class="janela-pe"><button type="button" class="btn" data-r="sim">' + esc(textoSim || 'Sim') + '</button>' +
           '<button type="button" class="btn btn-pri" data-r="nao">' + esc(textoNao || 'Cancelar') + '</button></div>' +
         '</div>';
