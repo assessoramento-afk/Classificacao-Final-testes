@@ -141,7 +141,7 @@
         passo(1, ok1, !ok1, 'Presença', snap.dias.length > 1 ? resumoDias : (marc ? pres + ' presente(s) · ' + (marc - pres) + ' falta(s)' + (marc < snap.jovens.length ? ' · ' + (snap.jovens.length - marc) + ' a marcar' : '') : snap.jovens.length + ' jovens a marcar'), '#/avaliar/' + snap.turma.id + '/presenca') +
         passo(2, ok2, ok1 && !ok2, 'Grupos', ok2 ? listaG.length + ' grupo(s) (' + listaG.map(function (g) { return nGrupos[g]; }).join(', ') + ')' : 'Montar os grupos com os presentes do 1º dia', '#/avaliar/' + snap.turma.id + '/grupos') +
         passo(3, ok3, ok2 && !ok3, 'Avaliadores dos grupos', !ok2 ? 'Depois de montar os grupos' : (meus.length ? 'Você: grupo' + (meus.length > 1 ? 's ' : ' ') + meus.join(' e ') : 'Você ainda não escolheu grupos') + (livres.length ? ' · falta escolher: ' + livres.join(', ') : ' · todos os grupos têm avaliador'), ok2 ? '#/avaliar/' + snap.turma.id + '/avaliadores' : null) +
-        passo(4, !!snap.turma.concluida_em, okN && !snap.turma.concluida_em, 'Lançar notas', okN ? notasResumo(snap) + (livres.length ? ' · grupos ' + livres.join(', ') + ' ainda sem avaliador' : '') : 'Liberado quando você escolher os seus grupos', okN ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
+        passo(4, !!snap.turma.concluida_em || notasCompletas(snap), okN && !snap.turma.concluida_em && !notasCompletas(snap), 'Lançar notas', okN ? notasResumo(snap) + (livres.length ? ' · grupos ' + livres.join(', ') + ' ainda sem avaliador' : '') : 'Liberado quando você escolher os seus grupos', okN ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
         passo(5, !!snap.turma.concluida_em, false, 'Fechar turma', snap.turma.concluida_em ? 'Concluída em ' + D.completa(snap.turma.concluida_em.slice(0, 10)) + (ctx.perfil.perfil === 'admin' ? ' · o administrador pode reabrir' : '') : 'Conferir pendências e concluir', '#/avaliar/' + snap.turma.id + '/fechar') +
       '</div>' +
       '<div class="bloco-botoes"><a class="btn btn-p" href="#/avaliar/' + snap.turma.id + '/desistencias">Desistências (' + listaDesist(snap).length + ')</a></div>';
@@ -431,7 +431,7 @@
       '<div class="pd ok"><span class="n">✓</span><div class="pd-txt"><b>Desistências</b><small>' + l.length + ' jovem(ns)' + (l.length ? ' · <a href="#/avaliar/' + snap.turma.id + '/desistencias">ver</a>' : '') + '</small></div></div>' +
       '<div class="pd ' + (livre ? 'ok' : 'on') + '"><span class="n">' + (livre ? '✓' : '!') + '</span><div class="pd-txt"><b>' + (livre ? 'Nenhuma pendência' : 'Pendências para fechar') + '</b><small>' + (livre ? 'A turma pode ser concluída.' : 'Resolva antes de concluir a turma.') + '</small></div></div>' +
       (livre ? '' : '<div class="pend-l">' + itens.map(function (t) { return '<div><span class="x">✕</span><span>' + t + '</span></div>'; }).join('') + '</div>') +
-      '<button type="button" class="btn btn-pri" id="fc-ok"' + (livre ? '' : ' disabled') + '>Concluir turma</button>' +
+      '<div class="fc-acao"><button type="button" class="btn btn-pri" id="fc-ok"' + (livre ? '' : ' disabled') + '>Concluir turma</button></div>' +
       '<p class="dica">Ao concluir, as notas e a presença da turma ficam travadas. Só o administrador pode reabrir (com motivo registrado no histórico).</p>';
     var ok = box.querySelector('#fc-ok');
     if (livre) ok.addEventListener('click', async function () {
@@ -442,6 +442,14 @@
 
   window.CF.lerCracha = lerCracha;
   window.CF.barraSync = barraSync;
+  // verde quando todas as notas dos jovens do avaliador estão lançadas e não há sugestão para decidir
+  function notasCompletas(snap) {
+    var ts = ((snap.processo.configuracao || {}).testes || []), tot = 0, feitas = 0;
+    var meus = snap.jovens.filter(function (j) { return j.grupo && (snap.grupos[j.grupo] === meuId() || (window.CF.perfilAtual || {}).perfil === 'admin'); });
+    meus.forEach(function (j) { ts.forEach(function (t) { t.criterios.forEach(function (c) { tot++; if (snap.notas && snap.notas[j.id + '|' + c.id]) feitas++; }); }); });
+    var pend = (snap.sugestoes || []).some(function (x) { return x.situacao === 'pendente' && x.autor_id !== meuId() && meus.some(function (j) { return j.id === x.participacao_id; }); });
+    return tot > 0 && feitas === tot && !pend;
+  }
   function notasResumo(snap) {
     var ts = ((snap.processo.configuracao || {}).testes || []), tot = 0, feitas = 0;
     var meus = snap.jovens.filter(function (j) { return j.grupo && (snap.grupos[j.grupo] === meuId() || (window.CF.perfilAtual || {}).perfil === 'admin'); });

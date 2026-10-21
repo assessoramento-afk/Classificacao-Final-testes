@@ -1420,3 +1420,9 @@ html[data-tema="escuro"] .bk-ok { background: #1f3a2a; color: #7fd6a2; }
 }
 .cod-teste { display: inline-block; margin-left: 8px; font-size: 11.5px; vertical-align: middle; }
 .cabecalho + .pt-filtros, .cabecalho + section + .pt-filtros, .pm-aguarda + .pt-filtros { margin-top: 14px; }
+
+/* 4.13.3 · ajustes */
+table.rk td.pos { display: table-cell; }   /* a classe .pos do crachá não pode mexer na coluna de posição */
+.fc-acao { margin: 18px 0 8px; }
+.cfg b { hyphens: auto; -webkit-hyphens: auto; font-size: 16px; }
+.cards-cfg { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); }
