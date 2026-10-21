@@ -79,6 +79,7 @@
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.classificacao = async function (area, ctx, procId) {
     var admin = ctx.perfil.perfil === 'admin', st = { busca: '', turma: '', sit: '' };
+    var podeCorrigir = false;   // definido ao desenhar (processo em revisão + permissão)
     area.innerHTML = '<a class="voltar" href="#/processos/' + esc(procId) + '">← Processo</a><div id="cl"><div class="girando" style="margin:30px auto"></div></div>';
     var c, emp;
     async function carregar() {
@@ -99,6 +100,7 @@
       var acao = admin ? (p.situacao === 'andamento' ? '<a class="btn btn-pri" href="#/processos/' + procId + '/revisao">Enviar para revisão</a>'
         : p.situacao === 'revisao' ? '<a class="btn btn-pri" href="#/processos/' + procId + '/revisao">Revisar e liberar</a>'
         : p.situacao === 'liberado' ? '<a class="btn" href="#/processos/' + procId + '/revisao">Liberado · ver</a>' : '') : '';
+      podeCorrigir = admin && p.situacao === 'revisao' && window.CF.perm.pode('processos_reabrir');
       area.querySelector('#cl').innerHTML =
         '<header class="cabecalho"><div><h1>Classificação</h1><p>' + Object.keys(turmas).length + ' turma(s) · ' + js.length + ' jovens · ranking único do processo</p></div>' +
           '<div class="botoes-topo"><button type="button" class="btn" id="cl-xls">⬇ Excel</button><button type="button" class="btn" id="cl-pdf">⬇ PDF do processo</button>' + acao + '</div></header>' + etapas(p.situacao) +
@@ -116,11 +118,50 @@
               '<td><div class="nf"><span>' + notaHTML(j, js) + '</span>' + (j.empate ? '<span class="empate">empate</span>' : '') + (j.nota != null ? '<i><em style="width:' + Math.round(j.nota * 20) + '%"></em></i>' : '') + '</div>' + (j.situacao === 'incompleto' ? '<small class="dica">' + j.lancadas + ' de ' + j.total + ' notas</small>' : '') + '</td>' +
               '<td class="ar">' + areas.map(function (a) { var v = (j.areas || {})[a]; return v == null ? '' : '<span><b>' + esc(a.slice(0, 3)) + '</b> ' + n2(v) + '</span>'; }).join(' ') + '</td>' +
               '<td><span class="sit">' + textoSituacao(j.situacao, j.genero) + '</span>' + (mot ? '<span class="mot">' + esc(mot + det) + (j.motivo_por ? ' · por ' + esc(j.motivo_por.split(' ')[0]) : '') + '</span>' : '') + '</td>' +
-              '<td class="ac"><a class="btn btn-p" href="#/processos/' + procId + '/ficha/' + j.participacao_id + '">Ficha</a>' + (podeMotivo && j.situacao !== 'desistencia' || (podeMotivo && j.motivo === 'desistiu') ? '<button type="button" class="btn btn-p" data-mot="' + j.participacao_id + '">Motivo</button>' : '') + '</td></tr>';
+              '<td class="ac"><a class="btn btn-p" href="#/processos/' + procId + '/ficha/' + j.participacao_id + '">Ficha</a>' +
+                (podeCorrigir && j.situacao !== 'desistencia' ? '<button type="button" class="btn btn-p" data-corr="' + j.participacao_id + '">✏️ Corrigir nota</button>' : '') + (podeMotivo && j.situacao !== 'desistencia' || (podeMotivo && j.motivo === 'desistiu') ? '<button type="button" class="btn btn-p" data-mot="' + j.participacao_id + '">Motivo</button>' : '') + '</td></tr>';
           }).join('') + '</tbody></table></div>' : '<div class="card vazio">Nenhum jovem nesse filtro.</div>') +
         '<p class="dica">Ordem: aprovados, backups, reprovados e desistências; em cada faixa, da maior para a menor nota. Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.</p>' +
         '<section class="card bloco" id="cl-drive"><h2 style="font-size:16px;margin:0">Arquivos no Drive</h2><p class="dica" style="margin:0">Carregando…</p></section>';
       ligar();
+      area.querySelectorAll('[data-corr]').forEach(function (b) { b.addEventListener('click', function () { corrigir(b.getAttribute('data-corr')); }); });
+    }
+    // Corrigir nota (processo em revisão): edita as notas do jovem com motivo; o ranking é recalculado
+    async function corrigir(pid) {
+      var j = c.jovens.filter(function (x) { return x.participacao_id === pid; })[0]; if (!j) return;
+      var rc = await window.CF.sb.from('processos').select('configuracao').eq('id', procId).single();
+      var ts = (((rc && rc.data && rc.data.configuracao) || {}).testes || []);
+      var r = await window.CF.sb.from('notas').select('criterio_id,teste_id,valor').eq('participacao_id', pid);
+      var atuais = {}; ((r && r.data) || []).forEach(function (n) { atuais[n.criterio_id] = n.valor; });
+      var linhas = [];
+      ts.forEach(function (t) { (t.criterios || []).forEach(function (cr) { if (cr.conta_na_nota === false) return; linhas.push({ t: t, c: cr }); }); });
+      function n2b(v) { return v == null ? '—' : String(Math.round(v * 100) / 100).replace('.', ','); }
+      ui.janela({ titulo: 'Corrigir nota · ' + j.nome, largura: 680,
+        corpo: '<div class="tabela-rolar"><table class="tabela mini"><thead><tr><th>Teste · critério</th><th>Nota atual</th><th>Nova nota</th></tr></thead><tbody>' + linhas.map(function (x, i) {
+          var nm = x.c.competencia || x.c.nome_exibido || x.c.nome || 'Nota';
+          return '<tr><td>' + esc(x.t.nome) + ' · ' + esc(nm) + '</td><td>' + n2b(atuais[x.c.id]) + '</td><td><input class="entrada cn-in" data-i="' + i + '" inputmode="decimal" style="width:96px" value="' + (atuais[x.c.id] == null ? '' : n2b(atuais[x.c.id])) + '"></td></tr>';
+        }).join('') + '</tbody></table></div>' +
+          '<label class="campo" style="margin-top:12px"><span>Motivo da correção <span class="obrig">*</span></span><input class="entrada" id="cn-mot" maxlength="200" placeholder="Ex.: nota digitada errada na turma"></label>' +
+          '<p class="dica" style="margin:8px 0 0">Notas de 1 a 5. Ao salvar, o ranking é recalculado e a correção fica no histórico (quem, quando, nota antiga e nova, motivo).</p>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar correção', principal: true, aoClicar: async function (el) {
+          var mot = ui.maiusculas(el.querySelector('#cn-mot').value.trim());
+          if (mot.length < 5) { ui.toast('Informe o motivo da correção.', 'erro'); return false; }
+          var muda = [];
+          for (var k = 0; k < linhas.length; k++) {
+            var tx = el.querySelector('[data-i="' + k + '"]').value.trim().replace(',', '.'); if (!tx) continue;
+            var v = Number(tx); if (!(v >= 1 && v <= 5)) { ui.toast('As notas vão de 1 a 5.', 'erro'); return false; }
+            if (atuais[linhas[k].c.id] == null || Math.abs(atuais[linhas[k].c.id] - v) > 1e-9) muda.push({ criterio_id: linhas[k].c.id, teste_id: linhas[k].t.id || linhas[k].t.teste_id || null, valor: v });
+          }
+          if (!muda.length) { ui.toast('Nenhuma nota foi alterada.', 'info'); return false; }
+          var antes = { nota: j.nota, sit: j.situacao };
+          try {
+            var x = await window.CF.sb.rpc('corrigir_notas', { p_participacao: pid, p_notas: muda, p_motivo: mot }); if (x.error) throw x.error;
+            c = await dados.classificacao.carregar(procId);
+            var dep = c.jovens.filter(function (y) { return y.participacao_id === pid; })[0] || {};
+            ui.toast('Nota corrigida. Nota final ' + n2b(antes.nota) + ' → ' + n2b(dep.nota) + (antes.sit !== dep.situacao ? ' · ' + textoSituacao(antes.sit, j.genero) + ' → ' + textoSituacao(dep.situacao, j.genero) : '') + '.', 'ok');
+            desenhar(); return true;
+          } catch (e) { erro(e); return false; }
+        } }] });
     }
     // Arquivos deste processo salvos no Google Drive
     async function arquivosDrive() {
@@ -237,7 +278,7 @@
         (admin ? '<div class="bloco-botoes">' +
           (p.situacao === 'andamento' ? '<button type="button" class="btn btn-pri" id="rv-env"' + (podeEnviar ? '' : ' disabled') + '>Enviar para revisão</button>' : '') +
           (p.situacao === 'revisao' && window.CF.perm.pode('processos_liberar') ? '<button type="button" class="btn btn-pri" id="rv-lib" disabled>Liberar para a empresa</button>' : '') +
-          ((p.situacao === 'revisao' || p.situacao === 'liberado') && window.CF.perm.pode('processos_reabrir') ? '<button type="button" class="btn" id="rv-reab">' + (p.situacao === 'liberado' ? 'Reabrir a revisão' : 'Voltar para em andamento') + '</button>' : '') + '</div>' : '');
+          ((p.situacao === 'revisao' || p.situacao === 'liberado') && window.CF.perm.pode('processos_reabrir') ? '<button type="button" class="btn" id="rv-reab">' + (p.situacao === 'liberado' ? 'Reabrir para corrigir' : 'Voltar para em andamento') + '</button>' : '') + '</div>' : '');
       if (p.situacao === 'revisao' && !podeLiberar) {   // explica por que o botão está desligado
         var bb = area.querySelector('.bloco-botoes'); if (bb) bb.insertAdjacentHTML('beforebegin', '<p class="dica" style="margin:0">Para liberar, resolva os itens com ⚠️ acima e marque "Ranking conferido pela coordenação".</p>');
       } else if (p.situacao === 'revisao') {
