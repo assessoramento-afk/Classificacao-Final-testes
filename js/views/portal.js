@@ -67,7 +67,7 @@
 
   /* ---------- Número no menu (empresa: pendências · Kolping: atrasadas) ---------- */
   async function atualizarBadge(perfil) {
-    var rota = perfil.perfil === 'empresa' ? 'portal' : (perfil.perfil === 'admin' ? 'acompanhamento' : null);
+    var rota = perfil.perfil === 'empresa' ? 'aprovados' : (perfil.perfil === 'admin' ? 'acompanhamento' : null);
     if (!rota || !navigator.onLine) return;
     try {
       var lista = await rpc('acomp_listar', { p_proc: null }), n = 0;
@@ -79,7 +79,7 @@
       b.textContent = n; b.setAttribute('aria-label', n + (perfil.perfil === 'empresa' ? ' avaliação(ões) pendente(s)' : ' avaliação(ões) atrasada(s)'));
       if (n && perfil.perfil === 'empresa' && !sessionStorage.getItem('cf_acomp_avisado')) {
         sessionStorage.setItem('cf_acomp_avisado', '1');
-        ui.toast('Você tem ' + n + ' avaliação(ões) de acompanhamento para fazer em Resultados.', 'info');
+        ui.toast('Você tem ' + n + ' avaliação(ões) de acompanhamento para fazer em Jovens aprovados.', 'info');
       }
     } catch (e) { /* o número no menu é opcional */ }
   }
@@ -207,6 +207,57 @@
     listaEmpresa(area, ctx);
   };
 
+  /* ---------- Quadro "Como funciona" (pode esconder neste aparelho) ---------- */
+  function comoFunciona(chave, passos) {
+    var esc0 = false; try { esc0 = localStorage.getItem('cf_ajuda_' + chave) === '1'; } catch (e) { /* sem armazenamento */ }
+    if (esc0) return '<p class="dica" style="margin:0 0 12px"><button type="button" class="btn-link" data-ajuda-ver="' + chave + '">Como funciona?</button></p>';
+    return '<section class="card pt-ajuda"><div class="pt-ajuda-cab"><b>Como funciona</b><button type="button" class="btn btn-p" data-ajuda-esc="' + chave + '">Entendi, esconder</button></div><ol>' + passos.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol>' +
+      '<small class="dica">Dúvidas: (11) 4183-6018 · Kolping Estadual de São Paulo.</small></section>';
+  }
+  function ligarAjuda(area, redesenhar) {
+    area.querySelectorAll('[data-ajuda-esc]').forEach(function (b) { b.addEventListener('click', function () { try { localStorage.setItem('cf_ajuda_' + b.getAttribute('data-ajuda-esc'), '1'); } catch (e) { /* segue */ } redesenhar(); }); });
+    area.querySelectorAll('[data-ajuda-ver]').forEach(function (b) { b.addEventListener('click', function () { try { localStorage.removeItem('cf_ajuda_' + b.getAttribute('data-ajuda-ver')); } catch (e) { /* segue */ } redesenhar(); }); });
+  }
+  var AJUDA_RESULTADOS = ['Quando a Kolping <b>libera</b> o resultado de um processo, ele aparece aqui.',
+    'Em cada processo você vê a <b>classificação final</b> (aprovados, backup e reprovados), com a nota e o gráfico de competências de cada jovem, e pode <b>baixar o PDF</b> com as fichas.',
+    'Depois das entrevistas, marque <b>"Aprovar"</b> nos jovens que a empresa escolheu. Eles passam para o menu <b>Jovens aprovados</b>, onde ficam as avaliações a cada 3 meses.'];
+  var AJUDA_APROVADOS = ['Ao <b>aprovar</b> um jovem em <b>Resultados</b>, ele aparece aqui.',
+    'A cada <b>3 meses</b>, durante <b>1 ano</b>, a empresa faz uma <b>avaliação rápida</b> (nota de 1 a 5 e, se quiser, uma observação).',
+    'Ao fim do ano, a empresa informa se o jovem foi <b>contratado</b>.'];
+
+  /* ---------- Empresa · Jovens aprovados (todos os processos) ---------- */
+  window.CF.telas.aprovados = async function (area, ctx) {
+    var st = { f: 'todos' }, lista = [];
+    area.innerHTML = '<header class="cabecalho"><div><h1>Jovens aprovados</h1><p>Os jovens que a sua empresa aprovou nos processos do Projeto Gol Jovens Talentos</p></div></header><div id="ja"><div class="girando" style="margin:30px auto"></div></div>';
+    var box = area.querySelector('#ja');
+    try { lista = (await rpc('acomp_listar', { p_proc: null })).filter(function (a) { return a.aprovado; }); }
+    catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
+    function grupo(a) { var r = resumo(a).cls; return r === 'atrasada' || r === 'pendente' ? 'avaliar' : (r === 'concluido' ? 'concluido' : 'emdia'); }
+    var CORS = { atrasada: '#D9534F', pendente: '#E9B500', emdia: '#3FA66B', concluido: '#5b6b8a' }, ROT = { atrasada: 'Atrasada', pendente: 'Aguardando', emdia: 'Em dia', concluido: 'Concluído' };
+    function desenhar() {
+      var cont = { todos: lista.length, avaliar: 0, emdia: 0, concluido: 0 }; lista.forEach(function (a) { cont[grupo(a)]++; });
+      var vis = lista.filter(function (a) { return st.f === 'todos' || grupo(a) === st.f; }).sort(function (x, y) { var o = { avaliar: 0, emdia: 1, concluido: 2 }; return o[grupo(x)] - o[grupo(y)] || String(x.nome).localeCompare(y.nome); });
+      box.innerHTML = comoFunciona('aprovados', AJUDA_APROVADOS) +
+        '<div class="pt-filtros">' + [['todos', 'Todos'], ['avaliar', 'Para avaliar'], ['emdia', 'Em dia'], ['concluido', 'Concluídos']].map(function (x) { return '<button type="button" class="pt-chip' + (st.f === x[0] ? ' on' : '') + '" data-f="' + x[0] + '">' + x[1] + ' ' + cont[x[0]] + '</button>'; }).join('') + '</div>' +
+        (vis.length ? '<section class="card pt-tab"><div class="tabela-rolar"><table class="pt-rk"><thead><tr><th>Jovem e vaga</th><th>Aprovado em</th><th>Avaliações</th><th></th></tr></thead><tbody>' + vis.map(function (a) {
+          var r = resumo(a), cor = CORS[r.cls] || '#8a8486', pend = pendencias([a])[0];
+          return '<tr style="--c:' + cor + '"><td class="pt-nm pt-barra"><b>' + esc(a.nome) + '</b><small>' + esc(a.vaga + (a.identificacao ? ' · ' + a.identificacao : '')) + '</small></td>' +
+            '<td>' + dataBR(a.aprovado_em) + (a.aprovado_por ? '<small class="dica" style="display:block">por ' + esc(a.aprovado_por) + '</small>' : '') + '</td>' +
+            '<td><span class="pill" style="background:' + cor + ';color:#fff">' + (ROT[r.cls] || '') + '</span><small class="dica" style="display:block;margin-top:3px">' + esc(r.txt) + '</small>' + trilha(a) + '</td>' +
+            '<td style="text-align:right;white-space:nowrap">' + (pend ? '<button type="button" class="btn btn-pri btn-p" data-av="' + a.participacao_id + '">Avaliar agora</button>' : '<button type="button" class="btn btn-p" data-ver="' + a.participacao_id + '">Ver avaliações</button>') + '</td></tr>';
+        }).join('') + '</tbody></table></div></section>'
+          : '<section class="card bloco"><p style="margin:0">' + (lista.length ? 'Nenhum jovem neste filtro.' : 'Nenhum jovem aprovado ainda. Em <b>Resultados</b>, abra um processo e marque "Aprovar" nos jovens escolhidos.') + '</p></section>');
+      ligarAjuda(box, desenhar);
+      box.querySelectorAll('[data-f]').forEach(function (b) { b.addEventListener('click', function () { st.f = b.getAttribute('data-f'); desenhar(); }); });
+      function porId(id) { return lista.filter(function (x) { return x.participacao_id === id; })[0]; }
+      async function recarregar() { lista = (await rpc('acomp_listar', { p_proc: null })).filter(function (a) { return a.aprovado; }); desenhar(); atualizarBadge(ctx.perfil); }
+      box.querySelectorAll('[data-av]').forEach(function (b) { b.addEventListener('click', function () { var a = porId(b.getAttribute('data-av')), pd = pendencias([a])[0]; if (pd) janelaAvaliar(a, pd.m, recarregar); }); });
+      box.querySelectorAll('[data-ver]').forEach(function (b) { b.addEventListener('click', function () { janelaDetalhe(porId(b.getAttribute('data-ver'))); }); });
+    }
+    desenhar();
+    atualizarBadge(ctx.perfil);
+  };
+
   async function listaEmpresa(area, ctx) {
     area.innerHTML = '<header class="cabecalho"><div><h1>Resultados</h1><p class="dica">Processos seletivos do Projeto Gol Jovens Talentos liberados para a sua empresa.</p></div></header><div id="pt"><div class="girando" style="margin:30px auto"></div></div>';
     var box = area.querySelector('#pt'), procs, acomp, cls = {};
@@ -216,8 +267,9 @@
       var cl = await Promise.all(procs.map(function (p) { return window.CF.dados.classificacao.carregar(p.id).catch(function () { return null; }); }));
       procs.forEach(function (p, i) { cls[p.id] = cl[i]; });
     } catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
-    if (!procs.length) { box.innerHTML = '<section class="card bloco"><p style="margin:0">Ainda não há resultados liberados para a sua empresa. Assim que a Kolping liberar um processo seletivo, ele aparece aqui.</p></section>'; return; }
-    box.innerHTML = procs.map(function (p) {
+    if (!procs.length) { box.innerHTML = comoFunciona('resultados', AJUDA_RESULTADOS) + '<section class="card bloco"><p style="margin:0">Ainda não há resultados liberados para a sua empresa. Assim que a Kolping liberar um processo seletivo, ele aparece aqui.</p></section>'; return; }
+    var ajudaR = function () { var x = box.querySelector('#pt-ajuda'); if (x) { x.innerHTML = comoFunciona('resultados', AJUDA_RESULTADOS); ligarAjuda(x, ajudaR); } };
+    box.innerHTML = '<div id="pt-ajuda"></div>' + procs.map(function (p) {
       var c = cls[p.id], cont = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0 };
       (c && c.jovens || []).forEach(function (j) { if (cont[j.situacao] != null) cont[j.situacao]++; });
       var meus = acomp.filter(function (a) { return a.processo_id === p.id; }), pend = pendencias(meus).length;
@@ -232,6 +284,7 @@
         '<div class="pt-acoes"><a class="btn btn-pri" href="#/portal/' + p.id + '">Abrir resultado</a><button type="button" class="btn" data-pdf="' + p.id + '">⬇ PDF do processo</button></div></section>';
     }).join('');
     box.querySelectorAll('[data-pdf]').forEach(function (b) { b.addEventListener('click', function () { baixarPdf(b.getAttribute('data-pdf'), cls[b.getAttribute('data-pdf')], b); }); });
+    ajudaR();
     atualizarBadge(ctx.perfil);
   }
 

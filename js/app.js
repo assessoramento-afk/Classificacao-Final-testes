@@ -13,7 +13,7 @@
   var MENUS = {
     admin: [['painel', 'Gráficos', 'graficos'], ['processos', 'Profiling Empresas', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
     avaliador: [['processos', 'Profiling Empresas', 'processos'], ['painel', 'Gráficos', 'graficos'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco']],
-    empresa: [['portal', 'Resultados', 'portal']]
+    empresa: [['portal', 'Resultados', 'portal'], ['aprovados', 'Jovens aprovados', 'acomp']]
   };
 
   var estado = { sessao: null, perfil: null, emRecuperacao: false, carregandoPerfil: null };

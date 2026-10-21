@@ -402,14 +402,9 @@
       box.innerHTML = '<div class="aviso aviso-ok">' + ui.icone('ok', 18) + '<span>Turma <b>concluída</b> em ' + D.completa(snap.turma.concluida_em.slice(0, 10)) + '. As notas e a presença estão travadas.</span></div>' +
         (admin ? '<button type="button" class="btn" id="fc-reabrir" style="align-self:flex-start">Reabrir turma</button>' : '<p class="dica">Só o administrador pode reabrir a turma.</p>');
       var rb = box.querySelector('#fc-reabrir');
-      if (rb) rb.addEventListener('click', function () {
-        ui.janela({ titulo: 'Reabrir a turma?', confirmarDescarte: false,
-          corpo: '<p style="margin:0;color:var(--texto-2)">As notas voltam a poder ser alteradas. O motivo fica registrado no histórico.</p><label class="campo"><span>Motivo <span class="obrig">*</span></span><input class="entrada" id="rb-m" maxlength="200"></label>',
-          botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Reabrir', principal: true, aoClicar: async function (f) {
-            var mot = ui.maiusculas(f.querySelector('#rb-m').value.trim());
-            if (mot.length < 5) { ui.toast('Informe o motivo.', 'erro'); return false; }
-            try { await dados.avaliacao.reabrirTurma(snap.turma.id, mot); var sn = OFF.guardarTurma(await dados.avaliacao.baixarTurma(snap.turma.id)); ui.toast('Turma reaberta.', 'ok'); fechar(area, ctx, sn); return true; } catch (e) { erro(e); return false; }
-          } }] });
+      if (rb) rb.addEventListener('click', async function () {
+        if (!(await ui.confirmar('Reabrir a turma?', 'As notas e a presença voltam a poder ser alteradas. Fica registrado no histórico quem reabriu e quando.', 'Reabrir', 'Cancelar'))) return;
+        try { await dados.avaliacao.reabrirTurma(snap.turma.id, null); var sn = OFF.guardarTurma(await dados.avaliacao.baixarTurma(snap.turma.id)); ui.toast('Turma reaberta.', 'ok'); fechar(area, ctx, sn); } catch (e) { erro(e); }
       });
       return;
     }

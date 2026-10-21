@@ -141,11 +141,8 @@
           var nm = x.c.competencia || x.c.nome_exibido || x.c.nome || 'Nota';
           return '<tr><td>' + esc(x.t.nome) + ' · ' + esc(nm) + '</td><td>' + n2b(atuais[x.c.id]) + '</td><td><input class="entrada cn-in" data-i="' + i + '" inputmode="decimal" style="width:96px" value="' + (atuais[x.c.id] == null ? '' : n2b(atuais[x.c.id])) + '"></td></tr>';
         }).join('') + '</tbody></table></div>' +
-          '<label class="campo" style="margin-top:12px"><span>Motivo da correção <span class="obrig">*</span></span><input class="entrada" id="cn-mot" maxlength="200" placeholder="Ex.: nota digitada errada na turma"></label>' +
-          '<p class="dica" style="margin:8px 0 0">Notas de 1 a 5. Ao salvar, o ranking é recalculado e a correção fica no histórico (quem, quando, nota antiga e nova, motivo).</p>',
+          '<p class="dica" style="margin:10px 0 0">Notas de 1 a 5. Ao salvar, o ranking é recalculado e a correção fica no histórico (quem, quando, nota antiga e nova).</p>',
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar correção', principal: true, aoClicar: async function (el) {
-          var mot = ui.maiusculas(el.querySelector('#cn-mot').value.trim());
-          if (mot.length < 5) { ui.toast('Informe o motivo da correção.', 'erro'); return false; }
           var muda = [];
           for (var k = 0; k < linhas.length; k++) {
             var tx = el.querySelector('[data-i="' + k + '"]').value.trim().replace(',', '.'); if (!tx) continue;
@@ -155,7 +152,7 @@
           if (!muda.length) { ui.toast('Nenhuma nota foi alterada.', 'info'); return false; }
           var antes = { nota: j.nota, sit: j.situacao };
           try {
-            var x = await window.CF.sb.rpc('corrigir_notas', { p_participacao: pid, p_notas: muda, p_motivo: mot }); if (x.error) throw x.error;
+            var x = await window.CF.sb.rpc('corrigir_notas', { p_participacao: pid, p_notas: muda, p_motivo: null }); if (x.error) throw x.error;
             c = await dados.classificacao.carregar(procId);
             var dep = c.jovens.filter(function (y) { return y.participacao_id === pid; })[0] || {};
             ui.toast('Nota corrigida. Nota final ' + n2b(antes.nota) + ' → ' + n2b(dep.nota) + (antes.sit !== dep.situacao ? ' · ' + textoSituacao(antes.sit, j.genero) + ' → ' + textoSituacao(dep.situacao, j.genero) : '') + '.', 'ok');
@@ -296,12 +293,10 @@
         try { await dados.classificacao.liberar(procId); ui.toast('Resultado liberado para a empresa.', 'ok'); await carregar(); desenhar(); } catch (e) { erro(e); }
       });
       var reab = area.querySelector('#rv-reab');
-      if (reab) reab.addEventListener('click', function () {
-        ui.janela({ titulo: reab.textContent, confirmarDescarte: false, corpo: '<label class="campo"><span>Motivo <span class="obrig">*</span></span><input class="entrada" id="rb-m" maxlength="200"></label><p class="dica" style="margin:0">Fica registrado no histórico.</p>',
-          botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Confirmar', principal: true, aoClicar: async function (f) {
-            var m = ui.maiusculas(f.querySelector('#rb-m').value.trim()); if (m.length < 5) { ui.toast('Informe o motivo.', 'erro'); return false; }
-            try { await dados.classificacao.reabrir(procId, m); ui.toast('Processo reaberto.', 'ok'); await carregar(); desenhar(); return true; } catch (e) { erro(e); return false; }
-          } }] });
+      if (reab) reab.addEventListener('click', async function () {
+        var lib2 = p.situacao === 'liberado';
+        if (!(await ui.confirmar(reab.textContent + '?', lib2 ? 'O processo volta para a revisão e a empresa deixa de ver o resultado até você liberar de novo.' : 'O processo volta para "em andamento" e o lançamento de notas é reaberto.', 'Confirmar', 'Cancelar'))) return;
+        try { await dados.classificacao.reabrir(procId, null); ui.toast(lib2 ? 'Processo de volta à revisão.' : 'Processo de volta para em andamento.', 'ok'); await carregar(); desenhar(); } catch (e) { erro(e); }
       });
     }
     desenhar();
