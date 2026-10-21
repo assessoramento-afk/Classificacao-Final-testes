@@ -238,6 +238,11 @@
           (p.situacao === 'andamento' ? '<button type="button" class="btn btn-pri" id="rv-env"' + (podeEnviar ? '' : ' disabled') + '>Enviar para revisão</button>' : '') +
           (p.situacao === 'revisao' && window.CF.perm.pode('processos_liberar') ? '<button type="button" class="btn btn-pri" id="rv-lib" disabled>Liberar para a empresa</button>' : '') +
           ((p.situacao === 'revisao' || p.situacao === 'liberado') && window.CF.perm.pode('processos_reabrir') ? '<button type="button" class="btn" id="rv-reab">' + (p.situacao === 'liberado' ? 'Reabrir a revisão' : 'Voltar para em andamento') + '</button>' : '') + '</div>' : '');
+      if (p.situacao === 'revisao' && !podeLiberar) {   // explica por que o botão está desligado
+        var bb = area.querySelector('.bloco-botoes'); if (bb) bb.insertAdjacentHTML('beforebegin', '<p class="dica" style="margin:0">Para liberar, resolva os itens com ⚠️ acima e marque "Ranking conferido pela coordenação".</p>');
+      } else if (p.situacao === 'revisao') {
+        var bb2 = area.querySelector('.bloco-botoes'); if (bb2) bb2.insertAdjacentHTML('beforebegin', '<p class="dica" style="margin:0">Tudo pronto: marque "Ranking conferido pela coordenação" para liberar.</p>');
+      }
       var conf = area.querySelector('#rv-conf'), lib = area.querySelector('#rv-lib');
       if (conf && lib) conf.addEventListener('change', function () { lib.disabled = !(conf.checked && podeLiberar); });
       var env = area.querySelector('#rv-env');

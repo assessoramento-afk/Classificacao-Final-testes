@@ -132,7 +132,7 @@
       var novo = !pa, j = pa ? pa.jovem : {}, ts = turmas();
       var genero = j.genero || '', arquivoFoto = null;
       var jn = ui.janela({
-        titulo: (novo ? 'Novo jovem' : 'Editar jovem') + ' · ' + (porId(ts, pa ? pa.turma_id : st.turma) || {}).nome,
+        titulo: (novo ? 'Novo jovem' : 'Editar jovem') + ' · ' + (porId(ts, pa ? pa.turma_id : st.turma) || {}).nome, largura: 860,
         corpo: '<div class="jovem-topo"><div class="foto-col"><div class="foto-box" id="fj-foto">' + (j.foto_path ? '' : 'SEM FOTO') + '</div>' +
             '<div class="foto-bts"><button type="button" class="btn btn-p" id="fj-camera">📷 Foto</button><button type="button" class="btn btn-p" id="fj-galeria">🖼 Galeria</button>' + (j.foto_path ? '<button type="button" class="btn btn-p btn-perigo" id="fj-semfoto">Remover foto</button>' : '') + '</div></div>' +
           '<div class="jovem-dados"><label class="campo" for="fj-nome"><span>Nome completo <span class="obrig">*</span></span><input class="entrada" id="fj-nome" maxlength="120" value="' + esc(j.nome || '') + '"></label>' +
@@ -527,7 +527,7 @@
     function formPessoa(j) {
       var novo = !j; j = j || {};
       var genero = j.genero || '', arquivoFoto = null;
-      var jn = ui.janela({ titulo: novo ? 'Novo jovem' : 'Editar jovem',
+      var jn = ui.janela({ titulo: novo ? 'Novo jovem' : 'Editar jovem', largura: 860,
         corpo: '<div class="jovem-topo"><div class="foto-col"><div class="foto-box" id="fp-foto">' + (j.foto_path ? '' : 'SEM FOTO') + '</div>' +
             '<div class="foto-bts"><button type="button" class="btn btn-p" id="fp-camera">📷 Foto</button><button type="button" class="btn btn-p" id="fp-galeria">🖼 Galeria</button>' + (j.foto_path ? '<button type="button" class="btn btn-p btn-perigo" id="fp-semfoto">Remover foto</button>' : '') + '</div></div>' +
           '<div class="jovem-dados"><label class="campo" for="fp-nome"><span>Nome completo <span class="obrig">*</span></span><input class="entrada" id="fp-nome" maxlength="120" value="' + esc(j.nome || '') + '"></label>' +
@@ -535,7 +535,14 @@
             '<div class="form-grade"><label class="campo" for="fp-nasc"><span>Nascimento</span><input class="entrada" type="date" id="fp-nasc" value="' + esc(j.nascimento || '') + '" max="' + D.hoje() + '"></label>' +
             '<label class="campo" for="fp-tel"><span>Telefone</span><input class="entrada" id="fp-tel" inputmode="tel" maxlength="15" value="' + esc(j.telefone || '') + '" placeholder="(11) 00000-0000"></label></div></div></div>' +
           '<p class="dica" style="margin:0">' + (novo ? 'Depois, para colocar o jovem num processo, use "+ Já cadastrado" na tela de jovens do processo.' : 'As alterações valem para todos os processos deste jovem.') + '</p>',
-        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Cadastrar jovem' : 'Salvar', principal: true, aoClicar: async function (f) {
+        botoes: (!novo && window.CF.perm.pode('cadastros_jovens') && !parts.some(function (x) { return x.jovem_id === j.id; }) ? [{ texto: 'Excluir jovem', aoClicar: async function () {
+          if (!(await ui.confirmar('Excluir ' + j.nome + '?', 'O cadastro e a foto são apagados. Não dá para desfazer.', 'Excluir', 'Cancelar'))) return false;
+          try {
+            var r = await window.CF.sb.rpc('excluir_jovem', { p_jovem: j.id }); if (r.error) throw r.error;
+            if (r.data) { try { await window.CF.sb.storage.from('fotos').remove([r.data]); } catch (x) { /* a limpeza apaga depois */ } }
+            ui.toast('Jovem excluído.', 'ok'); recarregar(); return true;
+          } catch (e) { erro(e); return false; }
+        } }] : []).concat([{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Cadastrar jovem' : 'Salvar', principal: true, aoClicar: async function (f) {
           var nome = ui.maiusculas(f.querySelector('#fp-nome').value.trim().replace(/\s+/g, ' ')), nasc = f.querySelector('#fp-nasc').value;
           if (!nome) { ui.toast('Informe o nome completo.', 'erro'); return false; }
           if (!genero) { ui.toast('Escolha o gênero.', 'erro'); return false; }
@@ -552,7 +559,7 @@
               ui.toast(novo ? 'Jovem cadastrado.' : 'Cadastro atualizado.', 'ok'); await recarregar(); return true;
             } catch (e) { erro(e); return false; }
           });
-        } }] });
+        } }]) });
       var el = jn.elemento;
       if (j.foto_path) dados.jovens.urlFoto(j.foto_path).then(function (u) { if (u) el.querySelector('#fp-foto').innerHTML = '<img src="' + esc(u) + '" alt="">'; });
       el.querySelectorAll('[data-gen]').forEach(function (b) { b.addEventListener('click', function () { genero = b.getAttribute('data-gen'); el.querySelectorAll('[data-gen]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); }); });

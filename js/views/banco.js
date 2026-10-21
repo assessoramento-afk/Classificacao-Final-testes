@@ -74,7 +74,7 @@
       var mats = novo ? [] : (B().testeMateriais || []).filter(function (m) { return m.teste_id === t.id; }).sort(function (x, y) { return x.ordem - y.ordem; })
         .map(function (m) { return { material_id: m.material_id, quantidade: m.quantidade, fixa: m.fixa, observacao: m.observacao || '' }; });
       var j = ui.janela({
-        titulo: novo ? 'Novo teste' : 'Editar teste',
+        titulo: novo ? 'Novo teste' : 'Editar teste' + (t.codigo ? ' · ' + t.codigo : ''),
         corpo: '<div class="form-grade">' + campo('ft-nome', 'Nome do teste', t.nome, { obrig: true, largo: true, max: 100 }) +
           '<label class="campo" for="ft-area"><span>Área <span class="obrig">*</span></span><select class="entrada" id="ft-area">' +
             (t.area_id ? '' : '<option value="">Escolha a área…</option>') + opcoesAreas(t.area_id) + '</select></label>' +
@@ -389,7 +389,7 @@
         '<button type="button" class="btn btn-comp" id="b-comp">' + ui.icone('mais', 17) + 'Nova competência</button></div>' : '') + '</header>' +
       '<div id="pend"></div>' +
       '<div class="legenda"><span><i class="cor-area"></i>Áreas</span><span><i class="cor-teste"></i>Testes</span><span><i class="cor-comp"></i>Competências</span></div>' +
-      '<div class="barra barra-banco"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-b" placeholder="Buscar teste ou competência"></label>' +
+      '<div class="barra barra-banco"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-b" placeholder="Buscar teste, código ou competência"></label>' +
         '<button type="button" class="btn btn-p" id="b-abrir">Abrir todas</button><button type="button" class="btn btn-p" id="b-fechar">Fechar todas</button>' +
         '<label class="marcar-linha"><input type="checkbox" id="b-inat"> Mostrar inativos</label></div>' +
       '<div id="areas" class="areas"><div class="girando" style="margin:30px auto"></div></div>';
@@ -414,6 +414,7 @@
     function testeCombina(t) {
       if (!busca) return true;
       if (ui.normalizar(t.nome).indexOf(busca) >= 0) return true;
+      if (t.codigo && ui.normalizar(t.codigo).replace(/-/g, '').indexOf(busca.replace(/-/g, '')) >= 0) return true;   // busca pelo código (T-K7M-4Q2)
       return criteriosDe(t.id).some(function (c) {
         var co = porId(b.competencias, c.competencia_id);
         return ui.normalizar(c.nome_exibido).indexOf(busca) >= 0 || (co && ui.normalizar(co.nome).indexOf(busca) >= 0);
@@ -479,7 +480,7 @@
       var cs = criteriosDe(t.id);
       var usaPont = cs.some(function (c) { return c.entrada === 'pontuacao'; });
       var selos = [t.padrao ? 'Padrão' : null, t.tem_nivel ? 'Com nível' : null, null].filter(Boolean);
-      return '<article class="teste-card" id="teste-' + t.id + '"><div class="teste-cab"><div class="teste-tit"><b>' + esc(t.nome) + '</b>' +
+      return '<article class="teste-card" id="teste-' + t.id + '"><div class="teste-cab"><div class="teste-tit"><b>' + esc(t.nome) + '</b>' + (t.codigo ? '<span class="cod cod-teste" title="Código de referência do teste">' + esc(t.codigo) + '</span>' : '') +
           '<div class="selos">' + '<span class="selo-mod">' + (t.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual') + '</span>' + selos.map(function (s) { return ui.pill(s, 'neu'); }).join('') + (!t.ativo ? ui.pill('Inativo', 'nao') : '') + '</div>' + '</div>' +
           (admin ? '<div class="mini-acoes"><button type="button" class="ico" data-ed-teste="' + t.id + '" title="Editar teste" aria-label="Editar teste ' + esc(t.nome) + '">' + icone('lapis') + '</button>' +
             '<button type="button" class="ico perigo" data-ex-teste="' + t.id + '" title="Excluir teste" aria-label="Excluir teste ' + esc(t.nome) + '">' + icone('lixo') + '</button></div>' : '') + '</div>' +

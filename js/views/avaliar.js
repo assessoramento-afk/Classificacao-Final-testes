@@ -127,6 +127,8 @@
     var listaG = Object.keys(nGrupos).map(Number).sort(function (a, b) { return a - b; });
     var meus = listaG.filter(function (g) { return snap.grupos[g] === meuId(); }), livres = listaG.filter(function (g) { return !snap.grupos[g]; });
     var ok1 = marc === snap.jovens.length && snap.jovens.length > 0, ok2 = listaG.length > 0, ok3 = ok2 && !livres.length;
+    // cada avaliador lança as notas dos seus grupos sem esperar os outros escolherem
+    var okN = ok2 && (meus.length > 0 || ctx.perfil.perfil === 'admin');
     function passo(n, ok, ativo, tit, sub, href) {
       return '<div class="pd' + (ok ? ' ok' : (ativo ? ' on' : '')) + '"><span class="n">' + (ok ? '✓' : n) + '</span><div class="pd-txt"><b>' + tit + '</b><small>' + sub + '</small></div>' + (href ? '<a class="btn btn-p" href="' + href + '">Abrir</a>' : '') + '</div>';
     }
@@ -139,7 +141,7 @@
         passo(1, ok1, !ok1, 'Presença', snap.dias.length > 1 ? resumoDias : (marc ? pres + ' presente(s) · ' + (marc - pres) + ' falta(s)' + (marc < snap.jovens.length ? ' · ' + (snap.jovens.length - marc) + ' a marcar' : '') : snap.jovens.length + ' jovens a marcar'), '#/avaliar/' + snap.turma.id + '/presenca') +
         passo(2, ok2, ok1 && !ok2, 'Grupos', ok2 ? listaG.length + ' grupo(s) (' + listaG.map(function (g) { return nGrupos[g]; }).join(', ') + ')' : 'Montar os grupos com os presentes do 1º dia', '#/avaliar/' + snap.turma.id + '/grupos') +
         passo(3, ok3, ok2 && !ok3, 'Avaliadores dos grupos', !ok2 ? 'Depois de montar os grupos' : (meus.length ? 'Você: grupo' + (meus.length > 1 ? 's ' : ' ') + meus.join(' e ') : 'Você ainda não escolheu grupos') + (livres.length ? ' · falta escolher: ' + livres.join(', ') : ' · todos os grupos têm avaliador'), ok2 ? '#/avaliar/' + snap.turma.id + '/avaliadores' : null) +
-        passo(4, !!snap.turma.concluida_em, ok3 && !snap.turma.concluida_em, 'Lançar notas', ok3 ? notasResumo(snap) : 'Liberado quando todos os grupos tiverem avaliador', ok3 ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
+        passo(4, !!snap.turma.concluida_em, okN && !snap.turma.concluida_em, 'Lançar notas', okN ? notasResumo(snap) + (livres.length ? ' · grupos ' + livres.join(', ') + ' ainda sem avaliador' : '') : 'Liberado quando você escolher os seus grupos', okN ? '#/avaliar/' + snap.turma.id + '/notas' : null) +
         passo(5, !!snap.turma.concluida_em, false, 'Fechar turma', snap.turma.concluida_em ? 'Concluída em ' + D.completa(snap.turma.concluida_em.slice(0, 10)) + (ctx.perfil.perfil === 'admin' ? ' · o administrador pode reabrir' : '') : 'Conferir pendências e concluir', '#/avaliar/' + snap.turma.id + '/fechar') +
       '</div>' +
       '<div class="bloco-botoes"><a class="btn btn-p" href="#/avaliar/' + snap.turma.id + '/desistencias">Desistências (' + listaDesist(snap).length + ')</a></div>';
@@ -265,13 +267,14 @@
     function desenhar() {
       area.innerHTML = '<a class="voltar" href="#/avaliar/' + snap.turma.id + '">← ' + esc(snap.turma.nome) + '</a>' +
         '<header class="cabecalho"><div><h1>Avaliadores dos grupos</h1><p>Toque nos grupos que você vai avaliar. Vale para o processo inteiro.</p></div></header>' +
-        (lista.length ? lista.map(function (g) {
+        (lista.length ? lista.filter(function (g) { var dono = snap.grupos[g]; return admin || !dono || dono === eu; }).map(function (g) {
           var dono = snap.grupos[g], meu = escolha.indexOf(g) >= 0, outro = dono && dono !== eu;
           return '<div class="gbtn' + (meu ? ' eu' : '') + (outro ? ' outro' : '') + '"><button type="button" class="gbtn-area" data-g="' + g + '"' + (outro ? ' disabled' : '') + ' aria-pressed="' + meu + '"><span class="gbtn-txt"><b>GRUPO ' + g + '</b><small>' + cont[g].length + ' jove' + (cont[g].length === 1 ? 'm' : 'ns') + ' · ' + esc(cont[g].slice(0, 3).join(', ')) + (cont[g].length > 3 ? '…' : '') + '</small></span>' +
             '<span class="av ' + (meu ? 'eu' : '') + '">' + (meu ? 'Você' : (outro ? esc((snap.equipe[dono] || 'OUTRO AVALIADOR').split(' ')[0]) : 'sem avaliador')) + '</span><span class="ck">' + (meu ? '✓' : (outro ? '🔒' : '')) + '</span></button>' +
             (admin && outro ? '<select class="entrada sel-av" data-troca="' + g + '" aria-label="Trocar avaliador do grupo ' + g + '"><option value="">Trocar avaliador…</option>' + Object.keys(snap.equipe).map(function (id) { return '<option value="' + id + '"' + (id === dono ? ' disabled' : '') + '>' + esc(snap.equipe[id]) + '</option>'; }).join('') + '</select>' : '') + '</div>';
         }).join('') : '<div class="card vazio">Monte os grupos primeiro.</div>') +
-        '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Os jovens dos seus grupos ficam com você em todos os dias da turma. Para os outros grupos, você pode <b>sugerir</b> uma nota (com justificativa), e o avaliador do grupo aprova ou nega.</span></div>' +
+        (function () { if (admin) return ''; var dos = lista.filter(function (g) { return snap.grupos[g] && snap.grupos[g] !== eu; }); return dos.length ? '<p class="dica" style="margin:0">Já com outro avaliador: ' + dos.map(function (g) { return 'grupo ' + g + ' (' + esc((snap.equipe[snap.grupos[g]] || 'outro').split(' ')[0]) + ')'; }).join(', ') + '.</p>' : ''; })() +
+        '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Escolha os seus grupos e já pode lançar as notas deles, sem esperar os outros avaliadores. Os jovens dos seus grupos ficam com você em todos os dias da turma. Para os outros grupos, você pode <b>sugerir</b> uma nota (com justificativa), e o avaliador do grupo aprova ou nega.</span></div>' +
         (lista.length ? '<button type="button" class="btn btn-pri" id="av-ok">' + (escolha.length ? 'Confirmar meus grupos (' + escolha.join(' e ') + ')' : 'Confirmar (sem grupos)') + '</button>' : '');
       area.querySelectorAll('[data-g]').forEach(function (b) {
         b.addEventListener('click', function () { var g = +b.getAttribute('data-g'), i = escolha.indexOf(g); if (i >= 0) escolha.splice(i, 1); else escolha.push(g); escolha.sort(function (a, c) { return a - c; }); desenhar(); barraSync(area); });

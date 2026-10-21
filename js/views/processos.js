@@ -261,6 +261,7 @@
         '<p>' + esc(p.identificacao) + ' · período ' + esc(periodoReal(ag, p)) + '</p></div></div>' +
         '<div class="painel-acoes">' + selo(p.situacao) +
         (['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn btn-pri" href="#/processos/' + p.id + '/classificacao">🏆 Classificação</a>' : '') +
+        (ctx.perfil.perfil === 'admin' && ['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn" href="#/processos/' + p.id + '/revisao">' + ({ andamento: '📋 Enviar para revisão', revisao: '✅ Revisar e liberar', liberado: '🔓 Liberado · ver' }[p.situacao]) + '</a>' : '') +
         (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><div class="iniciar-box"><button type="button" class="btn btn-pri btn-iniciar" id="p-iniciar"' + (falta.length ? ' disabled' : '') + '>Iniciar processo</button>' + (falta.length ? '<small>Falta: ' + esc(falta.join(' e ')) + '</small>' : '') + '</div>' : '') + '</div></header>' +
       '<div class="etapas" role="list">' + etapas.map(function (x, i) {
         return '<div role="listitem" class="' + (i < idxAtual ? 'feita' : (i === idxAtual ? 'atual' : '')) + '"' + (i === idxAtual ? ' aria-current="step"' : '') + '><b>' + (i + 1) + ' · ' + esc(x[1]) + '</b>' + esc(x[2]) + '</div>';
@@ -487,24 +488,42 @@
           '<label class="campo largo" for="w-emp"><span>Empresa <span class="obrig">*</span></span><select class="entrada" id="w-emp"><option value="">Escolha a empresa…</option>' +
             empresasOp.map(function (x) { return '<option value="' + x.id + '"' + (x.id === st.empresa_id ? ' selected' : '') + '>' + esc(x.nome_fantasia) + '</option>'; }).join('') + '</select>' +
             (empresasOp.length ? '' : '<small class="dica">Nenhuma empresa ativa. Cadastre em Configurações → Empresas.</small>') + '</label>' +
-          '<label class="campo" for="w-vaga"><span>Vaga <span class="obrig">*</span></span><input class="entrada" id="w-vaga" maxlength="120" value="' + esc(st.vaga) + '" placeholder="Ex.: Auxiliar Administrativo"></label>' +
+          '<label class="campo" for="w-vaga"><span>Vaga <span class="obrig">*</span></span><input class="entrada" id="w-vaga" maxlength="120" list="w-vagas" value="' + esc(st.vaga) + '" placeholder="Escolha da lista ou digite"><datalist id="w-vagas"></datalist>' +
+            '<small class="dica" id="w-vaga-dica"></small><label class="marca oculto" id="w-vaga-salvar-l" style="margin-top:6px"><input type="checkbox" id="w-vaga-salvar" checked> <span>Guardar esta vaga no cadastro da empresa</span></label></label>' +
           '<label class="campo" for="w-ident"><span>Identificação <span class="obrig">*</span></span><input class="entrada" id="w-ident" maxlength="80" value="' + esc(st.identificacao) + '" placeholder="Ex.: 2º semestre 2026"></label>' +
 
           '<label class="campo largo" for="w-obs"><span>Observações</span><textarea class="entrada" id="w-obs" rows="2" maxlength="1000">' + esc(st.observacoes) + '</textarea></label></div>' +
           '<p class="dica" style="margin:0">O período do processo vem das datas das turmas.</p>';
+        (function () {
+          var selE = c.querySelector('#w-emp'), inp = c.querySelector('#w-vaga'), dl = c.querySelector('#w-vagas'), dica = c.querySelector('#w-vaga-dica'), lSalvar = c.querySelector('#w-vaga-salvar-l'), vagasE = [];
+          var TUR = { manha: 'manhã', tarde: 'tarde', noite: 'noite', integral: 'integral' };
+          async function carregarVagas() {
+            vagasE = []; dl.innerHTML = ''; dica.textContent = '';
+            if (!selE.value) { verNova(); return; }
+            var r = await window.CF.sb.from('empresa_vagas').select('nome,turno,ativa').eq('empresa_id', selE.value).eq('ativa', true).order('nome');
+            vagasE = (r && r.data) || [];
+            dl.innerHTML = vagasE.map(function (v) { return '<option value="' + esc(v.nome) + '">' + esc(v.turno ? TUR[v.turno] : '') + '</option>'; }).join('');
+            dica.textContent = vagasE.length ? vagasE.length + ' vaga(s) cadastrada(s) nesta empresa: toque no campo para escolher.' : 'Esta empresa ainda não tem vagas cadastradas.';
+            verNova();
+          }
+          function verNova() { var t = ui.normalizar(inp.value.trim()); lSalvar.classList.toggle('oculto', !selE.value || !t || vagasE.some(function (v) { return ui.normalizar(v.nome) === t; })); }
+          selE.addEventListener('change', carregarVagas); inp.addEventListener('input', verNova);
+          st._vagaNova = function () { return !lSalvar.classList.contains('oculto') && c.querySelector('#w-vaga-salvar').checked; };
+          carregarVagas();
+        })();
       } else if (passo === 2) {
         var grupos = b.areas.filter(function (a) { return a.ativa; }).sort(function (x, y) { return x.ordem - y.ordem; }).map(function (a) { return { nome: a.nome, testes: b.testes.filter(function (t) { return t.area_id === a.id; }) }; });
         grupos.push({ nome: 'Sem área', testes: b.testes.filter(function (t) { return !t.area_id; }) });
         c.innerHTML = (modelos.length ? '<div class="modelo-linha"><label class="campo" for="w-modelo"><span>Começar por um modelo</span><select class="entrada" id="w-modelo"><option value="">Escolha um modelo…</option>' +
             modelos.map(function (m) { return '<option value="' + m.id + '">' + esc(m.nome) + ' (' + m.testes.length + ' testes)</option>'; }).join('') + '</select></label><button type="button" class="btn" id="w-aplicar">Aplicar modelo</button></div>' : '') +
-          '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar teste</span><input type="search" id="w-busca" placeholder="Buscar teste" value="' + esc(st.buscaT) + '"></label><span class="dica" id="w-resumo"></span></div>' +
+          '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar teste</span><input type="search" id="w-busca" placeholder="Buscar teste ou código" value="' + esc(st.buscaT) + '"></label><span class="dica" id="w-resumo"></span></div>' +
           '<div class="lista-testes-proc">' + grupos.map(function (g) {
-            var ts = g.testes.filter(function (t) { return (t.ativo || st.testes[t.id]) && (!st.buscaT || ui.normalizar(t.nome).indexOf(st.buscaT) >= 0); }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
+            var ts = g.testes.filter(function (t) { return (t.ativo || st.testes[t.id]) && (!st.buscaT || ui.normalizar(t.nome + ' ' + (t.codigo || '')).indexOf(st.buscaT) >= 0); }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
             return ts.length ? '<div class="grupo-teste"><span class="lbl">' + esc(g.nome) + '</span><div class="testes-op">' + ts.map(function (t) {
               var on = !!st.testes[t.id];
               var semComp = !b.criterios.some(function (x) { return x.teste_id === t.id && x.competencia_id; });
               var ms = on ? window.CF.materiais.lista(b, [t.id], 0)[0] : null;
-              return '<label class="teste-op' + (on ? ' on' : '') + '"><input type="checkbox" data-teste="' + t.id + '"' + (on ? ' checked' : '') + '><span>' + esc(t.nome) + (t.padrao ? ' <small class="dica">(padrão)</small>' : '') + (semComp ? ' <small class="alerta-txt" title="Teste sem competências">sem competências</small>' : '') +
+              return '<label class="teste-op' + (on ? ' on' : '') + '"><input type="checkbox" data-teste="' + t.id + '"' + (on ? ' checked' : '') + '><span>' + esc(t.nome) + (t.codigo ? ' <small class="cod cod-teste">' + esc(t.codigo) + '</small>' : '') + (t.padrao ? ' <small class="dica">(padrão)</small>' : '') + (semComp ? ' <small class="alerta-txt" title="Teste sem competências">sem competências</small>' : '') +
                 (ms ? '<small class="mat-resumo">🧰 ' + esc(ms.itens.map(function (i) { return i.nome + ' ' + window.CF.materiais.fmtQtd(i.qtd); }).join(' · ')) + '</small>' : '') + '</span>' +
                 (t.tem_nivel && on ? '<select class="entrada sel-nivel" data-nivel="' + t.id + '" aria-label="Nível de ' + esc(t.nome) + '"><option value="">Nível…</option>' +
                   Object.keys(NIVEIS).map(function (k) { return '<option value="' + k + '"' + (st.testes[t.id].nivel === k ? ' selected' : '') + '>' + NIVEIS[k] + '</option>'; }).join('') + '</select>' : '') + '</label>';
@@ -563,6 +582,9 @@
       var c = el.querySelector('#w-corpo');
       if (passo === 1) {
         st.empresa_id = c.querySelector('#w-emp').value; st.vaga = c.querySelector('#w-vaga').value.trim().replace(/\s+/g, ' ');
+        if (st._vagaNova && st._vagaNova() && st.empresa_id && st.vaga && window.CF.perm.pode('config_empresas')) {   // guarda a vaga nova na empresa
+          window.CF.sb.from('empresa_vagas').upsert({ empresa_id: st.empresa_id, nome: ui.maiusculas(st.vaga) }, { onConflict: 'empresa_id,nome', ignoreDuplicates: true }).then(function () {}, function () {});
+        }
         st.identificacao = c.querySelector('#w-ident').value.trim().replace(/\s+/g, ' '); 
         st.observacoes = c.querySelector('#w-obs').value.trim();
       }

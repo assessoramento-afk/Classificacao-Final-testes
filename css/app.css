@@ -1344,3 +1344,79 @@ tr.ie-off td { opacity: .45; }
 .bk-ok { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #e8f5ec; color: #1f6b40; font-size: 11.5px; font-weight: 700; }
 .bk-bts { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .bk-hist { width: 100%; border-collapse: collapse; font-size: 13.5px; } .bk-hist td { padding: 8px 6px; border-bottom: 1px solid var(--borda-2); }
+
+/* Cartões de Configurações: seta sempre no centro da direita, texto ocupa o espaço do meio */
+.cfg { align-items: center; }
+.cfg > div { flex: 1; min-width: 0; }
+.cfg .vai { margin-left: 4px; }
+
+/* Janela do jovem: mais larga, gênero 2×2 e campos sem cortes */
+.jovem-topo { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 22px; align-items: start; }
+.foto-bts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.seg-genero button { white-space: normal; line-height: 1.2; padding: 9px 6px; min-width: 0; }
+.jovem-dados .form-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.jovem-dados .entrada { min-width: 0; width: 100%; }
+@media (max-width: 640px) { .jovem-topo { grid-template-columns: 1fr; } .jovem-dados .form-grade { grid-template-columns: 1fr; } }
+
+/* Vagas da empresa */
+.vg-lista { display: flex; flex-direction: column; gap: 8px; }
+.vg-lin { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+@media (max-width: 640px) { .vg-lin { grid-template-columns: 1fr 1fr; } .vg-lin input { grid-column: 1 / -1; } }
+
+/* =====================================================================
+   4.13.2 · revisão de espaçamentos (estilos compartilhados)
+   ===================================================================== */
+.conteudo > .cabecalho + p.dica { margin-top: -4px; margin-bottom: 14px; }
+.pt-filtros { margin-bottom: 14px; }
+/* Permissões: filtros desgrudados do subtítulo; matriz rola dentro do cartão */
+.pm-tab { overflow: hidden; } .pm-tab .tabela-rolar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Escuro: ícone da cópia */
+html[data-tema="escuro"] .bk-ic { background: #1f3a2a; }
+html[data-tema="escuro"] .bk-ok { background: #1f3a2a; color: #7fd6a2; }
+/* Agenda: legenda e navegação quebram a linha (não passam da tela) */
+.ag-leg { flex-wrap: wrap; row-gap: 4px; min-width: 0; max-width: 100%; }
+.ag-nav { flex-wrap: wrap; row-gap: 8px; }
+/* Banco de testes: menos vão entre botões e legenda; ações das áreas sem cortar */
+.legenda { margin-top: 4px; }
+.area-cab { min-width: 0; } .area-cab > * { min-width: 0; }
+@media (max-width: 640px) { .area-cab { flex-wrap: wrap; } .area-cab .area-acoes, .area-cab .acoes { margin-left: auto; } }
+
+/* Celular: tabelas viram cartões (nada cortado à direita) */
+@media (max-width: 640px) {
+  .conteudo .tabela:not(.mini) thead { display: none; }
+  .conteudo .tabela:not(.mini), .conteudo .tabela:not(.mini) tbody { display: block; width: 100%; }
+  .conteudo .tabela:not(.mini) tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 12px 10px; border-bottom: 1px solid var(--borda-2); }
+  .conteudo .tabela:not(.mini) tbody tr:last-child { border-bottom: 0; }
+  .conteudo .tabela:not(.mini) td { display: block; border: 0 !important; padding: 0 !important; min-width: 0; text-align: left !important; white-space: normal; }
+  .conteudo .tabela:not(.mini) td:first-child { flex: 1 1 100%; }
+  .conteudo .tabela:not(.mini) td:last-child:not(:first-child) { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+  .conteudo .tabela:not(.mini) td:last-child:not(:first-child) > .btn { flex: 1 1 auto; justify-content: center; }
+  .conteudo .tabela:not(.mini) td:empty { display: none; }
+  .conteudo .tabela:not(.mini) tr[style*="--c"] { box-shadow: inset 4px 0 0 var(--c); padding-left: 14px; }
+  .conteudo .tabela:not(.mini) td.pt-barra { box-shadow: none; padding-left: 0 !important; }
+  .tabela-card { overflow-x: visible; }
+  .conteudo .tabela-rolar { overflow-x: visible; }
+  .pm-tab .tabela-rolar { overflow-x: auto; }
+}
+.area-toggle { flex: 1; min-width: 0; } .area-toggle h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.area-cab .mini-acoes { flex: none; }
+@media (max-width: 640px) { .cabecalho + .legenda, .cabecalho ~ .legenda { margin-top: -6px; } }
+@media (max-width: 640px) {
+  .conteudo table.pt-rk thead { display: none; }
+  .conteudo table.pt-rk, .conteudo table.pt-rk tbody { display: block; width: 100%; }
+  .conteudo table.pt-rk tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 12px 10px 12px 14px; border-bottom: 1px solid var(--borda-2); box-shadow: inset 4px 0 0 var(--c, transparent); }
+  .conteudo table.pt-rk tbody tr:last-child { border-bottom: 0; }
+  .conteudo table.pt-rk td { display: block; border: 0 !important; padding: 0 !important; min-width: 0; text-align: left !important; white-space: normal; }
+  .conteudo table.pt-rk td:first-child { flex: 1 1 100%; }
+  .conteudo table.pt-rk td.pt-barra { box-shadow: none; }
+  .conteudo table.pt-rk td:last-child:not(:first-child) { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+  .conteudo table.pt-rk td:last-child:not(:first-child) > .btn { flex: 1 1 auto; justify-content: center; }
+  .conteudo table.pt-rk td:empty { display: none; }
+}
+@media (max-width: 640px) {
+  .conteudo table.pt-rk td.pt-barra, .conteudo .tabela td.pt-barra { background: none !important; }
+  .conteudo .tabela td .pill, .conteudo .tabela td .pl { white-space: normal; max-width: 100%; }
+  .conteudo > .cabecalho { margin-bottom: 10px; }
+}
+.cod-teste { display: inline-block; margin-left: 8px; font-size: 11.5px; vertical-align: middle; }
+.cabecalho + .pt-filtros, .cabecalho + section + .pt-filtros, .pm-aguarda + .pt-filtros { margin-top: 14px; }

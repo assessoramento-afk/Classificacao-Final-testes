@@ -65,7 +65,9 @@
   function listarAgendas() { return window.CF.drive.chamar('agenda-sincronizar', { acao: 'listar_agendas' }); }
   // Feriados, pontos facultativos, eventos da Kolping Estadual e lembretes do mês
   var TIPOS_ESP = { feriado: { nome: 'Feriado', cor: '#7d7577' }, ponto: { nome: 'Ponto facultativo', cor: '#8b7fd0' }, kolping: { nome: 'Kolping Estadual', cor: '#d96a1f' }, lembrete: { nome: 'Lembrete do mês', cor: '#a07850' } };
+  var garantido = false;
   async function especiais() {
+    if (!garantido) { garantido = true; try { await window.CF.sb.rpc('especiais_garantir'); } catch (e) { /* segue com o que já existe */ } }   // ano atual + 2 seguintes
     var r = await window.CF.sb.from('agenda_especiais').select('*').order('data_ini');
     return r.error ? [] : (r.data || []);
   }

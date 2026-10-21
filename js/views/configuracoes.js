@@ -90,13 +90,13 @@
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'nota', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
-        card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
         '</div></section>' +
       '<section class="grupo"><h2>Documentos</h2><div class="cards-cfg">' +
         card('agradecimento', 'agr', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'mail', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'termo', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'modelo', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
       '<section class="grupo"><h2>Sistema</h2><div class="cards-cfg">' +
         (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'perm', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
         (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
+        card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
         card('saude', 'saude', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
@@ -336,19 +336,41 @@
     { k: 'ficha', nome: 'Ficha do candidato (PDF)', det: 'A4 · 1 página por candidato (mais, se houver muitas observações)', opcoes: [['lateral', 'Coluna lateral (modelo D)']] },
     { k: 'ficha_excel', nome: 'Ficha do candidato (Excel)', det: 'abas Ficha e Dados', opcoes: [['formatada', 'Formatada como o PDF · abas Ficha e Dados']] },
     { k: 'relatorio', nome: 'Classificação e relatório (PDF)', det: 'capa, agradecimento, informações, ranking com links e fichas', opcoes: [['padrao', 'Capa só com logos, ranking clicável e fichas no modelo D']] },
-    { k: 'excel', nome: 'Planilha Excel do processo', det: 'arquivo completo do processo', opcoes: [['completa', 'Abas Processo, Classificação, Notas por teste, Competências, Observações e Presença']] }, { k: 'certificado', nome: 'Certificado de participação', det: 'Fase 5' }];
+    { k: 'excel', nome: 'Planilha Excel do processo', det: 'arquivo completo do processo', opcoes: [['completa', 'Abas Processo, Classificação, Notas por teste, Competências, Observações e Presença']] }, { k: 'certificado', nome: 'Certificado de participação', det: 'A4 deitado · 1 por jovem', opcoes: [['padrao', 'Com logos, texto do processo e assinatura']] }];
+  // Exemplos com dados fictícios (para escolher o modelo)
+  var EX_INFO = { empresa: 'EMPRESA EXEMPLO', vaga: 'AUXILIAR ADMINISTRATIVO', processo: '2º SEMESTRE 2026' };
+  var EX_JOVENS = [['ANA BEATRIZ SOUZA LIMA', 'K7M-4Q2', 'feminino', '2009-03-12', 'MARIA SOUZA LIMA', 'mãe'], ['BRUNO HENRIQUE COSTA', 'P3T-8W1', 'masculino', '2006-07-02', '', ''],
+    ['CAIO MENDES ROCHA', 'R5D-2K9', 'masculino', '2010-01-20', 'JOSÉ MENDES ROCHA', 'pai'], ['DÉBORA ALVES PINTO', 'H9F-6N3', 'feminino', '2008-11-05', 'ROSA ALVES', 'mãe']].map(function (x) {
+      return { nome: x[0], codigo: x[1], genero: x[2], nascimento: x[3], responsavel_nome: x[4], responsavel_parentesco: x[5], turma: 'TURMA A', turmaCurta: 'TURMA A', dias: '23/11 e 24/11', telefone: '' };
+    });
+  function abrirArquivo(url) { window.open(url, '_blank', 'noopener'); }
+  var EXEMPLOS = {
+    cracha: function (op) { window.CF.documentos.imprimir('Exemplo · Crachás', window.CF.documentos.crachas(EX_INFO, EX_JOVENS, { qr: op !== 'sem_qr' })); },
+    presenca: function () { window.CF.documentos.imprimir('Exemplo · Lista de presença', window.CF.documentos.presenca(EX_INFO, { nome: 'TURMA A', dias: ['2026-11-23', '2026-11-24'] }, EX_JOVENS)); },
+    termo: function (op, cfg) { window.CF.documentos.imprimir('Exemplo · Termo de consentimento', window.CF.documentos.termos(EX_INFO, EX_JOVENS.slice(0, 2), { jovem: cfg.texto_termo_jovem || TERMO_JOVEM, responsavel: cfg.texto_termo_responsavel || TERMO_RESP })); },
+    ficha_tela: function () { abrirArquivo('assets/exemplos/ficha_tela.png'); },
+    ficha: function () { abrirArquivo('assets/exemplos/ficha.pdf'); },
+    ficha_excel: function () { abrirArquivo('assets/exemplos/ficha.xlsx'); },
+    relatorio: function () { abrirArquivo('assets/exemplos/relatorio.pdf'); },
+    excel: function () { abrirArquivo('assets/exemplos/processo.xlsx'); },
+    certificado: function () { abrirArquivo('assets/exemplos/certificado.pdf'); }
+  };
   async function paginaModelos(area) {
     var cfg = await dados.config.carregar(), atual = Object.assign({}, cfg.modelos_documento || {});
     area.innerHTML = cabecalho('Modelos de documentos', 'Escolha qual modelo cada documento usa como padrão') +
-      '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Documento</th><th>Modelo padrão</th><th>Modelos disponíveis</th></tr></thead><tbody>' +
-      DOCS.map(function (d) {
-        if (!d.opcoes) return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td><td><span class="dica">em construção</span></td><td></td></tr>';
+      '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Documento</th><th>Modelo padrão</th><th>Modelos disponíveis</th><th></th></tr></thead><tbody>' +
+      DOCS.slice().sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); }).map(function (d) {
+        var ex = EXEMPLOS[d.k] ? '<button type="button" class="btn btn-p" data-ex="' + d.k + '">Ver exemplo</button>' : '';
+        if (!d.opcoes) return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td><td><span class="dica">em construção</span></td><td></td><td style="text-align:right">' + ex + '</td></tr>';
         var v = atual[d.k] || d.opcoes[0][0];
         return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td>' +
           '<td>' + (d.opcoes.length > 1 ? '<select class="entrada sel-modelo" data-doc="' + d.k + '" aria-label="Modelo padrão de ' + esc(d.nome) + '">' + d.opcoes.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>'
-            : ui.pill(d.opcoes[0][1], 'sim')) + '</td><td class="num">' + d.opcoes.length + '</td></tr>';
+            : ui.pill(d.opcoes[0][1], 'sim')) + '</td><td class="num">' + d.opcoes.length + '</td><td style="text-align:right">' + ex + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<p class="dica" style="margin:0">Novos modelos aparecem aqui conforme forem criados. Trocar o padrão não muda documentos já impressos.</p>';
+      '<p class="dica" style="margin:0">"Ver exemplo" abre o documento com dados fictícios, no modelo escolhido na linha. Novos modelos aparecem aqui conforme forem criados. Trocar o padrão não muda documentos já impressos.</p>';
+    area.querySelectorAll('[data-ex]').forEach(function (b) {
+      b.addEventListener('click', function () { var k = b.getAttribute('data-ex'), sel = area.querySelector('[data-doc="' + k + '"]'); EXEMPLOS[k](sel ? sel.value : (atual[k] || ''), cfg); });
+    });
     area.querySelectorAll('[data-doc]').forEach(function (sel) {
       sel.addEventListener('change', async function () {
         atual[sel.getAttribute('data-doc')] = sel.value;
@@ -472,7 +494,7 @@
           '</div><div class="drv-bts"><button type="button" class="btn btn-p" id="ag-sinc">Sincronizar agora</button>' +
           (st.agenda_id ? '<a class="btn btn-p" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/u/0/r/settings/calendar/' + btoa(st.agenda_id).replace(/=+$/, '') + '">Compartilhar / link Outlook</a>' : '') +
           '<button type="button" class="btn btn-p" id="ag-recon">Reconectar Google</button></div></section>' +
-          (st.agenda_id ? '<section class="card" style="padding:12px 18px"><b>Agendas que o sistema lê</b><p class="dica" style="margin:2px 0 6px">As agendas marcadas aparecem em azul na Agenda do sistema, com o nome da agenda, e podem virar turma ou ser excluídas pelo sistema (com confirmação).</p><div id="ag-lidas"><div class="girando" style="margin:10px auto"></div></div></section>' : '') +
+          (st.agenda_id ? '<section class="card" style="padding:12px 18px"><b>Agendas que o sistema lê</b><p class="dica" style="margin:2px 0 6px">As agendas marcadas aparecem na Agenda do sistema na cor escolhida, com o nome da agenda, e podem virar turma ou ser excluídas pelo sistema (com confirmação).</p><div id="ag-lidas"><div class="girando" style="margin:10px auto"></div></div></section>' : '') +
           '<p class="dica">Para a equipe ver a agenda: no Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
           'Para quem usa o Outlook: copie o <b>Endereço secreto no formato iCal</b> e, no Outlook, use <b>Adicionar calendário › Assinar da Web</b>. ' +
           'Se aparecer "ainda não autorizou a agenda", clique em <b>Reconectar Google</b> e entre com projetogol@kolpingsp.org.</p>' : '');

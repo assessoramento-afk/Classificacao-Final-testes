@@ -145,6 +145,8 @@
             '<span class="dica" style="flex:1;min-width:180px">PNG ou JPG, de preferência com fundo transparente. Aparece nos PDFs, no Excel e no portal.</span>' +
             '<button type="button" class="btn btn-p" id="f-logo-btn">Escolher arquivo</button></div></div>' +
           (e.id ? marcar('f-ativa', 'Empresa ativa', e.ativa !== false, 'Empresas inativas não aparecem para novos processos.') : '') +
+          '<div class="campo largo"><span>Vagas da empresa</span><small class="dica" style="margin:0 0 6px">Aparecem para escolher no "Novo Profiling Empresa".</small><div id="f-vagas" class="vg-lista"></div>' +
+            '<button type="button" class="btn btn-p" id="f-vaga-add" style="align-self:flex-start;margin-top:6px">+ Adicionar vaga</button></div>' +
         '</div>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar empresa', principal: true, aoClicar: salvar }]
     });
@@ -213,6 +215,37 @@
       inp.click();
     });
 
+    // ---- vagas da empresa (nome, área, turno) ----
+    var vagas = [], vagasRemov = [], areasV = [];
+    var TURNOS = [['', 'Turno…'], ['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite'], ['integral', 'Integral']];
+    function desenharVagas() {
+      var box = document.querySelector('#f-vagas'); if (!box) return;
+      box.innerHTML = vagas.length ? vagas.map(function (v, i) {
+        return '<div class="vg-lin' + (v.ativa === false ? ' vg-off' : '') + '"><input class="entrada" data-vn="' + i + '" maxlength="120" placeholder="Nome da vaga" value="' + esc(v.nome || '') + '">' +
+          '<select class="entrada" data-va="' + i + '" aria-label="Área"><option value="">Área…</option>' + areasV.map(function (a) { return '<option value="' + a.id + '"' + (a.id === v.area_id ? ' selected' : '') + '>' + esc(a.nome) + '</option>'; }).join('') + '</select>' +
+          '<select class="entrada" data-vt="' + i + '" aria-label="Turno">' + TURNOS.map(function (t) { return '<option value="' + t[0] + '"' + (t[0] === (v.turno || '') ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select>' +
+          '<button type="button" class="btn btn-p btn-perigo" data-vx="' + i + '" aria-label="Remover vaga">✕</button></div>';
+      }).join('') : '<p class="dica" style="margin:0">Nenhuma vaga cadastrada.</p>';
+      box.querySelectorAll('[data-vn]').forEach(function (x) { x.addEventListener('input', function () { vagas[+x.getAttribute('data-vn')].nome = x.value; }); });
+      box.querySelectorAll('[data-va]').forEach(function (x) { x.addEventListener('change', function () { vagas[+x.getAttribute('data-va')].area_id = x.value || null; }); });
+      box.querySelectorAll('[data-vt]').forEach(function (x) { x.addEventListener('change', function () { vagas[+x.getAttribute('data-vt')].turno = x.value || null; }); });
+      box.querySelectorAll('[data-vx]').forEach(function (x) { x.addEventListener('click', function () { var v = vagas.splice(+x.getAttribute('data-vx'), 1)[0]; if (v.id) vagasRemov.push(v.id); desenharVagas(); }); });
+    }
+    (async function () {
+      try {
+        var ra = await window.CF.sb.from('areas').select('id,nome,ordem').order('ordem'); areasV = (ra && ra.data) || [];
+        if (e.id) { var rv = await window.CF.sb.from('empresa_vagas').select('*').eq('empresa_id', e.id).order('nome'); vagas = (rv && rv.data) || []; }
+      } catch (x) { /* sem vagas */ }
+      desenharVagas();
+      var bAdd = document.querySelector('#f-vaga-add');
+      if (bAdd) bAdd.addEventListener('click', function () { vagas.push({ nome: '', area_id: null, turno: null, ativa: true }); desenharVagas(); var l = document.querySelectorAll('#f-vagas [data-vn]'); if (l.length) l[l.length - 1].focus(); });
+    })();
+    async function salvarVagas(empresaId) {
+      if (vagasRemov.length) await window.CF.sb.from('empresa_vagas').delete().in('id', vagasRemov);
+      var lista = vagas.filter(function (v) { return (v.nome || '').trim(); }).map(function (v) { var o = { empresa_id: empresaId, nome: ui.maiusculas(v.nome.trim().replace(/\s+/g, ' ')), area_id: v.area_id || null, turno: v.turno || null, ativa: v.ativa !== false }; if (v.id) o.id = v.id; return o; });
+      if (lista.length) { var r = await window.CF.sb.from('empresa_vagas').upsert(lista); if (r.error) throw r.error; }
+    }
+
     async function salvar(fundo) {
       if (!liberado) { ui.toast('Busque o CNPJ primeiro.', 'erro'); return false; }
       var v = function (id) { var x = fundo.querySelector(id); return x ? x.value.trim() : ''; };
@@ -233,6 +266,7 @@
       return ui.executar(fundo.querySelector('.janela-pe .btn-pri'), 'Salvando…', async function () {
         try {
           var salva = await dados.empresas.salvar(obj);
+          try { await salvarVagas(salva.id); } catch (xv) { ui.toast('Empresa salva, mas as vagas não: ' + api.traduzErro(xv), 'erro'); }
           if (novoLogo) {
             var caminho = await dados.empresas.enviarLogo(salva.id, novoLogo);
             await dados.empresas.salvar({ id: salva.id, logo_path: caminho });
@@ -390,7 +424,7 @@
      ================================================================ */
   async function abaAreas(alvo, botaoNovo) {
     var b = await dados.banco.carregarTudo();
-    alvo.innerHTML = '<p class="dica" style="margin:0">As áreas são os eixos do gráfico de radar. A ordem define a posição de cada eixo.</p>' + barraBusca('Buscar área') + '<div id="lista"></div>';
+    alvo.innerHTML = '<p class="dica" style="margin:4px 0 12px">As áreas são os eixos do gráfico de radar. A ordem define a posição de cada eixo.</p>' + barraBusca('Buscar área') + '<div id="lista"></div>';
     function desenhar() {
       contar('areas', b.areas.filter(function (a) { return a.ativa; }).length);
       var f = filtro(alvo);

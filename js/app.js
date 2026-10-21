@@ -199,13 +199,13 @@
       if (a.getAttribute('data-rota') === rota) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     var item = (MENUS[p.perfil] || []).filter(function (m) { return m[0] === rota; })[0];
-    var tituloTela = item ? item[1] : (rota === 'envios' ? 'Central de envios' : 'Minha conta');
+    var tituloTela = item ? item[1] : ({ envios: 'Central de envios', avaliar: 'Avaliar', conta: 'Minha conta' }[rota] || 'Minha conta');
     document.getElementById('topo-titulo').textContent = tituloTela;
     document.title = tituloTela + ' · ' + C.nomeSistema;
     var tela = window.CF.telas[rota];
     // Sem internet, só o Avaliar (turmas baixadas) funciona: as outras telas mostram um aviso em vez de números zerados
     if (!navigator.onLine && ['avaliar', 'painel', 'envios'].indexOf(rota) < 0) {
-      conteudo.innerHTML = '<header class="cabecalho"><div><h1>' + esc(item ? item[1] : 'Minha conta') + '</h1></div></header>' +
+      conteudo.innerHTML = '<header class="cabecalho"><div><h1>' + esc(tituloTela) + '</h1></div></header>' +
         '<section class="card bloco sem-net"><span class="sem-net-ic" aria-hidden="true">📡</span><h2>Sem internet</h2>' +
         '<p>Esta tela precisa de internet para mostrar os dados. Sem internet, você pode usar o <b>Avaliar</b> nas turmas baixadas neste aparelho: presença, grupos e notas ficam salvos e são enviados quando a conexão voltar.</p>' +
         '<a class="btn btn-pri" href="#/processos">Ir para Profiling Empresas</a></section>';
