@@ -58,22 +58,129 @@
   };
 
   /* ================================================================
+     AVALIAR NO CARTÃO (substitui o item Avaliar do menu)
+     · Avaliar: 1 turma abre direto; 2 ou mais, escolhe a turma
+     · Baixar para usar sem internet / ✓ Salvo neste aparelho · Atualizar
+     · sem internet: aparecem os processos salvos neste aparelho
+     ================================================================ */
+  var D = window.CF.datas, OFF = window.CF.offline;
+  function salvasDe(turmas) { var g = OFF ? OFF.turmas() : {}; return turmas.map(function (t) { return g[t.id]; }); }
+  function areaAvaliar(p, turmas) {
+    if (p.situacao !== 'andamento') return p.situacao === 'montagem' ? '<p class="dica proc-av-dica">Avaliar aparece quando o processo for iniciado</p>' : '';
+    if (!turmas.length) return '<p class="dica proc-av-dica">Sem turmas para avaliar</p>';
+    var sv = salvasDe(turmas), todas = sv.every(Boolean);
+    var quando = todas ? sv.map(function (x) { return x.baixado_em || ''; }).sort()[0] : '';
+    var hm = quando ? new Date(quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    var dt = quando && quando.slice(0, 10) !== D.hoje() ? new Date(quando).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' : '';
+    var bloq = !navigator.onLine && !sv.some(Boolean);
+    return '<div class="proc-av"><button type="button" class="btn btn-pri btn-p" data-av="' + p.id + '"' + (bloq ? ' disabled' : '') + '>✏️ Avaliar</button>' +
+      (todas ? '<div class="proc-salvo"><span>✓ Salvo neste aparelho · ' + dt + hm + '</span>' + (navigator.onLine ? '<button type="button" class="btn-link" data-bx="' + p.id + '">Atualizar</button>' : '') + '</div>'
+             : (navigator.onLine ? '<button type="button" class="btn btn-p" data-bx="' + p.id + '">⬇ Baixar para usar sem internet</button>' : '<p class="dica proc-av-dica">Não foi baixado: precisa de internet</p>')) + '</div>';
+  }
+  var cacheTurmas = {};   // processo → turmas (para os botões)
+  function ligarCartoes(box, redesenhar) {
+    box.querySelectorAll('.proc[data-href]').forEach(function (c) {
+      c.addEventListener('click', function (ev) { if (ev.target.closest('button, a')) return; window.location.hash = c.getAttribute('data-href'); });
+      c.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target === c) window.location.hash = c.getAttribute('data-href'); });
+    });
+    box.querySelectorAll('[data-av]').forEach(function (b) { b.addEventListener('click', function () { abrirAvaliar(b.getAttribute('data-av')); }); });
+    box.querySelectorAll('[data-bx]').forEach(function (b) {
+      b.addEventListener('click', function (ev) {
+        var pid = b.getAttribute('data-bx'), ts = cacheTurmas[pid] || [];
+        ui.executar(ev.currentTarget, 'Baixando…', async function () {
+          try { for (var i = 0; i < ts.length; i++) OFF.guardarTurma(await dados.avaliacao.baixarTurma(ts[i].id)); ui.toast(ts.length > 1 ? 'Turmas salvas neste aparelho.' : 'Turma salva neste aparelho.', 'ok'); redesenhar(); }
+          catch (e) { erro(e); }
+        });
+      });
+    });
+  }
+  function abrirAvaliar(pid) {
+    var ts = cacheTurmas[pid] || [], h = D.hoje();
+    if (!navigator.onLine) { var g = OFF.turmas(); ts = ts.filter(function (t) { return g[t.id]; }); }
+    if (ts.length === 1) { window.location.hash = '#/avaliar/' + ts[0].id; return; }
+    if (!ts.length) { ui.toast('Nenhuma turma disponível neste aparelho.', 'erro'); return; }
+    var ord = ts.slice().sort(function (a, b) { return String(a.dias[0] || '').localeCompare(String(b.dias[0] || '')); });
+    var prox = ord.filter(function (t) { return t.dias.length && t.dias[t.dias.length - 1] >= h; })[0];
+    ui.janela({ titulo: 'Qual turma avaliar?', confirmarDescarte: false,
+      corpo: ord.map(function (t) {
+        var hoje = t.dias.indexOf(h) >= 0, tag = hoje ? '<span class="pill" style="background:var(--laranja);color:#fff">Hoje</span>' : (prox && prox.id === t.id ? '<span class="pill" style="background:#2f6fd0;color:#fff">Próxima</span>' : '');
+        return '<a class="proc-tlin" href="#/avaliar/' + t.id + '"><div><b>' + esc(t.nome) + '</b><small>' + esc(t.dias.length ? D.listaDias(t.dias) : 'sem data') + '</small></div>' + tag + '<span class="btn btn-p">Abrir</span></a>';
+      }).join(''),
+      botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
+    document.querySelectorAll('.proc-tlin').forEach(function (a) { a.addEventListener('click', function () { document.querySelectorAll('.janela-fundo').forEach(function (f) { f.remove(); }); }); });
+  }
+  // guarda um resumo dos processos para mostrar sem internet
+  function guardarResumo(procs, empresas, ag) {
+    try {
+      var r = procs.filter(function (p) { return p.situacao === 'andamento'; }).map(function (p) {
+        var e = porId(empresas, p.empresa_id) || {};
+        var ts = turmasDe(ag, p.id).map(function (t) { return { id: t.id, nome: t.nome, dias: diasDaTurma(ag, t.id) }; });
+        cacheTurmas[p.id] = ts;
+        return { id: p.id, empresa: e.nome_fantasia || e.razao_social || '', vaga: p.vaga, identificacao: p.identificacao, situacao: p.situacao, turmas: ts };
+      });
+      procs.forEach(function (p) { if (!cacheTurmas[p.id]) cacheTurmas[p.id] = turmasDe(ag, p.id).map(function (t) { return { id: t.id, nome: t.nome, dias: diasDaTurma(ag, t.id) }; }); });
+      localStorage.setItem('cf_procs_resumo', JSON.stringify(r));
+    } catch (e) { /* sem armazenamento */ }
+  }
+  function semInternet(area) {
+    var r = []; try { r = JSON.parse(localStorage.getItem('cf_procs_resumo') || '[]'); } catch (e) { r = []; }
+    var g = OFF ? OFF.turmas() : {};
+    Object.keys(g).forEach(function (id) {   // turmas salvas que não estão no resumo
+      var s = g[id]; if (!s || !s.processo) return;
+      if (r.some(function (p) { return p.turmas.some(function (t) { return t.id === id; }); })) return;
+      var p = r.filter(function (x) { return x.id === s.processo.id; })[0];
+      if (!p) { p = { id: s.processo.id, empresa: (s.empresa && s.empresa.nome) || '', vaga: s.processo.vaga, identificacao: s.processo.identificacao, situacao: 'andamento', turmas: [] }; r.push(p); }
+      p.turmas.push({ id: id, nome: s.turma.nome, dias: s.dias });
+    });
+    r.forEach(function (p) { cacheTurmas[p.id] = p.turmas; });
+    var box = area.querySelector('#procs');
+    ['#abas-p', '#filtros', '.barra'].forEach(function (sel) { var x = area.querySelector(sel); if (x) x.classList.add('oculto'); });
+    var nb = area.querySelector('#b-novo'); if (nb) nb.classList.add('oculto');
+    box.innerHTML = '<div class="aviso aviso-info" style="margin-bottom:14px">' + ui.icone('alerta', 18) + '<span>Sem internet: aparecem os processos salvos neste aparelho. Os lançamentos ficam guardados e são enviados quando a conexão voltar.</span></div>' +
+      (r.length ? '<div class="procs">' + r.map(function (p) {
+        var sv = p.turmas.some(function (t) { return g[t.id]; });
+        return '<div class="card proc' + (sv ? '' : ' proc-off') + '" style="--sc:#ee7330"><div class="proc-cab"><div class="proc-tit"><h3>' + esc(p.empresa || 'Empresa') + '</h3><small>' + esc(p.vaga + (p.identificacao ? ' · ' + p.identificacao : '')) + '</small></div></div>' +
+          '<div class="nums"><div><b>' + p.turmas.length + '</b><span>turmas</span></div></div>' + areaAvaliar(p, p.turmas) + '</div>';
+      }).join('') + '</div>' : '<div class="card vazio">Nenhum processo salvo neste aparelho. Com internet, use "⬇ Baixar para usar sem internet" no cartão do processo.</div>');
+    ligarCartoes(box, function () { semInternet(area); });
+  }
+
+  /* Escolas, CKs e origens das turmas de profiling */
+  async function origensDados() {
+    var r = await Promise.all([window.CF.sb.from('escolas').select('*').order('nome'), window.CF.sb.from('cks').select('*').order('nome'), window.CF.sb.from('processo_origens').select('*')]);
+    return { escolas: (r[0] && r[0].data) || [], cks: (r[1] && r[1].data) || [], origens: (r[2] && r[2].data) || [] };
+  }
+  function nomeOrigens(ori, procId) {
+    return (ori.origens || []).filter(function (o) { return o.processo_id === procId; }).map(function (o) {
+      var x = o.escola_id ? porId(ori.escolas, o.escola_id) : porId(ori.cks, o.ck_id); return x ? x.nome : ''; }).filter(Boolean).join(' · ');
+  }
+  window.CF.origensDados = origensDados; window.CF.nomeOrigens = nomeOrigens;
+  window.CF.telas.escolas = function (area, ctx) { lista(area, ctx, 'escola'); };
+
+  /* ================================================================
      LISTA
      ================================================================ */
-  async function lista(area, ctx) {
-    var admin = ctx.perfil.perfil === 'admin';
+  async function lista(area, ctx, tipoL) {
+    var admin = ctx.perfil.perfil === 'admin', ESC = tipoL === 'escola', ori = { escolas: [], cks: [], origens: [] };
     var filtroSit = 'todos', busca = '', aba = 'aberto', ano = '';
-    area.innerHTML = '<header class="cabecalho"><div><h1>Processos</h1><p>Processos seletivos de cada empresa</p></div>' +
-      (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + 'Novo processo</button>' : '') + '</header>' +
+    area.innerHTML = '<header class="cabecalho"><div><h1>' + (ESC ? 'Profiling Escolas' : 'Profiling Empresas') + '</h1><p>' + (ESC ? 'Turmas de alunos das escolas e das CKs' : 'Processos seletivos de cada empresa parceira') + '</p></div>' +
+      (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + (ESC ? 'Nova turma de profiling' : 'Novo Profiling Empresa') + '</button>' : '') + '</header>' +
       '<div class="segmentos abas-proc" role="tablist" id="abas-p"></div>' +
       '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-p" placeholder="Buscar por empresa, vaga ou processo"></label><select class="entrada oculto" id="ano-p" aria-label="Ano" style="width:170px"></select></div>' +
       '<div class="filtros" id="filtros" role="group" aria-label="Situação"></div><div id="procs"><div class="girando" style="margin:30px auto"></div></div>';
     var procs = [], empresas = [], ag = null, nJovens = {};
     try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar().catch(function () { return []; }), dados.agenda.carregarTudo().catch(function () { return null; }), dados.jovens.todasParticipacoes().catch(function () { return []; })]); procs = r[0]; empresas = r[1]; ag = r[2];
       r[3].forEach(function (x) { nJovens[x.processo_id] = (nJovens[x.processo_id] || 0) + 1; });
-      if (!empresas.length && ag) empresas = ag.empresas; }
-    catch (e) { erro(e); area.querySelector('#procs').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
-    if (admin) area.querySelector('#b-novo').addEventListener('click', function () { assistente(null, 1, ctx); });
+      if (!empresas.length && ag) empresas = ag.empresas;
+      procs = procs.filter(function (p) { return (p.tipo || 'empresa') === (ESC ? 'escola' : 'empresa'); });
+      if (ESC) ori = await origensDados().catch(function () { return ori; }); }
+    catch (e) {
+      if (!navigator.onLine || /fetch|network|internet/i.test(String(e && e.message))) { semInternet(area); return; }
+      erro(e); area.querySelector('#procs').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return;
+    }
+    guardarResumo(procs, empresas, ag);
+    if (admin) area.querySelector('#b-novo').addEventListener('click', function () { if (ESC) novaTurmaEscola(ctx, ag); else assistente(null, 1, ctx, null, 'empresa'); });
+    if (ESC) { var ib = area.querySelector('#busca-p'); if (ib) ib.placeholder = 'Buscar por turma, escola ou CK'; }
     area.querySelector('#busca-p').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
 
     var FIM = ['liberado', 'cancelado'];
@@ -95,22 +202,24 @@
       fb.querySelectorAll('[data-sit]').forEach(function (b) { b.addEventListener('click', function () { filtroSit = b.getAttribute('data-sit'); desenhar(); }); });
       var itens = abertos.filter(function (p) {
         if (filtroSit !== 'todos' && p.situacao !== filtroSit) return false;
-        var e = porId(empresas, p.empresa_id) || {};
+        var e = ESC ? { nome_fantasia: nomeOrigens(ori, p.id) } : (porId(empresas, p.empresa_id) || {});
         return !busca || ui.normalizar([e.nome_fantasia, e.razao_social, p.vaga, p.identificacao].join(' ')).indexOf(busca) >= 0;
       });
       var box = area.querySelector('#procs');
       if (!itens.length) {
-        box.innerHTML = '<div class="card vazio">' + (procs.length ? 'Nenhum processo encontrado.' : 'Nenhum processo ainda.' + (admin ? ' Use "Novo processo" para começar.' : '')) + '</div>';
+        box.innerHTML = '<div class="card vazio">' + (procs.length ? 'Nenhum processo encontrado.' : (ESC ? 'Nenhuma turma de profiling ainda.' + (admin ? ' Use "Nova turma de profiling" para começar.' : '') : 'Nenhum processo ainda.' + (admin ? ' Use "Novo Profiling Empresa" para começar.' : ''))) + '</div>';
         return;
       }
       box.innerHTML = '<div class="procs">' + itens.map(function (p) {
-        var e = porId(empresas, p.empresa_id) || {}, cor = (SITUACOES[p.situacao] || SITUACOES.montagem)[1];
-        return '<a class="card proc" href="#/processos/' + p.id + '" style="--sc:' + cor + '">' +
-          '<div class="proc-cab">' + logoHTML(e) + '<div class="proc-tit"><h3>' + esc(e.nome_fantasia || 'Empresa') + '</h3><small>' + esc(p.vaga) + ' · ' + esc(p.identificacao) + '</small>' +
+        var e = ESC ? { nome_fantasia: nomeOrigens(ori, p.id) || 'Sem origem' } : (porId(empresas, p.empresa_id) || {}), cor = (SITUACOES[p.situacao] || SITUACOES.montagem)[1];
+        return '<div class="card proc" role="link" tabindex="0" data-href="#/processos/' + p.id + '" style="--sc:' + cor + '">' +
+          '<div class="proc-cab">' + (ESC ? '<span class="logo-mini logo-esc">🎓</span>' : logoHTML(e)) + '<div class="proc-tit"><h3>' + esc(e.nome_fantasia || 'Empresa') + '</h3><small>' + esc(p.vaga) + ' · ' + esc(p.identificacao) + '</small>' +
           '<div>' + selo(p.situacao) + '</div></div></div>' +
-          '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>' + (nJovens[p.id] || 0) + '</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div></a>';
+          '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>' + (nJovens[p.id] || 0) + '</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div>' +
+          areaAvaliar(p, turmasDe(ag, p.id).map(function (t) { return { id: t.id, nome: t.nome, dias: diasDaTurma(ag, t.id) }; })) + '</div>';
       }).join('') + '</div>';
       carregarLogos(box);
+      ligarCartoes(box, function () { desenhar(); });
     }
     // Finalizados: por empresa (A–Z) e, dentro dela, do mais recente para o mais antigo
     function finalizados(fins, selAno) {
@@ -143,14 +252,19 @@
      ================================================================ */
   async function painel(area, ctx, id) {
     var admin = ctx.perfil.perfil === 'admin';
-    area.innerHTML = '<a class="voltar" href="#/processos">← Processos</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
-    var p, testesProc, empresas, b, ag;
+    area.innerHTML = '<a class="voltar" href="#/processos" id="p-voltar">← Profiling Empresas</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
+    var p, testesProc, empresas, b, ag, ESC = false, oriP = null;
     try {
       var r = await Promise.all([dados.processos.obter(id), dados.processos.testes(id), dados.empresas.listar().catch(function () { return []; }), dados.banco.carregarTudo(), dados.agenda.carregarTudo(), dados.jovens.doProcesso(id).catch(function () { return []; })]);
       p = r[0]; testesProc = r[1]; empresas = r[2]; b = r[3]; ag = r[4]; var jovensP = r[5];
       if (!empresas.length) empresas = ag.empresas;
     } catch (e) { erro(e); area.querySelector('#painel').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Processo não encontrado.</span></div>'; return; }
-    var e = porId(empresas, p.empresa_id) || {};
+    ESC = p.tipo === 'escola';
+    if (ESC) {   // turma de profiling: origem no lugar da empresa
+      oriP = await origensDados().catch(function () { return { escolas: [], cks: [], origens: [] }; });
+      var vt = area.querySelector('#p-voltar'); if (vt) { vt.href = '#/escolas'; vt.textContent = '← Profiling Escolas'; }
+    }
+    var e = ESC ? { nome_fantasia: nomeOrigens(oriP, p.id) || 'Sem origem' } : (porId(empresas, p.empresa_id) || {});
     var montagem = p.situacao === 'montagem';
     var turmas = turmasDe(ag, p.id).sort(function (x, y) { return (diasDaTurma(ag, x.id)[0] || '').localeCompare(diasDaTurma(ag, y.id)[0] || ''); });
     var podeTurma = admin && (p.situacao === 'montagem' || p.situacao === 'andamento');
@@ -158,15 +272,17 @@
     var falta = [testesProc.length ? null : 'testes', turmas.length ? null : 'turma', jovensP.length ? null : 'jovens'].filter(Boolean);
     var incompletosJ = jovensP.filter(function (x) { return !x.termo_recebido_em || !(x.jovem && x.jovem.foto_path); }).length;
     var etapas = [['montagem', 'Montagem', 'dados, testes, turmas e jovens'], ['andamento', 'Em andamento', 'lançamento das notas'], ['revisao', 'Revisão', 'conferência e fechamento'], ['liberado', 'Liberado', 'resultado para a empresa']];
+    if (p.tipo === 'escola') etapas = [['montagem', 'Montagem', 'dados, testes, turma e alunos'], ['andamento', 'Em andamento', 'presença e notas'], ['revisao', 'Consolidação', 'conferir os resultados'], ['liberado', 'Entrega', 'certificados e fichas']];
     var idxAtual = etapas.map(function (x) { return x[0]; }).indexOf(p.situacao);
     var porArea = {};
     testesProc.forEach(function (pt) { var t = porId(b.testes, pt.teste_id); var a = t && porId(b.areas, t.area_id); var n = a ? a.nome : 'SEM ÁREA'; porArea[n] = (porArea[n] || 0) + 1; });
     var resumoAreas = Object.keys(porArea).map(function (k) { return k + ' ' + porArea[k]; }).join(' · ');
     area.querySelector('#painel').innerHTML =
-      '<header class="cabecalho"><div class="painel-tit">' + logoHTML(e, 'grande') + '<div><h1>' + esc(e.nome_fantasia || '') + ' · ' + esc(p.vaga) + '</h1>' +
+      '<header class="cabecalho"><div class="painel-tit">' + (ESC ? '<span class="logo-mini grande logo-esc">🎓</span>' : logoHTML(e, 'grande')) + '<div><h1>' + esc(e.nome_fantasia || '') + ' · ' + esc(p.vaga) + '</h1>' +
         '<p>' + esc(p.identificacao) + ' · período ' + esc(periodoReal(ag, p)) + '</p></div></div>' +
         '<div class="painel-acoes">' + selo(p.situacao) +
         (['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn btn-pri" href="#/processos/' + p.id + '/classificacao">🏆 Classificação</a>' : '') +
+        (!ESC && ctx.perfil.perfil === 'admin' && ['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn" href="#/processos/' + p.id + '/revisao">' + ({ andamento: '📋 Enviar para revisão', revisao: '✅ Revisar e liberar', liberado: '🔓 Liberado · ver' }[p.situacao]) + '</a>' : '') +
         (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><div class="iniciar-box"><button type="button" class="btn btn-pri btn-iniciar" id="p-iniciar"' + (falta.length ? ' disabled' : '') + '>Iniciar processo</button>' + (falta.length ? '<small>Falta: ' + esc(falta.join(' e ')) + '</small>' : '') + '</div>' : '') + '</div></header>' +
       '<div class="etapas" role="list">' + etapas.map(function (x, i) {
         return '<div role="listitem" class="' + (i < idxAtual ? 'feita' : (i === idxAtual ? 'atual' : '')) + '"' + (i === idxAtual ? ' aria-current="step"' : '') + '><b>' + (i + 1) + ' · ' + esc(x[1]) + '</b>' + esc(x[2]) + '</div>';
@@ -212,7 +328,7 @@
         var nJ = jovensP.filter(function (x) { return x.turma_id === t.id; }).length;
         if (!nJ) {
           if (!(await ui.confirmar('Excluir a ' + t.nome + '?', 'Os dias dela ficam livres na agenda.', 'Excluir turma', 'Cancelar'))) return;
-          try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); recarregarPainel(); } catch (x) { erro(x); }
+          try { await dados.agenda.excluirTurma(t.id); ui.toast('Turma excluída.', 'ok'); if (window.CF.agendaG) window.CF.agendaG.sincronizar(true); recarregarPainel(); } catch (x) { erro(x); }
           return;
         }
         var outras = turmas.filter(function (x) { return x.id !== t.id; });
@@ -227,7 +343,7 @@
             try {
               if (op === 'mover') await dados.agenda.excluirTurma(t.id, f.querySelector('#ex-dest').value, false);
               else await dados.agenda.excluirTurma(t.id, null, true);
-              ui.toast('Turma excluída.', 'ok'); recarregarPainel(); return true;
+              ui.toast('Turma excluída.', 'ok'); if (window.CF.agendaG) window.CF.agendaG.sincronizar(true); recarregarPainel(); return true;
             } catch (x) { erro(x); return false; }
           } }] });
       });
@@ -252,43 +368,56 @@
     var usados = turmasDe(ag, p.id).map(function (x) { return ui.maiusculas(x.nome); });
     var sugestao = 'TURMA A';
     for (var i = 0; i < 26; i++) { var n = 'TURMA ' + String.fromCharCode(65 + i); if (usados.indexOf(n) < 0) { sugestao = n; break; } }
-    var qtd = dias.length === 2 ? 2 : 1;
+    var qtd = Math.max(1, dias.length || 1);
     var e = porId(empresas, p.empresa_id) || {};
     var j = ui.janela({
       titulo: (novo ? 'Nova turma' : 'Editar ' + t.nome) + ' · ' + (e.nome_fantasia || ''),
       corpo: '<div class="form-grade"><label class="campo" for="tu-nome"><span>Nome <span class="obrig">*</span></span><input class="entrada" id="tu-nome" maxlength="40" value="' + esc(t ? t.nome : sugestao) + '"></label>' +
-        '<div class="campo"><span>Quantos dias?</span><div class="segmentos" role="group" aria-label="Quantos dias"><button type="button" data-qtd="1" aria-pressed="' + (qtd === 1) + '">1 dia</button><button type="button" data-qtd="2" aria-pressed="' + (qtd === 2) + '">2 dias</button></div></div></div>' +
+        '<div class="campo"><span>Quantos dias?</span><div class="tu-qtd" role="group" aria-label="Quantos dias"><button type="button" class="btn btn-p" data-qmenos aria-label="Menos um dia">−</button><b id="tu-qn">' + qtd + (qtd === 1 ? ' dia' : ' dias') + '</b><button type="button" class="btn btn-p" data-qmais aria-label="Mais um dia">+</button></div></div></div>' +
         '<div id="tu-cal" class="cal-escolha"></div><div id="tu-esc"></div>' +
-        '<div class="form-grade"><label class="campo" for="tu-hor"><span>Horário</span><input class="entrada" id="tu-hor" maxlength="60" value="' + esc(t ? t.horario || '' : '08:00 ÀS 17:00') + '"></label>' +
-        '<label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
-        '<p class="dica" style="margin:0">Os dias riscados já estão ocupados por outra turma, pré-reserva ou bloqueio. Fins de semana podem ser escolhidos.</p>',
+        '<div class="form-grade"><label class="campo" for="tu-vagas"><span>Vagas na turma</span><input class="entrada" id="tu-vagas" type="number" min="1" max="60" value="' + (t ? t.vagas : 20) + '"></label></div>' +
+        '<p class="dica" style="margin:0">Riscado: o dia já tem outra turma. Em azul: evento da Google Agenda; em cinza, lilás e laranja: feriado, ponto facultativo e evento da Kolping Estadual (o sistema pergunta antes de marcar).</p>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Criar turma' : 'Salvar turma', principal: true, aoClicar: async function (f) {
         var nome = ui.maiusculas(f.querySelector('#tu-nome').value.trim().replace(/\s+/g, ' ')), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#tu-vagas').value, 10);
         if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
         if (usados.some(function (u) { return u === ui.maiusculas(nome) && (!t || ui.maiusculas(t.nome) !== ui.maiusculas(nome)); })) { ui.toast('Já existe uma turma com este nome neste processo.', 'erro'); return false; }
-        if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os 2 dias da turma.', 'erro'); return false; }
+        if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os ' + qtd + ' dias da turma.', 'erro'); return false; }
         if (isNaN(vagas) || vagas < 1 || vagas > 60) { ui.toast('Vagas entre 1 e 60.', 'erro'); return false; }
         try {
-          await dados.agenda.salvarTurma({ id: t ? t.id : null, processo_id: p.id, nome: nome, horario: f.querySelector('#tu-hor').value, vagas: vagas, datas: escolhidos });
+          var diasH = escolhidos.map(function (d) { var h = horas[d] || { inicio: '08:00', fim: '17:00' }; return { data: d, inicio: h.inicio, fim: h.fim }; });
+          var ruim = diasH.filter(function (d) { return !d.inicio || !d.fim || d.fim <= d.inicio; })[0];
+          if (ruim) { ui.toast('No dia ' + D.curta(ruim.data) + ', o horário de fim precisa ser depois do início.', 'erro'); return false; }
+          if (window.CF.agendaG && !(await window.CF.agendaG.confirmarDias(escolhidos, espLista))) return false;
+          await dados.agenda.salvarTurma({ id: t ? t.id : null, processo_id: p.id, nome: nome, vagas: vagas, dias: diasH });
+          if (window.CF.agendaG) window.CF.agendaG.sincronizar(true);
           ui.toast(novo ? 'Turma criada: ' + D.listaDias(escolhidos) + '.' : 'Turma atualizada.', 'ok');
-          if (window.CF.agendaUtil) window.CF.agendaUtil.atualizarBadge();
           aoSalvar(); return true;
         } catch (x) { erro(x); return false; }
       } }]
     });
-    var esc2 = j.elemento.querySelector('#tu-esc');
+    var esc2 = j.elemento.querySelector('#tu-esc'), horas = {};
+    // horário de cada dia (o que já estava salvo, ou 08:00 às 17:00)
+    ag.dias.filter(function (d) { return t && d.turma_id === t.id; }).forEach(function (d) { horas[d.data] = { inicio: String(d.hora_inicio || '08:00').slice(0, 5), fim: String(d.hora_fim || '17:00').slice(0, 5) }; });
     function mostrar(l) {
-      esc2.innerHTML = l.length ? '<div class="aviso aviso-ok">' + ui.icone('ok', 18) + '<span>Escolhido' + (l.length > 1 ? 's' : '') + ': <b>' + esc(D.listaDias(l)) + '</b></span></div>' : '';
+      esc2.innerHTML = l.map(function (d, i) {
+        var h = horas[d] || (horas[d] = { inicio: (horas[l[0]] || {}).inicio || '08:00', fim: (horas[l[0]] || {}).fim || '17:00' });
+        return '<div class="tu-dia"><b>Dia ' + (i + 1) + '</b><span>' + esc(D.longa(d)) + '</span><input class="entrada" type="time" data-hi="' + d + '" value="' + h.inicio + '" aria-label="Início do dia ' + (i + 1) + '"><span>às</span><input class="entrada" type="time" data-hf="' + d + '" value="' + h.fim + '" aria-label="Fim do dia ' + (i + 1) + '"></div>';
+      }).join('');
+      esc2.querySelectorAll('[data-hi]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hi')].inicio = x.value; }); });
+      esc2.querySelectorAll('[data-hf]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hf')].fim = x.value; }); });
     }
-    var cal = window.CF.calendario.escolher(j.elemento.querySelector('#tu-cal'), { max: qtd, selecionados: dias, ocupados: window.CF.agendaUtil.ocupados(ag, t ? t.id : null), aoMudar: mostrar });
+    var cal = window.CF.calendario.escolher(j.elemento.querySelector('#tu-cal'), { max: qtd, selecionados: dias, ocupados: window.CF.agendaUtil.ocupados(ag, t ? t.id : null), eventos: {}, aoMudar: mostrar });
+    if (window.CF.agendaG) window.CF.agendaG.eventosGoogle().then(function (l) { if (!l.length) return; cal.definirEventos(window.CF.agendaG.mapaEventos(l)); });
+    var espLista = [];
+    if (window.CF.agendaG) window.CF.agendaG.especiais().then(function (l) { espLista = l; if (l.length) cal.definirEspeciais(window.CF.agendaG.mapaEspeciais(l)); });
     mostrar(dias);
-    j.elemento.querySelectorAll('[data-qtd]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        qtd = +b.getAttribute('data-qtd');
-        j.elemento.querySelectorAll('[data-qtd]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-        cal.definirMax(qtd);
-      });
-    });
+    function mudarQtd(n) {   // turmas podem ter quantos dias forem precisos (até 10)
+      qtd = Math.min(10, Math.max(1, n));
+      j.elemento.querySelector('#tu-qn').textContent = qtd + (qtd === 1 ? ' dia' : ' dias');
+      cal.definirMax(qtd);
+    }
+    j.elemento.querySelector('[data-qmenos]').addEventListener('click', function () { mudarQtd(qtd - 1); });
+    j.elemento.querySelector('[data-qmais]').addEventListener('click', function () { mudarQtd(qtd + 1); });
   }
 
   /* ---------- Materiais do processo ---------- */
@@ -334,17 +463,84 @@
   /* ================================================================
      NOVO / EDITAR PROCESSO (4 passos)
      ================================================================ */
-  async function assistente(proc, passoInicial, ctx, testesAtuais) {
+  /* ---------- Nova turma de profiling (escolas): tudo numa janela só ---------- */
+  async function novaTurmaEscola(ctx, ag) {
+    var D = window.CF.datas, r;
+    try { r = await Promise.all([dados.banco.carregarTudo(), origensDados(), ag ? Promise.resolve(ag) : dados.agenda.carregarTudo()]); } catch (e) { erro(e); return; }
+    var b = r[0], ori = r[1], agd = r[2], qtd = 1, horas = {}, origens = [], marc = {};
+    var testes = (b.testes || []).filter(function (t) { return t.ativo !== false; }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
+    var hoje = new Date(), ident = (hoje.getMonth() < 6 ? '1º' : '2º') + ' semestre ' + hoje.getFullYear();
+    var opcoes = ori.escolas.filter(function (x) { return x.ativa !== false; }).map(function (x) { return ['e:' + x.id, x.nome, 'Escola']; })
+      .concat(ori.cks.filter(function (x) { return x.ativa !== false; }).map(function (x) { return ['c:' + x.id, x.nome, 'CK']; }));
+    var j = ui.janela({ titulo: 'Nova turma de profiling', largura: 820,
+      corpo: '<div class="form-grade"><label class="campo" for="ne-nome"><span>Nome da turma <span class="obrig">*</span></span><input class="entrada" id="ne-nome" maxlength="60" placeholder="Ex.: TURMA 1 · ' + hoje.getFullYear() + '/' + (hoje.getMonth() < 6 ? 1 : 2) + '"></label>' +
+          '<div class="campo"><span>Quantos dias?</span><div class="tu-qtd" role="group" aria-label="Quantos dias"><button type="button" class="btn btn-p" data-qmenos aria-label="Menos um dia">−</button><b id="ne-qn">1 dia</b><button type="button" class="btn btn-p" data-qmais aria-label="Mais um dia">+</button></div></div></div>' +
+        '<div class="campo"><span>Origem dos alunos (escola e/ou CK) <span class="obrig">*</span></span>' + (opcoes.length ? '<div class="ne-ori">' + opcoes.map(function (o) { return '<label class="ne-chip"><input type="checkbox" data-ori="' + o[0] + '"> <span>' + esc(o[1]) + ' <small>' + o[2] + '</small></span></label>'; }).join('') + '</div>'
+          : '<p class="dica" style="margin:0">Cadastre as escolas e CKs em Configurações › Escolas e CKs.</p>') + '</div>' +
+        '<div class="campo"><span>Dias e horários <span class="obrig">*</span></span><div id="ne-cal" class="cal-escolha"></div><div id="ne-dias"></div></div>' +
+        '<div class="campo"><span>Testes do banco <span class="obrig">*</span></span><small class="dica" style="margin:0 0 6px">A Entrevista Biográfica não vem marcada; a competência "Comportamento" dela vira a nota de comportamento no banco de talentos.</small>' +
+          '<div class="ne-testes">' + testes.map(function (t) { return '<label class="ne-teste"><input type="checkbox" data-tst="' + t.id + '"> <span>' + esc(t.nome) + (t.codigo ? ' <small class="cod cod-teste">' + esc(t.codigo) + '</small>' : '') + '</span></label>'; }).join('') + '</div></div>' +
+        '<div class="form-grade"><label class="campo" for="ne-vagas"><span>Vagas (máx. alunos)</span><input class="entrada" id="ne-vagas" type="number" min="1" max="60" value="20"></label></div>',
+      botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Criar turma', principal: true, aoClicar: async function (f) {
+        var nome = ui.maiusculas(f.querySelector('#ne-nome').value.trim().replace(/\s+/g, ' ')), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#ne-vagas').value, 10);
+        var tst = testes.filter(function (t) { return marc[t.id]; });
+        if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
+        if (!origens.length) { ui.toast('Escolha pelo menos uma escola ou CK.', 'erro'); return false; }
+        if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os ' + qtd + ' dias da turma.', 'erro'); return false; }
+        var diasH = escolhidos.map(function (d) { var h = horas[d] || { inicio: '08:00', fim: '12:00' }; return { data: d, inicio: h.inicio, fim: h.fim }; });
+        var ruim = diasH.filter(function (d) { return !d.inicio || !d.fim || d.fim <= d.inicio; })[0];
+        if (ruim) { ui.toast('No dia ' + D.curta(ruim.data) + ', o horário de fim precisa ser depois do início.', 'erro'); return false; }
+        if (!tst.length) { ui.toast('Escolha pelo menos um teste.', 'erro'); return false; }
+        if (isNaN(vagas) || vagas < 1 || vagas > 60) { ui.toast('Vagas entre 1 e 60.', 'erro'); return false; }
+        if (window.CF.agendaG && !(await window.CF.agendaG.confirmarDias(escolhidos, espLista))) return false;
+        var id;
+        try {
+          id = await dados.processos.salvar({ id: null, tipo: 'escola', empresa_id: null, vaga: nome, identificacao: ident, observacoes: null,
+            origens: origens.map(function (k) { return k.charAt(0) === 'e' ? { escola_id: k.slice(2) } : { ck_id: k.slice(2) }; }),
+            testes: tst.map(function (t) { return { teste_id: t.id, nivel: null }; }) });
+        } catch (x) { erro(x); return false; }
+        try {
+          await dados.agenda.salvarTurma({ id: null, processo_id: id, nome: nome, vagas: vagas, dias: diasH });
+          if (window.CF.agendaG) window.CF.agendaG.sincronizar(true);
+          ui.toast('Turma de profiling criada: ' + D.listaDias(escolhidos) + '.', 'ok');
+        } catch (x) { ui.toast('A turma de profiling foi criada, mas os dias não: ' + api.traduzErro(x) + ' Cadastre os dias no painel.', 'erro'); }
+        window.location.hash = '#/processos/' + id; return true;
+      } }]
+    });
+    var el = j.elemento;
+    el.querySelectorAll('[data-ori]').forEach(function (c) { c.addEventListener('change', function () { var k = c.getAttribute('data-ori'); origens = origens.filter(function (x) { return x !== k; }); if (c.checked) origens.push(k); c.closest('label').classList.toggle('on', c.checked); }); });
+    el.querySelectorAll('[data-tst]').forEach(function (c) { c.addEventListener('change', function () { marc[c.getAttribute('data-tst')] = c.checked; c.closest('label').classList.toggle('on', c.checked); }); });
+    var boxD = el.querySelector('#ne-dias');
+    function mostrar(l) {
+      boxD.innerHTML = l.map(function (d, i) {
+        var h = horas[d] || (horas[d] = { inicio: (horas[l[0]] || {}).inicio || '08:00', fim: (horas[l[0]] || {}).fim || '12:00' });
+        return '<div class="tu-dia"><b>Dia ' + (i + 1) + '</b><span>' + esc(D.longa(d)) + '</span><input class="entrada" type="time" data-hi="' + d + '" value="' + h.inicio + '" aria-label="Início do dia ' + (i + 1) + '"><span>às</span><input class="entrada" type="time" data-hf="' + d + '" value="' + h.fim + '" aria-label="Fim do dia ' + (i + 1) + '"></div>';
+      }).join('');
+      boxD.querySelectorAll('[data-hi]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hi')].inicio = x.value; }); });
+      boxD.querySelectorAll('[data-hf]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hf')].fim = x.value; }); });
+    }
+    var cal = window.CF.calendario.escolher(el.querySelector('#ne-cal'), { max: qtd, selecionados: [], ocupados: window.CF.agendaUtil.ocupados(agd, null), eventos: {}, aoMudar: mostrar });
+    if (window.CF.agendaG) window.CF.agendaG.eventosGoogle().then(function (l) { if (l.length) cal.definirEventos(window.CF.agendaG.mapaEventos(l)); });
+    var espLista = [];
+    if (window.CF.agendaG) window.CF.agendaG.especiais().then(function (l) { espLista = l; if (l.length) cal.definirEspeciais(window.CF.agendaG.mapaEspeciais(l)); });
+    function mudarQtd(n) { qtd = Math.min(10, Math.max(1, n)); el.querySelector('#ne-qn').textContent = qtd + (qtd === 1 ? ' dia' : ' dias'); cal.definirMax(qtd); }
+    el.querySelector('[data-qmenos]').addEventListener('click', function () { mudarQtd(qtd - 1); });
+    el.querySelector('[data-qmais]').addEventListener('click', function () { mudarQtd(qtd + 1); });
+  }
+
+  async function assistente(proc, passoInicial, ctx, testesAtuais, tipoNovo) {
     var r;
-    try { r = await Promise.all([dados.empresas.listar(), dados.banco.carregarTudo(), dados.processos.modelos(), dados.config.carregar()]); }
+    var tipo = (proc && proc.tipo) || tipoNovo || 'empresa', escola = tipo === 'escola';
+    try { r = await Promise.all([dados.empresas.listar(), dados.banco.carregarTudo(), dados.processos.modelos(), dados.config.carregar(), escola ? origensDados() : null,
+      escola && proc ? window.CF.sb.from('processo_origens').select('escola_id,ck_id').eq('processo_id', proc.id).then(function (x) { return x.data || []; }) : []]); }
     catch (e) { erro(e); return; }
-    var empresas = r[0], b = r[1], modelos = r[2], cfg = r[3];
+    var empresas = r[0], b = r[1], modelos = r[2], cfg = r[3], ori = r[4] || { escolas: [], cks: [] };
     var novo = !proc;
     var st = {
       empresa_id: proc ? proc.empresa_id : '', vaga: proc ? proc.vaga : '', identificacao: proc ? proc.identificacao : '',
       data_inicio: proc ? proc.data_inicio || '' : '', data_fim: proc ? proc.data_fim || '' : '', observacoes: proc ? proc.observacoes || '' : '',
       ap: proc ? Number(proc.corte_aprovado) : Number(cfg.corte_aprovado), bk: proc ? Number(proc.corte_backup) : Number(cfg.corte_backup),
-      testes: {}, buscaT: ''
+      testes: {}, buscaT: '', origens: (r[5] || []).map(function (o) { return o.escola_id ? 'e:' + o.escola_id : 'c:' + o.ck_id; })
     };
     if (testesAtuais) testesAtuais.forEach(function (pt) { st.testes[pt.teste_id] = { nivel: pt.nivel || '' }; });
     else b.testes.filter(function (t) { return t.padrao && t.ativo; }).forEach(function (t) { st.testes[t.id] = { nivel: '' }; });
@@ -353,7 +549,7 @@
     var empresasOp = empresas.filter(function (x) { return x.ativa || x.id === st.empresa_id; }).sort(function (x, y) { return x.nome_fantasia.localeCompare(y.nome_fantasia, 'pt-BR'); });
 
     var j = ui.janela({
-      titulo: novo ? 'Novo processo' : 'Editar processo',
+      titulo: escola ? (novo ? 'Nova turma de profiling' : 'Editar turma de profiling') : (novo ? 'Novo Profiling Empresa' : 'Editar Profiling Empresa'),
       corpo: '<div class="passos" id="w-passos"></div><div id="w-corpo"></div>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: '← Voltar', aoClicar: function () { if (!ler()) return false; passo--; desenhar(); return false; } },
                { texto: 'Continuar →', principal: true, aoClicar: function () { return avancar(); } }]
@@ -375,35 +571,64 @@
       btVoltar.classList.toggle('oculto', passo === 1);
       btSeguir.textContent = passo === 4 ? (novo ? 'Criar processo' : 'Salvar alterações') : 'Continuar →';
       var c = el.querySelector('#w-corpo');
-      if (passo === 1) {
+      if (passo === 1 && escola) {
+        var todasO = ori.escolas.filter(function (x) { return x.ativa !== false; }).map(function (x) { return { k: 'e:' + x.id, n: x.nome, t: 'Escola' }; })
+          .concat(ori.cks.filter(function (x) { return x.ativa !== false; }).map(function (x) { return { k: 'c:' + x.id, n: x.nome, t: 'CK' }; }));
+        c.innerHTML = '<div class="form-grade">' +
+          '<label class="campo" for="w-vaga"><span>Nome da turma <span class="obrig">*</span></span><input class="entrada" id="w-vaga" maxlength="120" value="' + esc(st.vaga) + '" placeholder="Ex.: TURMA 1"></label>' +
+          '<label class="campo" for="w-ident"><span>Identificação <span class="obrig">*</span></span><input class="entrada" id="w-ident" maxlength="80" value="' + esc(st.identificacao) + '" placeholder="Ex.: 2º semestre 2026"></label>' +
+          '<div class="campo largo"><span>Origem dos alunos <span class="obrig">*</span></span><div class="chips-o" id="w-ori">' + (todasO.length ? todasO.map(function (o) {
+            return '<label class="chip-o"><input type="checkbox" value="' + o.k + '"' + (st.origens.indexOf(o.k) >= 0 ? ' checked' : '') + '><span>' + esc(o.n) + ' <small>' + o.t + '</small></span></label>'; }).join('')
+            : '<small class="dica">Nenhuma escola ou CK cadastrada. Cadastre em Configurações › Escolas e CKs.</small>') + '</div><small class="dica">Uma ou mais escolas e/ou CKs.</small></div>' +
+          '<label class="campo largo" for="w-obs"><span>Observações</span><textarea class="entrada" id="w-obs" rows="2" maxlength="1000">' + esc(st.observacoes) + '</textarea></label></div>' +
+          '<p class="dica" style="margin:0">Depois de criar, cadastre a turma (dias e horários) e os alunos no painel.</p>';
+      } else if (passo === 1) {
         c.innerHTML = '<div class="form-grade">' +
           '<label class="campo largo" for="w-emp"><span>Empresa <span class="obrig">*</span></span><select class="entrada" id="w-emp"><option value="">Escolha a empresa…</option>' +
             empresasOp.map(function (x) { return '<option value="' + x.id + '"' + (x.id === st.empresa_id ? ' selected' : '') + '>' + esc(x.nome_fantasia) + '</option>'; }).join('') + '</select>' +
             (empresasOp.length ? '' : '<small class="dica">Nenhuma empresa ativa. Cadastre em Configurações → Empresas.</small>') + '</label>' +
-          '<label class="campo" for="w-vaga"><span>Vaga <span class="obrig">*</span></span><input class="entrada" id="w-vaga" maxlength="120" value="' + esc(st.vaga) + '" placeholder="Ex.: Auxiliar Administrativo"></label>' +
+          '<label class="campo" for="w-vaga"><span>Vaga <span class="obrig">*</span></span><input class="entrada" id="w-vaga" maxlength="120" list="w-vagas" value="' + esc(st.vaga) + '" placeholder="Escolha da lista ou digite"><datalist id="w-vagas"></datalist>' +
+            '<small class="dica" id="w-vaga-dica"></small><label class="marca oculto" id="w-vaga-salvar-l" style="margin-top:6px"><input type="checkbox" id="w-vaga-salvar" checked> <span>Guardar esta vaga no cadastro da empresa</span></label></label>' +
           '<label class="campo" for="w-ident"><span>Identificação <span class="obrig">*</span></span><input class="entrada" id="w-ident" maxlength="80" value="' + esc(st.identificacao) + '" placeholder="Ex.: 2º semestre 2026"></label>' +
 
           '<label class="campo largo" for="w-obs"><span>Observações</span><textarea class="entrada" id="w-obs" rows="2" maxlength="1000">' + esc(st.observacoes) + '</textarea></label></div>' +
           '<p class="dica" style="margin:0">O período do processo vem das datas das turmas.</p>';
+        (function () {
+          var selE = c.querySelector('#w-emp'), inp = c.querySelector('#w-vaga'), dl = c.querySelector('#w-vagas'), dica = c.querySelector('#w-vaga-dica'), lSalvar = c.querySelector('#w-vaga-salvar-l'), vagasE = [];
+          var TUR = { manha: 'manhã', tarde: 'tarde', noite: 'noite', integral: 'integral' };
+          async function carregarVagas() {
+            vagasE = []; dl.innerHTML = ''; dica.textContent = '';
+            if (!selE.value) { verNova(); return; }
+            var r = await window.CF.sb.from('empresa_vagas').select('nome,turno,ativa').eq('empresa_id', selE.value).eq('ativa', true).order('nome');
+            vagasE = (r && r.data) || [];
+            dl.innerHTML = vagasE.map(function (v) { return '<option value="' + esc(v.nome) + '">' + esc(v.turno ? TUR[v.turno] : '') + '</option>'; }).join('');
+            dica.textContent = vagasE.length ? vagasE.length + ' vaga(s) cadastrada(s) nesta empresa: toque no campo para escolher.' : 'Esta empresa ainda não tem vagas cadastradas.';
+            verNova();
+          }
+          function verNova() { var t = ui.normalizar(inp.value.trim()); lSalvar.classList.toggle('oculto', !selE.value || !t || vagasE.some(function (v) { return ui.normalizar(v.nome) === t; })); }
+          selE.addEventListener('change', carregarVagas); inp.addEventListener('input', verNova);
+          st._vagaNova = function () { return !lSalvar.classList.contains('oculto') && c.querySelector('#w-vaga-salvar').checked; };
+          carregarVagas();
+        })();
       } else if (passo === 2) {
         var grupos = b.areas.filter(function (a) { return a.ativa; }).sort(function (x, y) { return x.ordem - y.ordem; }).map(function (a) { return { nome: a.nome, testes: b.testes.filter(function (t) { return t.area_id === a.id; }) }; });
         grupos.push({ nome: 'Sem área', testes: b.testes.filter(function (t) { return !t.area_id; }) });
         c.innerHTML = (modelos.length ? '<div class="modelo-linha"><label class="campo" for="w-modelo"><span>Começar por um modelo</span><select class="entrada" id="w-modelo"><option value="">Escolha um modelo…</option>' +
             modelos.map(function (m) { return '<option value="' + m.id + '">' + esc(m.nome) + ' (' + m.testes.length + ' testes)</option>'; }).join('') + '</select></label><button type="button" class="btn" id="w-aplicar">Aplicar modelo</button></div>' : '') +
-          '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar teste</span><input type="search" id="w-busca" placeholder="Buscar teste" value="' + esc(st.buscaT) + '"></label><span class="dica" id="w-resumo"></span></div>' +
+          '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar teste</span><input type="search" id="w-busca" placeholder="Buscar teste ou código" value="' + esc(st.buscaT) + '"></label><span class="dica" id="w-resumo"></span></div>' +
           '<div class="lista-testes-proc">' + grupos.map(function (g) {
-            var ts = g.testes.filter(function (t) { return (t.ativo || st.testes[t.id]) && (!st.buscaT || ui.normalizar(t.nome).indexOf(st.buscaT) >= 0); }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
+            var ts = g.testes.filter(function (t) { return (t.ativo || st.testes[t.id]) && (!st.buscaT || ui.normalizar(t.nome + ' ' + (t.codigo || '')).indexOf(st.buscaT) >= 0); }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
             return ts.length ? '<div class="grupo-teste"><span class="lbl">' + esc(g.nome) + '</span><div class="testes-op">' + ts.map(function (t) {
               var on = !!st.testes[t.id];
               var semComp = !b.criterios.some(function (x) { return x.teste_id === t.id && x.competencia_id; });
               var ms = on ? window.CF.materiais.lista(b, [t.id], 0)[0] : null;
-              return '<label class="teste-op' + (on ? ' on' : '') + '"><input type="checkbox" data-teste="' + t.id + '"' + (on ? ' checked' : '') + '><span>' + esc(t.nome) + (t.padrao ? ' <small class="dica">(padrão)</small>' : '') + (semComp ? ' <small class="alerta-txt" title="Teste sem competências">sem competências</small>' : '') +
+              return '<label class="teste-op' + (on ? ' on' : '') + '"><input type="checkbox" data-teste="' + t.id + '"' + (on ? ' checked' : '') + '><span>' + esc(t.nome) + (t.codigo ? ' <small class="cod cod-teste">' + esc(t.codigo) + '</small>' : '') + (t.padrao ? ' <small class="dica">(padrão)</small>' : '') + (semComp ? ' <small class="alerta-txt" title="Teste sem competências">sem competências</small>' : '') +
                 (ms ? '<small class="mat-resumo">🧰 ' + esc(ms.itens.map(function (i) { return i.nome + ' ' + window.CF.materiais.fmtQtd(i.qtd); }).join(' · ')) + '</small>' : '') + '</span>' +
                 (t.tem_nivel && on ? '<select class="entrada sel-nivel" data-nivel="' + t.id + '" aria-label="Nível de ' + esc(t.nome) + '"><option value="">Nível…</option>' +
                   Object.keys(NIVEIS).map(function (k) { return '<option value="' + k + '"' + (st.testes[t.id].nivel === k ? ' selected' : '') + '>' + NIVEIS[k] + '</option>'; }).join('') + '</select>' : '') + '</label>';
             }).join('') + '</div></div>' : '';
           }).join('') + '</div>' +
-          '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>A Entrevista Biográfica entra em todo processo e pode ser removida. Ao <b>iniciar</b> o processo, a lista de testes e as competências de cada um ficam guardadas: mudanças futuras no Banco de testes não alteram este processo.</span></div>';
+          '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Escolha os testes deste processo. Ao <b>iniciar</b> o processo, a lista de testes e as competências de cada um ficam guardadas: mudanças futuras no Banco de testes não alteram este processo.</span></div>';
         resumoTestes();
         var lt2 = c.querySelector('.lista-testes-proc'); if (lt2) lt2.scrollTop = rolagem;
         c.querySelectorAll('[data-teste]').forEach(function (x) {
@@ -454,8 +679,16 @@
     // Lê os campos do passo atual e valida
     function ler() {
       var c = el.querySelector('#w-corpo');
-      if (passo === 1) {
+      if (passo === 1 && escola) {
+        st.vaga = c.querySelector('#w-vaga').value.trim().replace(/\s+/g, ' ');
+        st.identificacao = c.querySelector('#w-ident').value.trim().replace(/\s+/g, ' ');
+        st.observacoes = c.querySelector('#w-obs').value.trim();
+        st.origens = Array.prototype.map.call(c.querySelectorAll('#w-ori input:checked'), function (x) { return x.value; });
+      } else if (passo === 1) {
         st.empresa_id = c.querySelector('#w-emp').value; st.vaga = c.querySelector('#w-vaga').value.trim().replace(/\s+/g, ' ');
+        if (st._vagaNova && st._vagaNova() && st.empresa_id && st.vaga && window.CF.perm.pode('config_empresas')) {   // guarda a vaga nova na empresa
+          window.CF.sb.from('empresa_vagas').upsert({ empresa_id: st.empresa_id, nome: ui.maiusculas(st.vaga) }, { onConflict: 'empresa_id,nome', ignoreDuplicates: true }).then(function () {}, function () {});
+        }
         st.identificacao = c.querySelector('#w-ident').value.trim().replace(/\s+/g, ' '); 
         st.observacoes = c.querySelector('#w-obs').value.trim();
       }
@@ -463,7 +696,11 @@
       return true;
     }
     function validar() {
-      if (passo === 1) {
+      if (passo === 1 && escola) {
+        if (!st.vaga) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
+        if (!st.identificacao) { ui.toast('Informe a identificação (ex.: 2º semestre 2026).', 'erro'); return false; }
+        if (!st.origens.length) { ui.toast('Escolha pelo menos uma escola ou CK.', 'erro'); return false; }
+      } else if (passo === 1) {
         if (!st.empresa_id) { ui.toast('Escolha a empresa.', 'erro'); return false; }
         if (!st.vaga) { ui.toast('Informe a vaga.', 'erro'); return false; }
         if (!st.identificacao) { ui.toast('Informe a identificação (ex.: 2º semestre 2026).', 'erro'); return false; }
@@ -484,13 +721,14 @@
       ler(); if (!validar()) return false;
       if (passo < 4) { passo++; desenhar(); return false; }
       var ordem = b.testes.slice().sort(function (x, y) { return (x.padrao === y.padrao ? 0 : (x.padrao ? -1 : 1)) || areaNome(x).localeCompare(areaNome(y), 'pt-BR') || x.nome.localeCompare(y.nome, 'pt-BR'); });
-      var payload = { id: proc ? proc.id : null, empresa_id: st.empresa_id, vaga: st.vaga, identificacao: st.identificacao, data_inicio: st.data_inicio || null, data_fim: st.data_fim || null,
+      var payload = { id: proc ? proc.id : null, tipo: tipo, empresa_id: escola ? null : st.empresa_id,
+        origens: escola ? st.origens.map(function (k) { return k.charAt(0) === 'e' ? { escola_id: k.slice(2) } : { ck_id: k.slice(2) }; }) : [], vaga: st.vaga, identificacao: st.identificacao, data_inicio: st.data_inicio || null, data_fim: st.data_fim || null,
         observacoes: st.observacoes || null, corte_aprovado: st.ap, corte_backup: st.bk,
         testes: ordem.filter(function (t) { return st.testes[t.id]; }).map(function (t) { return { teste_id: t.id, nivel: st.testes[t.id].nivel || null }; }) };
       return ui.executar(btSeguir, 'Salvando…', async function () {
         try {
           var id = await dados.processos.salvar(payload);
-          ui.toast(novo ? 'Processo criado.' : 'Processo atualizado.', 'ok');
+          ui.toast(escola ? (novo ? 'Turma de profiling criada.' : 'Turma de profiling atualizada.') : (novo ? 'Processo criado.' : 'Processo atualizado.'), 'ok');
           if (window.location.hash === '#/processos/' + id) window.dispatchEvent(new HashChangeEvent('hashchange')); else window.location.hash = '#/processos/' + id;
           return true;
         } catch (x) { erro(x); return false; }

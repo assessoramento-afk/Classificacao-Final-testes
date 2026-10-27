@@ -42,18 +42,51 @@
     return '<div class="etapas">' + et.map(function (e, i) { return '<div class="etapa' + (i === idx ? ' atual' : '') + (i < idx ? ' feita' : '') + '"><b>' + e[1] + '</b><small>' + e[2] + '</small></div>'; }).join('') + '</div>';
   }
 
+  /* Monta e gera o PDF do processo. dp = dados_processo_pdf · cl = classificacao_processo (ordem do ranking) */
+  async function gerarPdfProcesso(dp, cl) {
+    var sb = window.CF.sb, emp = dp.empresa || {}, porId = {};
+    (dp.fichas || []).forEach(function (f) { porId[f.participacao_id] = f; });
+    var caminhos = (dp.fichas || []).map(function (f) { return f.jovem && f.jovem.foto_path; }).filter(Boolean), urls = {};
+    if (caminhos.length) {
+      var rs = await sb.storage.from('fotos').createSignedUrls(caminhos, 3600);
+      (rs.data || []).forEach(function (x) { if (x.signedUrl) urls[x.path] = x.signedUrl; });
+    }
+    var logoUrl = emp.logo_path ? await dados.empresas.urlLogo(emp.logo_path).catch(function () { return null; }) : null;
+    var cont = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0, incompleto: 0 }, ranking = [], fichas = [];
+    cl.jovens.forEach(function (j) {
+      cont[j.situacao] = (cont[j.situacao] || 0) + 1;
+      var mot = j.motivo && j.situacao !== 'incompleto' ? textoMotivo(j.motivo, j.genero) : (j.situacao === 'reprovado' ? 'Nota final abaixo de ' + corteTxt(cl.processo.corte_backup) : '');
+      var det = j.situacao === 'desistencia' && j.desistencia && j.desistencia !== 'FALTOU' ? ' · ' + j.desistencia.toLowerCase() : (j.situacao === 'desistencia' && !j.observacao ? ' · faltou' : '');
+      ranking.push({ posicao: j.posicao, empate: j.empate, nome: j.nome, codigo: j.codigo, turma: j.turma, nota: j.nota == null ? null : Number(j.nota),
+                     situacao: j.situacao, situacaoTxt: textoSituacao(j.situacao, j.genero), detalhe: mot || '' });
+      var f = porId[j.participacao_id];
+      fichas.push(f ? window.CF.fichaDados(f, j, cl, 'areas', f.jovem.foto_path ? urls[f.jovem.foto_path] || null : null, logoUrl) : null);
+    });
+    var pr = dp.processo || {}, quando = pr.liberado_em || new Date().toISOString();
+    var vars = { empresa: emp.nome || '', vaga: pr.vaga || '', processo: pr.identificacao || '', data: new Date(quando).toLocaleDateString('pt-BR') };
+    var agr = String(dp.agradecimento || '').replace(/\{(empresa|vaga|processo|data)\}/g, function (m, k) { return vars[k]; });
+    return window.CF.pdf.processo({
+      empresa: emp.nome || '', razaoSocial: emp.razao_social || '', logoEmpresaUrl: logoUrl, vaga: pr.vaga, identificacao: pr.identificacao, agradecimento: agr,
+      turmas: dp.turmas || [], contagem: cont, total: cl.jovens.length, liberadoEm: pr.liberado_em, previa: pr.situacao !== 'liberado',
+      ranking: ranking, fichas: fichas
+    });
+  }
+  window.CF.gerarPdfProcesso = gerarPdfProcesso;
+
   // usados também pela ficha do candidato (views/ficha.js)
   window.CF.classif = { COR: COR, textoMotivo: textoMotivo, textoSituacao: textoSituacao, n2: n2, corteTxt: corteTxt };
 
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.classificacao = async function (area, ctx, procId) {
     var admin = ctx.perfil.perfil === 'admin', st = { busca: '', turma: '', sit: '' };
+    var podeCorrigir = false;   // definido ao desenhar (processo em revisão + permissão)
     area.innerHTML = '<a class="voltar" href="#/processos/' + esc(procId) + '">← Processo</a><div id="cl"><div class="girando" style="margin:30px auto"></div></div>';
     var c, emp;
     async function carregar() {
       var r = await Promise.all([dados.classificacao.carregar(procId), window.CF.sb.rpc('empresas_nomes')]);
       c = r[0]; emp = ((r[1] && r[1].data) || []).filter(function (e) { return e.id === c.processo.empresa_id; })[0] || {};
       area.querySelector('.voltar').textContent = '← ' + (emp.nome_fantasia || '') + ' · ' + c.processo.vaga;
+      if (window.CF.drive) window.CF.drive.definirContexto({ processo_id: procId, empresa: emp.nome_fantasia || 'SEM EMPRESA', processo: c.processo.vaga + (c.processo.identificacao ? ' · ' + c.processo.identificacao : '') });
     }
     try { await carregar(); } catch (e) { erro(e); area.querySelector('#cl').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
 
@@ -67,9 +100,10 @@
       var acao = admin ? (p.situacao === 'andamento' ? '<a class="btn btn-pri" href="#/processos/' + procId + '/revisao">Enviar para revisão</a>'
         : p.situacao === 'revisao' ? '<a class="btn btn-pri" href="#/processos/' + procId + '/revisao">Revisar e liberar</a>'
         : p.situacao === 'liberado' ? '<a class="btn" href="#/processos/' + procId + '/revisao">Liberado · ver</a>' : '') : '';
+      podeCorrigir = admin && p.situacao === 'revisao' && window.CF.perm.pode('processos_reabrir');
       area.querySelector('#cl').innerHTML =
         '<header class="cabecalho"><div><h1>Classificação</h1><p>' + Object.keys(turmas).length + ' turma(s) · ' + js.length + ' jovens · ranking único do processo</p></div>' +
-          '<div class="botoes-topo"><button type="button" class="btn" id="cl-xls">⬇ Excel</button>' + acao + '</div></header>' + etapas(p.situacao) +
+          '<div class="botoes-topo"><button type="button" class="btn" id="cl-xls">⬇ Excel</button><button type="button" class="btn" id="cl-pdf">⬇ PDF do processo</button>' + acao + '</div></header>' + etapas(p.situacao) +
         '<div class="rk-res">' + [['aprovado', 'Aprovados · a partir de ' + corteTxt(p.corte_aprovado)], ['backup', 'Backup · ' + corteTxt(p.corte_backup) + ' a ' + corteTxt(p.corte_aprovado - 0.01)], ['reprovado', 'Reprovados'], ['desistencia', 'Desistências']].concat(cont.incompleto ? [['incompleto', 'Notas incompletas']] : []).map(function (x) {
           return '<button type="button" class="rk-c' + (st.sit === x[0] ? ' on' : '') + '" data-sit="' + x[0] + '" style="--c:' + COR[x[0]] + '"><b>' + cont[x[0]] + '</b><span>' + x[1] + '</span></button>';
         }).join('') + '</div>' +
@@ -84,18 +118,72 @@
               '<td><div class="nf"><span>' + notaHTML(j, js) + '</span>' + (j.empate ? '<span class="empate">empate</span>' : '') + (j.nota != null ? '<i><em style="width:' + Math.round(j.nota * 20) + '%"></em></i>' : '') + '</div>' + (j.situacao === 'incompleto' ? '<small class="dica">' + j.lancadas + ' de ' + j.total + ' notas</small>' : '') + '</td>' +
               '<td class="ar">' + areas.map(function (a) { var v = (j.areas || {})[a]; return v == null ? '' : '<span><b>' + esc(a.slice(0, 3)) + '</b> ' + n2(v) + '</span>'; }).join(' ') + '</td>' +
               '<td><span class="sit">' + textoSituacao(j.situacao, j.genero) + '</span>' + (mot ? '<span class="mot">' + esc(mot + det) + (j.motivo_por ? ' · por ' + esc(j.motivo_por.split(' ')[0]) : '') + '</span>' : '') + '</td>' +
-              '<td class="ac"><a class="btn btn-p" href="#/processos/' + procId + '/ficha/' + j.participacao_id + '">Ficha</a>' + (podeMotivo && j.situacao !== 'desistencia' || (podeMotivo && j.motivo === 'desistiu') ? '<button type="button" class="btn btn-p" data-mot="' + j.participacao_id + '">Motivo</button>' : '') + '</td></tr>';
+              '<td class="ac"><a class="btn btn-p" href="#/processos/' + procId + '/ficha/' + j.participacao_id + '">Ficha</a>' +
+                (podeCorrigir && j.situacao !== 'desistencia' ? '<button type="button" class="btn btn-p" data-corr="' + j.participacao_id + '">✏️ Corrigir nota</button>' : '') + (podeMotivo && j.situacao !== 'desistencia' || (podeMotivo && j.motivo === 'desistiu') ? '<button type="button" class="btn btn-p" data-mot="' + j.participacao_id + '">Motivo</button>' : '') + '</td></tr>';
           }).join('') + '</tbody></table></div>' : '<div class="card vazio">Nenhum jovem nesse filtro.</div>') +
-        '<p class="dica">Ordem: aprovados, backups, reprovados e desistências; em cada faixa, da maior para a menor nota. Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.</p>';
+        '<p class="dica">Ordem: aprovados, backups, reprovados e desistências; em cada faixa, da maior para a menor nota. Notas iguais até a 3ª casa decimal ficam empatadas na mesma posição.</p>' +
+        '<section class="card bloco" id="cl-drive"><h2 style="font-size:16px;margin:0">Arquivos no Drive</h2><p class="dica" style="margin:0">Carregando…</p></section>';
       ligar();
+      area.querySelectorAll('[data-corr]').forEach(function (b) { b.addEventListener('click', function () { corrigir(b.getAttribute('data-corr')); }); });
+    }
+    // Corrigir nota (processo em revisão): edita as notas do jovem com motivo; o ranking é recalculado
+    async function corrigir(pid) {
+      var j = c.jovens.filter(function (x) { return x.participacao_id === pid; })[0]; if (!j) return;
+      var rc = await window.CF.sb.from('processos').select('configuracao').eq('id', procId).single();
+      var ts = (((rc && rc.data && rc.data.configuracao) || {}).testes || []);
+      var r = await window.CF.sb.from('notas').select('criterio_id,teste_id,valor').eq('participacao_id', pid);
+      var atuais = {}; ((r && r.data) || []).forEach(function (n) { atuais[n.criterio_id] = n.valor; });
+      var linhas = [];
+      ts.forEach(function (t) { (t.criterios || []).forEach(function (cr) { if (cr.conta_na_nota === false) return; linhas.push({ t: t, c: cr }); }); });
+      function n2b(v) { return v == null ? '—' : String(Math.round(v * 100) / 100).replace('.', ','); }
+      ui.janela({ titulo: 'Corrigir nota · ' + j.nome, largura: 680,
+        corpo: '<div class="tabela-rolar"><table class="tabela mini"><thead><tr><th>Teste · critério</th><th>Nota atual</th><th>Nova nota</th></tr></thead><tbody>' + linhas.map(function (x, i) {
+          var nm = x.c.competencia || x.c.nome_exibido || x.c.nome || 'Nota';
+          return '<tr><td>' + esc(x.t.nome) + ' · ' + esc(nm) + '</td><td>' + n2b(atuais[x.c.id]) + '</td><td><input class="entrada cn-in" data-i="' + i + '" inputmode="decimal" style="width:96px" value="' + (atuais[x.c.id] == null ? '' : n2b(atuais[x.c.id])) + '"></td></tr>';
+        }).join('') + '</tbody></table></div>' +
+          '<p class="dica" style="margin:10px 0 0">Notas de 1 a 5. Ao salvar, o ranking é recalculado e a correção fica no histórico (quem, quando, nota antiga e nova).</p>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar correção', principal: true, aoClicar: async function (el) {
+          var muda = [];
+          for (var k = 0; k < linhas.length; k++) {
+            var tx = el.querySelector('[data-i="' + k + '"]').value.trim().replace(',', '.'); if (!tx) continue;
+            var v = Number(tx); if (!(v >= 1 && v <= 5)) { ui.toast('As notas vão de 1 a 5.', 'erro'); return false; }
+            if (atuais[linhas[k].c.id] == null || Math.abs(atuais[linhas[k].c.id] - v) > 1e-9) muda.push({ criterio_id: linhas[k].c.id, teste_id: linhas[k].t.id || linhas[k].t.teste_id || null, valor: v });
+          }
+          if (!muda.length) { ui.toast('Nenhuma nota foi alterada.', 'info'); return false; }
+          var antes = { nota: j.nota, sit: j.situacao };
+          try {
+            var x = await window.CF.sb.rpc('corrigir_notas', { p_participacao: pid, p_notas: muda, p_motivo: null }); if (x.error) throw x.error;
+            c = await dados.classificacao.carregar(procId);
+            var dep = c.jovens.filter(function (y) { return y.participacao_id === pid; })[0] || {};
+            ui.toast('Nota corrigida. Nota final ' + n2b(antes.nota) + ' → ' + n2b(dep.nota) + (antes.sit !== dep.situacao ? ' · ' + textoSituacao(antes.sit, j.genero) + ' → ' + textoSituacao(dep.situacao, j.genero) : '') + '.', 'ok');
+            desenhar(); return true;
+          } catch (e) { erro(e); return false; }
+        } }] });
+    }
+    // Arquivos deste processo salvos no Google Drive
+    async function arquivosDrive() {
+      var el = area.querySelector('#cl-drive'); if (!el) return;
+      try {
+        var r = await window.CF.sb.from('arquivos_drive').select('*').eq('processo_id', procId).order('atualizado_em', { ascending: false });
+        if (r.error) throw r.error;
+        var l = r.data || [];
+        el.innerHTML = '<h2 style="font-size:16px;margin:0">Arquivos no Drive</h2>' + (l.length ? '<p class="dica" style="margin:0">' + esc('Classificação Final' + (l[0].caminho || '').split('/').slice(0, 3).join(' / ')) + '</p>' +
+          l.map(function (a) {
+            return '<div class="drv-li"><span>' + (/\.xlsx$/i.test(a.nome) ? '📊' : (/\.png$/i.test(a.nome) ? '🖼' : '📄')) + ' <b>' + esc(a.nome) + '</b><small>' + esc((a.caminho || '').split('/').pop()) + ' · ' + new Date(a.atualizado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</small></span>' +
+              (a.link ? '<a class="btn btn-p" href="' + esc(a.link) + '" target="_blank" rel="noopener">Abrir</a>' : '') + '</div>';
+          }).join('') + (l[0].pasta_id ? '<p style="margin:6px 0 0"><a class="btn btn-p" href="https://drive.google.com/drive/folders/' + esc(l[0].pasta_id) + '" target="_blank" rel="noopener">Abrir a pasta no Drive</a></p>' : '')
+          : '<p class="dica" style="margin:0">Nenhum arquivo deste processo foi salvo no Drive ainda. Ao baixar o PDF, o Excel ou uma ficha, a cópia aparece aqui.</p>');
+      } catch (e) { el.innerHTML = '<h2 style="font-size:16px;margin:0">Arquivos no Drive</h2><p class="dica" style="margin:0">Não foi possível carregar a lista.</p>'; }
     }
     function ligar() {
+      arquivosDrive();
       var box = area.querySelector('#cl');
       box.querySelectorAll('[data-sit]').forEach(function (b) { b.addEventListener('click', function () { st.sit = st.sit === b.getAttribute('data-sit') ? '' : b.getAttribute('data-sit'); desenhar(); }); });
       var bb = box.querySelector('#cl-busca'); bb.addEventListener('input', function () { st.busca = ui.normalizar(bb.value); var pos = bb.selectionStart; desenhar(); var n = area.querySelector('#cl-busca'); n.focus(); n.setSelectionRange(pos, pos); });
       box.querySelector('#cl-turma').addEventListener('change', function (e) { st.turma = e.target.value; desenhar(); });
       box.querySelectorAll('[data-mot]').forEach(function (b) { b.addEventListener('click', function () { motivo(c.jovens.filter(function (j) { return j.participacao_id === b.getAttribute('data-mot'); })[0]); }); });
-      box.querySelector('#cl-xls').addEventListener('click', excel);
+      box.querySelector('#cl-xls').addEventListener('click', function () { excelCompleto(this); });
+      box.querySelector('#cl-pdf').addEventListener('click', function () { pdfProcesso(this); });
     }
     function motivo(j) {
       var jn = ui.janela({ titulo: 'Motivo de reprovação · ' + j.nome,
@@ -113,6 +201,32 @@
             try { await dados.classificacao.aplicarMotivo(j.participacao_id, m, obs); ui.toast('Motivo aplicado.', 'ok'); await carregar(); desenhar(); return true; } catch (e) { erro(e); return false; }
           } }]) });
       jn.elemento.querySelectorAll('input[name=mt]').forEach(function (r) { r.addEventListener('change', function () { jn.elemento.querySelectorAll('.mt label').forEach(function (l) { l.classList.toggle('s', l.contains(r) && r.checked); }); }); });
+    }
+    async function pdfProcesso(botao) {
+      if (!navigator.onLine) { ui.toast('Para gerar o PDF do processo é preciso internet.', 'erro'); return; }
+      var texto = botao.innerHTML; botao.disabled = true; botao.innerHTML = 'Gerando…';
+      try {
+        var r = await window.CF.sb.rpc('dados_processo_pdf', { p_proc: procId });
+        if (r.error) throw r.error;
+        botao.innerHTML = 'Montando o PDF…';
+        window.CF.ui.toast('Montando o PDF com ' + c.jovens.length + ' fichas. Pode levar alguns segundos.', 'info');
+        window.CF.pdf.baixar(await gerarPdfProcesso(r.data, c), window.CF.pdf.nomeArquivo(['Processo seletivo', (r.data.empresa || {}).nome, c.processo.vaga, c.processo.situacao === 'liberado' ? '' : 'PREVIA'], 'pdf'));
+      } catch (e) { console.error(e); ui.toast(e && e.message ? api.traduzErro(e) : 'Não foi possível gerar o PDF.', 'erro'); }
+      botao.disabled = false; botao.innerHTML = texto;
+    }
+    // Planilha completa do processo (precisa de internet); sem internet, sai a planilha simples do ranking
+    async function excelCompleto(botao) {
+      if (!navigator.onLine || !window.CF.excel || !window.CF.excel.processo) { excel(); return; }
+      var texto = botao.innerHTML; botao.disabled = true; botao.innerHTML = 'Gerando…';
+      try {
+        var r = await window.CF.sb.rpc('dados_processo_pdf', { p_proc: procId });
+        if (r.error) throw r.error;
+        var emp2 = r.data.empresa || {};
+        var logo = emp2.logo_path ? await dados.empresas.urlLogo(emp2.logo_path).catch(function () { return null; }) : null;
+        var blob = await window.CF.excel.processo(r.data, c, logo);
+        window.CF.pdf.baixar(blob, window.CF.pdf.nomeArquivo(['Processo seletivo', emp2.nome, c.processo.vaga, c.processo.situacao === 'liberado' ? '' : 'PREVIA'], 'xlsx'));
+      } catch (e) { console.error(e); ui.toast(e && e.message ? api.traduzErro(e) : 'Não foi possível gerar a planilha.', 'erro'); }
+      botao.disabled = false; botao.innerHTML = texto;
     }
     function excel() {
       if (!window.XLSX) { ui.toast('Recurso de planilha indisponível.', 'erro'); return; }
@@ -160,8 +274,13 @@
           : '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Ao <b>liberar</b>, a empresa passa a ver a classificação final, as fichas, as notas e o gráfico de radar. Os dados ficam travados; só o administrador pode reabrir, com motivo registrado.</span></div>') +
         (admin ? '<div class="bloco-botoes">' +
           (p.situacao === 'andamento' ? '<button type="button" class="btn btn-pri" id="rv-env"' + (podeEnviar ? '' : ' disabled') + '>Enviar para revisão</button>' : '') +
-          (p.situacao === 'revisao' ? '<button type="button" class="btn btn-pri" id="rv-lib" disabled>Liberar para a empresa</button>' : '') +
-          (p.situacao === 'revisao' || p.situacao === 'liberado' ? '<button type="button" class="btn" id="rv-reab">' + (p.situacao === 'liberado' ? 'Reabrir a revisão' : 'Voltar para em andamento') + '</button>' : '') + '</div>' : '');
+          (p.situacao === 'revisao' && window.CF.perm.pode('processos_liberar') ? '<button type="button" class="btn btn-pri" id="rv-lib" disabled>Liberar para a empresa</button>' : '') +
+          ((p.situacao === 'revisao' || p.situacao === 'liberado') && window.CF.perm.pode('processos_reabrir') ? '<button type="button" class="btn" id="rv-reab">' + (p.situacao === 'liberado' ? 'Reabrir para corrigir' : 'Voltar para em andamento') + '</button>' : '') + '</div>' : '');
+      if (p.situacao === 'revisao' && !podeLiberar) {   // explica por que o botão está desligado
+        var bb = area.querySelector('.bloco-botoes'); if (bb) bb.insertAdjacentHTML('beforebegin', '<p class="dica" style="margin:0">Para liberar, resolva os itens com ⚠️ acima e marque "Ranking conferido pela coordenação".</p>');
+      } else if (p.situacao === 'revisao') {
+        var bb2 = area.querySelector('.bloco-botoes'); if (bb2) bb2.insertAdjacentHTML('beforebegin', '<p class="dica" style="margin:0">Tudo pronto: marque "Ranking conferido pela coordenação" para liberar.</p>');
+      }
       var conf = area.querySelector('#rv-conf'), lib = area.querySelector('#rv-lib');
       if (conf && lib) conf.addEventListener('change', function () { lib.disabled = !(conf.checked && podeLiberar); });
       var env = area.querySelector('#rv-env');
@@ -174,12 +293,10 @@
         try { await dados.classificacao.liberar(procId); ui.toast('Resultado liberado para a empresa.', 'ok'); await carregar(); desenhar(); } catch (e) { erro(e); }
       });
       var reab = area.querySelector('#rv-reab');
-      if (reab) reab.addEventListener('click', function () {
-        ui.janela({ titulo: reab.textContent, confirmarDescarte: false, corpo: '<label class="campo"><span>Motivo <span class="obrig">*</span></span><input class="entrada" id="rb-m" maxlength="200"></label><p class="dica" style="margin:0">Fica registrado no histórico.</p>',
-          botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Confirmar', principal: true, aoClicar: async function (f) {
-            var m = ui.maiusculas(f.querySelector('#rb-m').value.trim()); if (m.length < 5) { ui.toast('Informe o motivo.', 'erro'); return false; }
-            try { await dados.classificacao.reabrir(procId, m); ui.toast('Processo reaberto.', 'ok'); await carregar(); desenhar(); return true; } catch (e) { erro(e); return false; }
-          } }] });
+      if (reab) reab.addEventListener('click', async function () {
+        var lib2 = p.situacao === 'liberado';
+        if (!(await ui.confirmar(reab.textContent + '?', lib2 ? 'O processo volta para a revisão e a empresa deixa de ver o resultado até você liberar de novo.' : 'O processo volta para "em andamento" e o lançamento de notas é reaberto.', 'Confirmar', 'Cancelar'))) return;
+        try { await dados.classificacao.reabrir(procId, null); ui.toast(lib2 ? 'Processo de volta à revisão.' : 'Processo de volta para em andamento.', 'ok'); await carregar(); desenhar(); } catch (e) { erro(e); }
       });
     }
     desenhar();

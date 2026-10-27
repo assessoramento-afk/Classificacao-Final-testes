@@ -26,8 +26,15 @@
   }
 
   /* ---------- Anel da nota final ---------- */
-  function anel(nota, cor, tam) {
+  function anel(nota, cor, tam, escuro) {
     tam = tam || 132;
+    if (escuro) {
+      var r2 = tam * 0.394, c2 = tam / 2, circ2 = 2 * Math.PI * r2, v2 = nota == null ? 0 : Math.max(0, Math.min(5, Number(nota)));
+      return '<svg class="fc-anel" width="' + tam + '" height="' + tam + '" viewBox="0 0 ' + tam + ' ' + tam + '" role="img" aria-label="Nota final ' + n2(nota) + '">' +
+        '<circle cx="' + c2 + '" cy="' + c2 + '" r="' + r2 + '" fill="none" stroke="#4a4242" stroke-width="' + (tam * 0.09) + '"/>' +
+        (nota == null ? '' : '<circle cx="' + c2 + '" cy="' + c2 + '" r="' + r2 + '" fill="none" stroke="' + cor + '" stroke-width="' + (tam * 0.09) + '" stroke-linecap="round" stroke-dasharray="' + (circ2 * v2 / 5).toFixed(1) + ' ' + circ2.toFixed(1) + '" transform="rotate(-90 ' + c2 + ' ' + c2 + ')"/>') +
+        '<text x="' + c2 + '" y="' + (c2 + tam * 0.085) + '" text-anchor="middle" font-size="' + (tam * 0.25) + '" font-weight="700" fill="#ffffff">' + n2(nota) + '</text></svg>';
+    }
     var r = tam * 0.394, cx = tam / 2, circ = 2 * Math.PI * r, v = nota == null ? 0 : Math.max(0, Math.min(5, Number(nota)));
     return '<svg class="fc-anel" width="' + tam + '" height="' + tam + '" viewBox="0 0 ' + tam + ' ' + tam + '" role="img" aria-label="Nota final ' + n2(nota) + '">' +
       '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="var(--borda)" stroke-width="' + (tam * 0.083) + '"/>' +
@@ -37,7 +44,8 @@
   }
 
   /* ---------- Radar (funciona com qualquer número de eixos) ---------- */
-  function radar(itens) {
+  function radar(itens, corR) {
+    corR = corR || '#ee7330';
     var val = itens.filter(function (x) { return x.nota != null; });
     if (itens.length < 3) {
       return '<p class="dica" style="text-align:center;margin:30px 0">O gráfico de radar precisa de pelo menos 3 itens. Veja as notas ao lado.</p>';
@@ -50,8 +58,8 @@
     });
     itens.forEach(function (x, i) { var p = pt(i, 5); s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '" stroke="var(--borda)"/>'; });
     if (val.length) {
-      s += '<polygon points="' + itens.map(function (x, i) { return pt(i, x.nota == null ? 0 : x.nota).map(function (k) { return k.toFixed(1); }).join(','); }).join(' ') + '" fill="rgba(238,115,48,.22)" stroke="#ee7330" stroke-width="2" stroke-linejoin="round"/>';
-      itens.forEach(function (x, i) { if (x.nota == null) return; var p = pt(i, x.nota); s += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4" fill="#ee7330"/>'; });
+      s += '<polygon points="' + itens.map(function (x, i) { return pt(i, x.nota == null ? 0 : x.nota).map(function (k) { return k.toFixed(1); }).join(','); }).join(' ') + '" fill="' + corR + '" fill-opacity=".2" stroke="' + corR + '" stroke-width="2" stroke-linejoin="round"/>';
+      itens.forEach(function (x, i) { if (x.nota == null) return; var p = pt(i, x.nota); s += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4" fill="' + corR + '"/>'; });
     }
     itens.forEach(function (x, i) {
       var p = pt(i, muitos ? 5.75 : 6.05), anc = Math.abs(p[0] - cx) < 12 ? 'middle' : (p[0] > cx ? 'start' : 'end');
@@ -67,9 +75,66 @@
     }).join('');
   }
 
+  /* Monta os dados de um candidato no formato usado por CF.pdf.ficha, CF.excel.ficha e CF.pdf.processo.
+     f = resultado de ficha_candidato · eu = linha do jovem em classificacao_processo · cl = classificacao_processo */
+  function dataCurta(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function diasTurma(datas) {   // ['2026-11-17','2026-11-18'] → "17 e 18/11/2026"
+    var ds = (datas || []).map(function (x) { return String(x).slice(0, 10); });
+    if (!ds.length) return '';
+    var fim = dataCurta(ds[ds.length - 1]);
+    if (ds.length === 1) return fim;
+    var mesmoMes = ds.every(function (x) { return x.slice(0, 7) === ds[0].slice(0, 7); });
+    return ds.slice(0, -1).map(function (x) { return mesmoMes ? x.slice(8, 10) : dataCurta(x).slice(0, 5); }).join(', ') + ' e ' + fim;
+  }
+  function montarDados(f, eu, cl, eixo, fotoUrl, logoUrl) {
+    var K = window.CF.classif, g = f.jovem.genero, nomeEmp = (f.empresa && f.empresa.nome) || '';
+    var classificados = (cl.jovens || []).filter(function (j) { return j.posicao; }).length;
+    var mot = eu.motivo ? K.textoMotivo(eu.motivo, g) : (eu.situacao === 'reprovado' ? 'Nota final abaixo de ' + K.corteTxt(f.processo.corte_backup) : null);
+    var det = eu.situacao === 'desistencia' && eu.desistencia && eu.desistencia !== 'FALTOU' ? ' · ' + eu.desistencia.toLowerCase() : (eu.situacao === 'desistencia' && !eu.observacao ? ' · faltou' : '');
+    var areas = (cl.areas || []).map(function (a) { return { nome: a, nota: (eu.areas || {})[a] == null ? null : Number(eu.areas[a]) }; });
+    var comps = (f.competencias || []).map(function (x) { return { nome: x.nome, nota: x.nota == null ? null : Number(x.nota) }; });
+    var compsOrd = comps.slice().sort(function (a, b) { return (b.nota == null ? -1 : b.nota) - (a.nota == null ? -1 : a.nota); });
+    var areasOrd = areas.slice().sort(function (a, b) { return (b.nota == null ? -1 : b.nota) - (a.nota == null ? -1 : a.nota); });
+    var datas = f.turma_datas || [], semNotas = !(f.testes || []).some(function (t) { return t.lancadas > 0; });
+    var desistTxt = null;
+    if (eu.situacao === 'desistencia') {
+      desistTxt = K.textoMotivo('desistiu', g) + '.';
+      var falta = (f.faltas || [])[0] || (f.desistencia && f.desistencia.dia);
+      if (falta) {
+        var n = datas.map(function (x) { return String(x).slice(0, 10); }).indexOf(String(falta).slice(0, 10));
+        desistTxt += ' Faltou no dia ' + (n >= 0 ? (n + 1) + ' (' + dataCurta(falta) + ')' : dataCurta(falta));
+        desistTxt += semNotas ? '; não há notas lançadas.' : '.';
+      } else if (semNotas) desistTxt += ' Não há notas lançadas.';
+      var obsD = (f.desistencia && f.desistencia.observacao) || eu.observacao;
+      if (obsD) desistTxt += ' ' + obsD;
+    }
+    var porComp = eixo === 'competencias';
+    return {
+      nome: f.jovem.nome, iniciais: iniciais(f.jovem.nome), codigo: f.codigo, idade: idade(f.jovem.nascimento), turma: f.turma,
+      turmaTxt: f.turma + (datas.length ? ' · ' + diasTurma(datas) : ''),
+      vaga: f.processo.vaga, empresa: nomeEmp, avaliador: f.avaliador_responsavel,
+      avaliadorTxt: f.avaliador_responsavel ? f.avaliador_responsavel + (f.grupo ? ' (GRUPO ' + f.grupo + ')' : '') : null,
+      nota: eu.nota == null ? null : Number(eu.nota), situacao: eu.situacao, situacaoTxt: K.textoSituacao(eu.situacao, g),
+      posicaoTxt: eu.posicao ? eu.posicao + 'º de ' + classificados + ' candidatos' + (eu.empate ? ' (empate)' : '') : null,
+      classificadosTxt: eu.posicao ? eu.posicao + 'º de ' + classificados + ' classificados' + (eu.empate ? ' (empate)' : '') : null,
+      motivoTxt: eu.situacao === 'desistencia' ? (mot ? mot + det : null) : mot, motivoObs: eu.situacao === 'desistencia' ? null : (eu.observacao || null),
+      motivoPor: eu.motivo_por ? String(eu.motivo_por).toUpperCase() : null,
+      desistenciaTxt: desistTxt, semNotas: semNotas,
+      eixoTitulo: porComp ? 'competência' : 'área', itens: porComp ? comps : areas,
+      lista: porComp ? { titulo: 'Notas por área', itens: areasOrd } : { titulo: 'Notas por competência', itens: compsOrd },
+      areas: areas, competencias: comps, testes: f.testes || [],
+      observacoes: (f.observacoes || []).map(function (o) { return { teste: o.teste, autor: o.autor, data: o.em ? dataCurta(o.em) : '', texto: o.texto }; }),
+      corteAprovado: Number(f.processo.corte_aprovado), corteBackup: Number(f.processo.corte_backup),
+      processoTxt: 'Projeto Gol Jovens Talentos · Processo seletivo' + (f.processo.identificacao ? ' ' + f.processo.identificacao : '') + ' · ' + nomeEmp + ' · ' + f.processo.vaga,
+      fotoUrl: fotoUrl, logoEmpresaUrl: logoUrl
+    };
+  }
+  window.CF.fichaDados = montarDados;
+
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.ficha = async function (area, ctx, procId, partId) {
     var st = { eixo: 'areas', modelo: null };
+    var empresa = ctx.perfil.perfil === 'empresa', base = (empresa ? '#/portal/' : '#/processos/') + procId;   // a empresa navega dentro do portal
     area.innerHTML = '<div id="fc"><div class="girando" style="margin:40px auto"></div></div>';
     var cl, f, fotoUrl = null, padrao = 'lateral';
     try {
@@ -79,11 +144,12 @@
         dados.config.carregar().catch(function () { return null; })
       ]);
       cl = r[0]; f = r[1];
+      if (window.CF.drive && f && f.empresa) window.CF.drive.definirContexto({ processo_id: procId, empresa: f.empresa.nome || 'SEM EMPRESA', processo: f.processo.vaga + (f.processo.identificacao ? ' · ' + f.processo.identificacao : '') });
       if (r[2] && r[2].modelos_documento && r[2].modelos_documento.ficha_tela) padrao = r[2].modelos_documento.ficha_tela;
       fotoUrl = f.jovem && f.jovem.foto_path ? await dados.jovens.urlFoto(f.jovem.foto_path).catch(function () { return null; }) : null;
     } catch (e) {
       console.error(e);
-      area.innerHTML = '<a class="voltar" href="#/processos/' + esc(procId) + '/classificacao">← Classificação</a>' +
+      area.innerHTML = '<a class="voltar" href="' + (ctx.perfil.perfil === 'empresa' ? '#/portal/' + esc(procId) : '#/processos/' + esc(procId) + '/classificacao') + '">← ' + (ctx.perfil.perfil === 'empresa' ? 'Resultado' : 'Classificação') + '</a>' +
         '<div class="aviso aviso-erro" style="margin-top:12px">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>';
       return;
     }
@@ -101,9 +167,9 @@
       var ant = lista[idx - 1], prox = lista[idx + 1];
       function rot(j) { return j.posicao ? j.posicao + 'º' : (j.situacao === 'desistencia' ? 'desist.' : '—'); }
       return '<div class="fc-nav">' +
-        (ant ? '<a class="btn" href="#/processos/' + procId + '/ficha/' + ant.participacao_id + '" title="' + esc(ant.nome) + '">‹ ' + rot(ant) + ' anterior</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">‹ anterior</span>') +
+        (ant ? '<a class="btn" href="' + base + '/ficha/' + ant.participacao_id + '" title="' + esc(ant.nome) + '">‹ ' + rot(ant) + ' anterior</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">‹ anterior</span>') +
         '<span class="dica">' + (idx + 1) + ' de ' + lista.length + '</span>' +
-        (prox ? '<a class="btn" href="#/processos/' + procId + '/ficha/' + prox.participacao_id + '" title="' + esc(prox.nome) + '">' + rot(prox) + ' próximo ›</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">próximo ›</span>') +
+        (prox ? '<a class="btn" href="' + base + '/ficha/' + prox.participacao_id + '" title="' + esc(prox.nome) + '">' + rot(prox) + ' próximo ›</a>' : '<span class="btn" aria-disabled="true" style="opacity:.45">próximo ›</span>') +
       '</div>';
     }
     function situacaoTxt() {
@@ -159,19 +225,34 @@
     }
 
     function desenhar() {
-      var topo = '<a class="voltar" href="#/processos/' + procId + '/classificacao">← Classificação · ' + esc(nomeEmp + ' · ' + f.processo.vaga) + '</a>' +
+      var topo = '<a class="voltar" href="' + (empresa ? base : base + '/classificacao') + '">← ' + (empresa ? 'Resultado' : 'Classificação') + ' · ' + esc(nomeEmp + ' · ' + f.processo.vaga) + '</a>' +
         '<div class="fc-barra-topo">' + navegacao() +
           '<div class="fc-nav"><div class="fc-seg" role="tablist" aria-label="Modelo da ficha"><button type="button" data-modelo="lateral" class="' + (st.modelo === 'lateral' ? 'on' : '') + '">Lateral</button><button type="button" data-modelo="cards" class="' + (st.modelo === 'cards' ? 'on' : '') + '">Cards</button></div>' +
-          '<button type="button" class="btn" disabled title="Chega na próxima etapa">⬇ Excel</button><button type="button" class="btn btn-pri" disabled title="Chega na próxima etapa">⬇ PDF da ficha</button></div></div>';
+          (empresa ? '' : '<button type="button" class="btn" id="fc-xls">⬇ Excel</button>') + '<button type="button" class="btn btn-pri" id="fc-pdf">⬇ PDF da ficha</button></div></div>';
       var corpo;
       if (st.modelo === 'lateral') {
-        corpo = '<section class="card fc-lay" style="--c:' + cor + '"><aside class="fc-lat">' + foto(132) +
-            '<h1>' + esc(f.jovem.nome) + '</h1><p class="fc-cod">' + esc(f.codigo || '') + '</p>' + anel(eu.nota, cor, 132) +
-            '<div class="fc-sit">' + esc(situacaoTxt()) + '</div>' +
-            '<dl class="fc-dl">' + dadosLista().map(function (x) { return '<div><dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('') + '</dl></aside>' +
-          '<div class="fc-dir">' + blocoMotivo() + blocoDesempenho() +
-            '<div class="fc-blk"><h2>Notas dos testes</h2>' + blocoTestes() + '</div>' +
-            '<div class="fc-blk"><h2>Observações dos avaliadores</h2>' + blocoObs() + '</div></div></section>';
+        // Mesmo desenho do PDF aprovado: coluna escura + cartões
+        var dd = montarDados(f, eu, cl, st.eixo, fotoUrl, null), desist = eu.situacao === 'desistencia';
+        var lista = dd.lista ? dd.lista.itens : [];
+        corpo = '<section class="card fc-lay fc-escura" style="--c:' + cor + '"><aside class="fc-lat">' +
+            '<div class="fc-retrato">' + (fotoUrl ? '<img src="' + esc(fotoUrl) + '" alt="Foto de ' + esc(f.jovem.nome) + '">' : '<span>' + esc(iniciais(f.jovem.nome)) + '</span>') + '</div>' +
+            '<h1>' + esc(f.jovem.nome) + '</h1>' + (desist ? '' : anel(eu.nota, cor, 128, true)) +
+            '<span class="fc-pilula">' + esc(String(dd.situacaoTxt).toUpperCase()) + '</span>' +
+            (dd.classificadosTxt ? '<p class="fc-class">' + esc(dd.classificadosTxt) + '</p>' : '') +
+            '<dl class="fc-dl2">' + [['Código', dd.codigo], ['Turma', dd.turmaTxt], ['Vaga', dd.vaga], ['Empresa', dd.empresa], ['Idade', dd.idade != null ? dd.idade + ' anos' : null]]
+              .filter(function (x) { return x[1]; }).map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl></aside>' +
+          '<div class="fc-dir">' +
+            (desist ? '<div class="fc-cart"><h2>Situação</h2><p>' + esc(dd.desistenciaTxt || '') + '</p></div>' : '') +
+            (!desist || !dd.semNotas ? '<div class="fc-pares">' +
+              '<div class="fc-cart"><div class="fc-tit"><h2>Desempenho por ' + esc(dd.eixoTitulo) + '</h2><div class="fc-seg" role="tablist" aria-label="Gráfico por">' +
+                '<button type="button" data-eixo="areas" class="' + (st.eixo === 'areas' ? 'on' : '') + '">Áreas</button><button type="button" data-eixo="competencias" class="' + (st.eixo === 'competencias' ? 'on' : '') + '">Competências</button></div></div>' + radar(dd.itens, cor) + '</div>' +
+              '<div class="fc-cart"><h2>' + esc(dd.lista ? dd.lista.titulo : '') + '</h2><ul class="fc-lista">' + lista.map(function (x) { return '<li><span>' + esc(x.nome) + '</span><b>' + (x.nota == null ? '—' : Number(x.nota).toFixed(1).replace('.', ',')) + '</b></li>'; }).join('') + '</ul>' +
+                '<p class="fc-faixas2"><b style="color:' + c().COR.aprovado + '">●</b> aprovado a partir de ' + c().corteTxt(f.processo.corte_aprovado) + ' &nbsp; <b style="color:' + c().COR.backup + '">●</b> backup ' + c().corteTxt(f.processo.corte_backup) + ' a ' + c().corteTxt(f.processo.corte_aprovado - 0.01) + '</p></div></div>' : '') +
+            (dd.motivoTxt && !desist ? '<div class="fc-cart fc-cart-motivo"><h2>Motivo</h2><p>' + esc(dd.motivoTxt) + '</p>' + (dd.motivoObs ? '<p>' + esc(dd.motivoObs) + '</p>' : '') + (dd.motivoPor ? '<small>Aplicado por ' + esc(dd.motivoPor) + '</small>' : '') + '</div>' : '') +
+            '<div class="fc-cart"><h2>Observações dos avaliadores</h2>' + (dd.observacoes.length ? dd.observacoes.map(function (o) { return '<p><b>' + esc((o.autor || '') + (o.data ? ', ' + o.data : '')) + ':</b> ' + esc(o.texto) + '</p>'; }).join('') : '<p class="dica">Nenhuma observação registrada.</p>') + '</div>' +
+            (dd.avaliadorTxt ? '<div class="fc-cart"><h2>Avaliador responsável</h2><p>' + esc(dd.avaliadorTxt) + '</p></div>' : '') +
+            '<div class="fc-cart"><h2>Notas dos testes</h2>' + blocoTestes() + '</div>' +
+          '</div></section>';
       } else {
         var id = idade(f.jovem.nascimento);
         corpo = '<section class="card fc-cab" style="--c:' + cor + '">' + foto(104) +
@@ -188,8 +269,25 @@
       area.querySelector('#fc').innerHTML = topo + corpo;
       ligar();
     }
+    /* ---------- Dados para o PDF e o Excel (mesmo formato) ---------- */
+    async function dadosDocumento() {
+      var logoUrl = f.empresa && f.empresa.logo_path ? await dados.empresas.urlLogo(f.empresa.logo_path).catch(function () { return null; }) : null;
+      return montarDados(f, eu, cl, st.eixo, fotoUrl, logoUrl);
+    }
+    async function gerar(tipo, botao) {
+      var texto = botao.innerHTML; botao.disabled = true; botao.innerHTML = 'Gerando…';
+      try {
+        var d = await dadosDocumento(), blob, ext;
+        if (tipo === 'pdf') { blob = await window.CF.pdf.ficha(d); ext = 'pdf'; }
+        else { blob = await window.CF.excel.ficha(d); ext = 'xlsx'; }
+        window.CF.pdf.baixar(blob, window.CF.pdf.nomeArquivo(['Ficha', f.jovem.nome, f.codigo], ext));
+      } catch (e) { console.error(e); ui.toast(e && e.message ? e.message : 'Não foi possível gerar o arquivo.', 'erro'); }
+      botao.disabled = false; botao.innerHTML = texto;
+    }
     function ligar() {
       var box = area.querySelector('#fc');
+      box.querySelector('#fc-pdf').addEventListener('click', function () { gerar('pdf', this); });
+      if (box.querySelector('#fc-xls')) box.querySelector('#fc-xls').addEventListener('click', function () { gerar('xlsx', this); });
       box.querySelectorAll('[data-eixo]').forEach(function (b) { b.addEventListener('click', function () { st.eixo = b.getAttribute('data-eixo'); desenhar(); }); });
       box.querySelectorAll('[data-modelo]').forEach(function (b) {
         b.addEventListener('click', function () {

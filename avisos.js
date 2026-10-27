@@ -22,7 +22,7 @@
 
   // Número no item "Cadastros" do menu
   function atualizarBadge() {
-    var link = document.querySelector('.menu a[data-rota="cadastros"]');
+    var link = document.querySelector('.menu a[data-rota="config"]');
     if (!link) return;
     var b = link.querySelector('.badge-menu');
     var n = estado.pendentes.length;
@@ -52,7 +52,7 @@
       '<div class="ac-pessoa"><span class="avatar">' + esc(ui.iniciais(p.nome || p.email)) + '</span><div><b>' + esc(p.nome || '(sem nome)') + '</b><small>' + esc(p.email) + ' · ' + esc(quando(p.criado_em)) + '</small></div></div>' +
       '<div class="ac-botoes"><button type="button" class="btn btn-p" data-a="depois">Depois</button><button type="button" class="btn btn-p" data-a="ver">Ver cadastro</button><button type="button" class="btn btn-pri btn-p" data-a="aprovar">Aprovar</button></div>';
     c.querySelector('[data-a=depois]').addEventListener('click', function () { dispensar(p.id); c.remove(); });
-    c.querySelector('[data-a=ver]').addEventListener('click', function () { dispensar(p.id); c.remove(); window.location.hash = '#/cadastros/avaliadores'; });
+    c.querySelector('[data-a=ver]').addEventListener('click', function () { dispensar(p.id); c.remove(); window.location.hash = '#/config/avaliadores'; });
     c.querySelector('[data-a=aprovar]').addEventListener('click', function () { aprovar(p, c); });
     box.appendChild(c);
     new MutationObserver(marcarCorpo).observe(box, { childList: true });
@@ -79,7 +79,7 @@
           if (card) card.remove();
           estado.pendentes = estado.pendentes.filter(function (x) { return x.id !== p.id; }); atualizarBadge();
           ui.toast('Acesso liberado para ' + (p.nome || p.email) + '.', 'ok');
-          if (/^#\/cadastros\/avaliadores/.test(window.location.hash)) window.dispatchEvent(new HashChangeEvent('hashchange'));
+          if (/^#\/config(\/avaliadores)?$/.test(window.location.hash)) window.dispatchEvent(new HashChangeEvent('hashchange'));
           return true;
         } catch (x) { ui.toast(api.traduzErro(x), 'erro'); return false; }
       } }]

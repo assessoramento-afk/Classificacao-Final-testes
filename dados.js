@@ -63,7 +63,10 @@
   /* ---------- Pessoas (perfis) ---------- */
   var pessoas = {
     listar: function () { return q(sb.rpc('listar_pessoas')); },
-    atualizar: function (id, campos) { return q(sb.from('perfis').update(campos).eq('id', id).select('id').single()); }
+    atualizar: function (id, campos) { return q(sb.from('perfis').update(campos).eq('id', id).select('id').single()); },
+    excluir: function (id) { return q(sb.rpc('excluir_pessoa', { p_id: id })); },
+    empresasOnline: function () { return q(sb.rpc('empresas_online')); },
+    registrarAtividade: function () { return q(sb.rpc('registrar_atividade')); }
   };
 
   /* ---------- Banco de testes ---------- */
@@ -75,11 +78,15 @@
         q(sb.from('competencias').select('*').order('nome')),
         q(sb.from('testes').select('*').order('nome')),
         q(sb.from('teste_criterios').select('*').order('ordem')),
-        q(sb.from('tabelas_conversao').select('*').order('pont_min'))
+        q(sb.from('tabelas_conversao').select('*').order('pont_min')),
+        q(sb.from('materiais').select('*').order('nome')).catch(function () { return []; }),
+        q(sb.from('teste_materiais').select('*').order('ordem')).catch(function () { return []; })
       ]);
-      return { areas: r[0], qualificacoes: r[1], competencias: r[2], testes: r[3], criterios: r[4], conversao: r[5] };
+      return { areas: r[0], qualificacoes: r[1], competencias: r[2], testes: r[3], criterios: r[4], conversao: r[5], materiais: r[6], testeMateriais: r[7] };
     },
     salvarArea: function (a) { return salvar('areas', a); },
+    salvarMaterial: function (m) { return salvar('materiais', m); },
+    excluirMaterial: function (id) { return q(sb.from('materiais').delete().eq('id', id)); },
     salvarCompetencia: function (c) { return salvar('competencias', c); },
     excluirCompetencia: function (id) { return q(sb.from('competencias').delete().eq('id', id)); },
     salvarTeste: function (t) { return salvar('testes', t); },
@@ -102,5 +109,139 @@
     }
   };
 
-  window.CF.dados = { empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
+  /* ---------- Configurações gerais (linha única) ---------- */
+  var config = {
+    carregar: function () { return q(sb.from('configuracoes').select('*').eq('id', 1).single()); },
+    salvar: function (campos) { return q(sb.from('configuracoes').update(campos).eq('id', 1).select().single()); }
+  };
+
+  /* ---------- Processos ---------- */
+  var processos = {
+    listar: function () { return q(sb.from('processos').select('*').order('criado_em', { ascending: false })); },
+    obter: function (id) { return q(sb.from('processos').select('*').eq('id', id).single()); },
+    testes: function (id) { return q(sb.from('processo_testes').select('*').eq('processo_id', id).order('ordem')); },
+    salvar: function (p) { return q(sb.rpc('salvar_processo', { p: p })); },
+    excluir: function (id) { return q(sb.from('processos').delete().eq('id', id)); },
+    iniciar: function (id) { return q(sb.rpc('iniciar_processo', { p_id: id })); },
+    modelos: async function () {
+      var r = await Promise.all([q(sb.from('modelos_processo').select('*').order('nome')), q(sb.from('modelo_testes').select('*').order('ordem'))]);
+      return r[0].filter(function (m) { return m.ativo !== false; }).map(function (m) { return Object.assign({}, m, { testes: r[1].filter(function (x) { return x.modelo_id === m.id; }).map(function (x) { return x.teste_id; }) }); });
+    }
+  };
+
+  /* ---------- Agenda e turmas ---------- */
+  var agenda = {
+    carregarTudo: async function () {
+      var r = await Promise.all([
+        q(sb.from('agenda_dias').select('*').order('data')), q(sb.from('turmas').select('*').order('nome')),
+        q(sb.from('pre_reservas').select('*')), q(sb.from('bloqueios').select('*')),
+        q(sb.from('processos').select('*')), q(sb.rpc('empresas_nomes')), q(sb.from('configuracoes').select('*').eq('id', 1).single())
+      ]);
+      return { dias: r[0], turmas: r[1], pre: r[2], bloqueios: r[3], processos: r[4], empresas: r[5], config: r[6] };
+    },
+    salvarTurma: function (t) { return q(sb.rpc('salvar_turma', { p: t })); },
+    excluirTurma: function (id, destino, remover) { return q(sb.rpc('excluir_turma', { p_id: id, p_destino: destino || null, p_remover: !!remover })); },
+    salvarPreReserva: function (p) { return q(sb.rpc('salvar_pre_reserva', { p: p })); },
+    decidirPreReserva: function (id, acao, novaData) { return q(sb.rpc('decidir_pre_reserva', { p_id: id, p_acao: acao, p_nova_data: novaData || null })); },
+    confirmarPreReserva: function (id, processoId, nome, horario, vagas) { return q(sb.rpc('confirmar_pre_reserva', { p_id: id, p_processo: processoId, p_nome: nome, p_horario: horario || null, p_vagas: vagas })); },
+    salvarBloqueio: function (b) { return q(sb.rpc('salvar_bloqueio', { p: b })); },
+    excluirBloqueio: function (id) { return q(sb.from('bloqueios').delete().eq('id', id)); }
+  };
+
+  /* ---------- Jovens ---------- */
+  var jovens = {
+    doProcesso: async function (processoId) {
+      var parts = await q(sb.from('participacoes').select('*').eq('processo_id', processoId).order('numero'));
+      var ids = parts.map(function (x) { return x.jovem_id; });
+      var js = ids.length ? await q(sb.from('jovens').select('*').in('id', ids)) : [];
+      return parts.map(function (x) { return Object.assign({}, x, { jovem: js.filter(function (j) { return j.id === x.jovem_id; })[0] || {} }); });
+    },
+    todos: function () { return q(sb.from('jovens').select('*').order('nome')); },
+    criar: function (j) { return q(sb.from('jovens').insert(j).select().single()); },
+    atualizar: function (id, j) { return q(sb.from('jovens').update(j).eq('id', id).select().single()); },
+    participacoesDe: function (jovemId) { return q(sb.from('participacoes').select('*').eq('jovem_id', jovemId)); },
+    todasParticipacoes: function () { return q(sb.from('participacoes').select('*')); },
+    salvar: function (p) { return q(sb.rpc('salvar_jovem', { p: p })); },
+    iguais: function (nome, nascimento) { return q(sb.rpc('buscar_jovens_iguais', { p_nome: nome, p_nascimento: nascimento || null })); },
+    remover: function (participacaoId) { return q(sb.rpc('remover_participacao', { p_id: participacaoId })); },
+    salvarFoto: async function (jovemId, arquivo) {
+      var blob = await reduzirImagem(arquivo, 600, 'image/jpeg');
+      var caminho = 'jovens/' + jovemId + '/foto-' + Date.now() + '.jpg';
+      var r = await sb.storage.from('fotos').upload(caminho, blob, { contentType: 'image/jpeg', upsert: false });
+      if (r.error) throw r.error;
+      await q(sb.from('jovens').update({ foto_path: caminho }).eq('id', jovemId).select('id').single());
+      return caminho;
+    },
+    // Tira a foto do cadastro e apaga o arquivo (se o arquivo não puder ser apagado, a limpeza recolhe depois)
+    removerFoto: async function (jovemId, caminho) {
+      await q(sb.from('jovens').update({ foto_path: null }).eq('id', jovemId).select('id').single());
+      if (caminho) { try { await sb.storage.from('fotos').remove([caminho]); } catch (e) { /* fica para a limpeza */ } }
+    },
+    urlFoto: async function (caminho) { if (!caminho) return null; var r = await sb.storage.from('fotos').createSignedUrl(caminho, 3600); return r.error ? null : r.data.signedUrl; }
+  };
+
+  /* ---------- Dia da turma (avaliação) ---------- */
+  var avaliacao = {
+    // Tudo o que o celular precisa para trabalhar sem internet naquela turma
+    baixarTurma: async function (turmaId) {
+      var t = await q(sb.from('turmas').select('*').eq('id', turmaId).single());
+      var r = await Promise.all([
+        q(sb.from('processos').select('*').eq('id', t.processo_id).single()), q(sb.from('agenda_dias').select('*').eq('turma_id', turmaId)),
+        q(sb.from('participacoes').select('*').eq('turma_id', turmaId)), q(sb.from('grupo_avaliadores').select('*').eq('turma_id', turmaId)),
+        q(sb.rpc('equipe_nomes')), q(sb.rpc('empresas_nomes'))
+      ]);
+      var parts = r[2], ids = parts.map(function (x) { return x.id; }), jids = parts.map(function (x) { return x.jovem_id; });
+      var r2 = await Promise.all([ids.length ? q(sb.from('presencas').select('*').in('participacao_id', ids)) : [], jids.length ? q(sb.from('jovens').select('*').in('id', jids)) : [],
+        ids.length ? q(sb.from('notas').select('*').in('participacao_id', ids)).catch(function () { return []; }) : [],
+        ids.length ? q(sb.from('sugestoes').select('*').in('participacao_id', ids)).catch(function () { return []; }) : [],
+        ids.length ? q(sb.from('observacoes').select('*').in('participacao_id', ids)).catch(function () { return []; }) : [],
+        ids.length ? q(sb.from('desistencias').select('*').in('participacao_id', ids)).catch(function () { return []; }) : []]);
+      var notas = {}; r2[2].forEach(function (x) { notas[x.participacao_id + '|' + x.criterio_id] = { valor: Number(x.valor), pontos: x.pontos == null ? null : Number(x.pontos), av: x.avaliador_id, em: x.lancado_em }; });
+      var obs = {}; r2[4].forEach(function (x) { obs[x.participacao_id + '|' + x.teste_id] = { texto: x.texto, em: x.em, autor: x.autor_id }; });
+      var emp = r[5].filter(function (e) { return e.id === r[0].empresa_id; })[0] || {};
+      var pres = {}; r2[0].forEach(function (x) { pres[x.participacao_id + '|' + x.dia] = { presente: x.presente, em: x.registrado_em, justificada: !!x.justificada, justificativa: x.justificativa || '', jpor: x.justificada_por || null }; });
+      var grupos = {}; r[3].forEach(function (x) { grupos[x.grupo] = x.avaliador_id; });
+      var equipe = {}; r[4].forEach(function (x) { equipe[x.id] = x.nome; });
+      return { turma: t, processo: r[0], empresa: { id: emp.id, nome: emp.nome_fantasia || (r[0] && r[0].tipo === 'escola' ? 'PROFILING ESCOLAS' : '') },
+        dias: r[1].map(function (d) { return d.data; }).sort(),
+        jovens: parts.map(function (x) { var j = r2[1].filter(function (y) { return y.id === x.jovem_id; })[0] || {}; return { id: x.id, jovem_id: x.jovem_id, nome: j.nome, genero: j.genero, foto_path: j.foto_path, codigo: x.codigo, grupo: x.grupo }; })
+          .sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); }),
+        presencas: pres, grupos: grupos, equipe: equipe, notas: notas, sugestoes: r2[3], observacoes: obs, desistencias: r2[5], baixado_em: new Date().toISOString() };
+    },
+    salvarPresencas: function (lista) { return q(sb.rpc('salvar_presencas', { p: lista })); },
+    salvarGrupos: function (turmaId, lista) { return q(sb.rpc('salvar_grupos', { p_turma: turmaId, p: lista })); },
+    escolherGrupos: function (turmaId, grupos) { return q(sb.rpc('escolher_grupos', { p_turma: turmaId, p_grupos: grupos })); },
+    salvarLote: function (lista, aparelho) { return q(sb.rpc('salvar_lote', { p: lista, p_aparelho: aparelho || null })); },
+    salvarNotas: function (lista) { return q(sb.rpc('salvar_notas', { p: lista })); },
+    sugerirNotas: function (lista) { return q(sb.rpc('sugerir_notas', { p: lista })); },
+    salvarObservacoes: function (lista) { return q(sb.rpc('salvar_observacoes', { p: lista })); },
+    decidirSugestao: function (id, aprovar, motivo) { return q(sb.rpc('decidir_sugestao', { p_id: id, p_aprovar: aprovar, p_motivo: motivo || null })); },
+    apagarNota: function (pid, crit) { return q(sb.rpc('apagar_nota', { p_part: pid, p_criterio: crit })); },
+    pendencias: function (turmaId) { return q(sb.rpc('pendencias_turma', { p_turma: turmaId })); },
+    concluirTurma: function (turmaId) { return q(sb.rpc('concluir_turma', { p_turma: turmaId })); },
+    reabrirTurma: function (turmaId, motivo) { return q(sb.rpc('reabrir_turma', { p_turma: turmaId, p_motivo: motivo })); },
+    registrarDesistencia: function (pid, motivo, dia, obs) { return q(sb.rpc('registrar_desistencia', { p_part: pid, p_motivo: motivo, p_dia: dia || null, p_obs: obs || null })); },
+    removerDesistencia: function (pid) { return q(sb.rpc('remover_desistencia', { p_part: pid })); },
+    definirAvaliador: function (turmaId, grupo, avaliador) { return q(sb.rpc('definir_avaliador_grupo', { p_turma: turmaId, p_grupo: grupo, p_avaliador: avaliador })); }
+  };
+
+  var saude = {
+    carregar: function (versao) { return q(sb.rpc('saude_sistema', { p_versao_atual: versao || null })); },
+    detalhes: function (assinatura) { return q(sb.rpc('detalhes_erro', { p_assinatura: assinatura })); },
+    marcarVistos: function (assinatura) { return q(sb.rpc('marcar_erros_vistos', { p_assinatura: assinatura || null })); },
+    resolver: function (assinatura) { return q(sb.rpc('erro_resolver', { p_assinatura: assinatura, p_versao: window.CF_CONFIG.versao })); },
+    resolvidos: function () { return q(sb.rpc('erros_resolvidos_listar')); }
+  };
+
+  var classificacao = {
+    carregar: function (procId) { return q(sb.rpc('classificacao_processo', { p_proc: procId })); },
+    aplicarMotivo: function (part, motivo, obs) { return q(sb.rpc('aplicar_motivo', { p_part: part, p_motivo: motivo, p_obs: obs })); },
+    removerMotivo: function (part) { return q(sb.rpc('remover_motivo', { p_part: part })); },
+    pendencias: function (procId) { return q(sb.rpc('pendencias_revisao', { p_proc: procId })); },
+    enviarRevisao: function (procId) { return q(sb.rpc('enviar_revisao', { p_proc: procId })); },
+    liberar: function (procId) { return q(sb.rpc('liberar_processo', { p_proc: procId })); },
+    reabrir: function (procId, motivo) { return q(sb.rpc('reabrir_processo', { p_proc: procId, p_motivo: motivo })); }
+  };
+
+  window.CF.dados = { classificacao: classificacao, saude: saude, avaliacao: avaliacao, jovens: jovens, agenda: agenda, processos: processos, config: config, empresas: empresas, pessoas: pessoas, banco: banco, reduzirImagem: reduzirImagem };
 })();

@@ -7,13 +7,7 @@
   'use strict';
   var ui = window.CF.ui, api = window.CF.api, dados = window.CF.dados, esc = ui.esc;
   var NOMES_PERFIL = { admin: 'Administrador', avaliador: 'Avaliador', empresa: 'Empresa' };
-  var ABAS = [['empresas', 'Empresas', 'empresa'], ['avaliadores', 'Avaliadores', 'aval'], ['areas', 'Áreas', 'area'], ['testes', 'Testes', 'teste'], ['competencias', 'Competências', 'comp']];
-
-  function abaAtual() {
-    var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);
-    var a = m ? m[1] : 'empresas';
-    return ABAS.some(function (x) { return x[0] === a; }) ? a : 'empresas';
-  }
+  var ABAS = [['empresas', 'Empresas', 'empresa'], ['avaliadores', 'Avaliadores', 'aval'], ['areas', 'Áreas', 'area'], ['testes', 'Testes', 'teste'], ['competencias', 'Competências', 'comp'], ['materiais', 'Materiais', 'mat']];
 
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
 
@@ -39,23 +33,25 @@
   /* ================================================================
      Tela principal
      ================================================================ */
-  window.CF.telas = window.CF.telas || {};
-  window.CF.telas.cadastros = function (area, ctx) {
-    var aba = abaAtual();
-    var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', testes: 'Novo teste', competencias: 'Nova competência' };
-    var corAba = ABAS.filter(function (a) { return a[0] === aba; })[0][2];
-    area.innerHTML =
-      '<header class="cabecalho"><div><h1>Cadastros</h1><p>Empresas, avaliadores, áreas e competências</p></div>' +
-      '<button type="button" class="btn btn-' + corAba + '" id="b-novo">' + ui.icone(aba === 'avaliadores' ? 'link' : 'mais', 17) + esc(BOTOES[aba]) + '</button></header>' +
-      '<div class="abas-cad" role="tablist">' + ABAS.map(function (a) {
-        return '<a role="tab" href="#/cadastros/' + a[0] + '" data-cor="' + a[2] + '" aria-selected="' + (a[0] === aba) + '"><i class="ponto-cor cor-' + a[2] + '"></i>' + esc(a[1]) + '<span class="n" id="n-' + a[0] + '"></span></a>';
-      }).join('') + '</div>' +
-      '<div id="aba"><div class="girando" style="margin:30px auto"></div></div>';
-    var alvo = area.querySelector('#aba');
-    var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, testes: abaTestes, competencias: abaCompetencias }[aba];
-    fn(alvo, area.querySelector('#b-novo'), ctx).catch(function (e) {
-      erro(e); alvo.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível carregar. ' + esc(api.traduzErro(e)) + '</span></div>';
-    });
+  /* Página de um item das Configurações (empresas, avaliadores, áreas, testes, competências).
+     Chamada por views/configuracoes.js. */
+  var TITULOS = { empresas: ['Empresas', 'Empresas parceiras, com CNPJ, contato e logotipo'], avaliadores: ['Avaliadores', 'Quem tem acesso ao sistema e a aprovação de novos cadastros'],
+    areas: ['Áreas', 'Eixos do gráfico de radar'], materiais: ['Materiais', 'Materiais usados nos testes · quantidades de referência para 20 pessoas (4 grupos de 5)'], testes: ['Testes', 'Testes do banco e as competências de cada um'], competencias: ['Competências', 'Competências avaliadas nos testes'] };
+  window.CF.configPaginas = {
+    itens: ABAS,
+    render: function (area, aba, ctx) {
+      var BOTOES = { empresas: 'Nova empresa', avaliadores: 'Copiar link de cadastro', areas: 'Nova área', testes: 'Novo teste', competencias: 'Nova competência', materiais: 'Novo material' };
+      var corAba = ABAS.filter(function (a) { return a[0] === aba; })[0][2];
+      area.innerHTML = '<a class="voltar" href="#/config">← Configurações</a>' +
+        '<header class="cabecalho"><div><h1><i class="ponto-cor grande cor-' + corAba + '"></i>' + esc(TITULOS[aba][0]) + '</h1><p>' + esc(TITULOS[aba][1]) + '</p></div>' +
+        '<button type="button" class="btn btn-' + corAba + '" id="b-novo">' + ui.icone(aba === 'avaliadores' ? 'link' : 'mais', 17) + esc(BOTOES[aba]) + '</button></header>' +
+        '<div id="aba"><div class="girando" style="margin:30px auto"></div></div>';
+      var alvo = area.querySelector('#aba');
+      var fn = { empresas: abaEmpresas, avaliadores: abaAvaliadores, areas: abaAreas, testes: abaTestes, competencias: abaCompetencias, materiais: abaMateriais }[aba];
+      fn(alvo, area.querySelector('#b-novo'), ctx).catch(function (e) {
+        erro(e); alvo.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Não foi possível carregar. ' + esc(api.traduzErro(e)) + '</span></div>';
+      });
+    }
   };
 
   // Liga busca + "mostrar inativos" a uma função de desenho
@@ -93,7 +89,7 @@
           return '<tr><td><div class="cel-empresa"><span class="logo-mini" data-logo="' + esc(e.logo_path || '') + '">' + (e.logo_path ? '' : 'SEM LOGO') + '</span>' +
             '<div><b>' + esc(e.nome_fantasia) + '</b><small>' + esc(e.razao_social) + '</small></div></div></td>' +
             '<td class="num">' + esc(ui.formatarCNPJ(e.cnpj)) + '</td><td>' + esc(contato) + '</td>' +
-            '<td>' + ui.pill(e.ativa ? 'Ativa' : 'Inativa', 'neu') + '</td>' +
+            '<td>' + ui.pill(e.ativa ? 'Ativa' : 'Inativa', e.ativa ? 'sim' : 'nao') + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + e.id + '">Editar</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-logo]').forEach(function (el) {
@@ -142,10 +138,15 @@
           campo('f-cep', 'CEP', e.cep ? e.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '', { ph: '00000-000', modo: 'numeric', max: 9 }) +
           campo('f-resp', 'Responsável', e.responsavel, { ph: 'Nome de quem acompanha o processo' }) +
           campo('f-telresp', 'Telefone do responsável', e.telefone_responsavel, { ph: '(11) 00000-0000', modo: 'tel', max: 15 }) +
+          '<label class="campo"><span>Contato pela Kolping</span><select class="entrada" id="f-contk"><option value="">—</option>' +
+            ['EVERTON', 'RACHEL'].map(function (n) { return '<option value="' + n + '"' + (e.contato_kolping === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') +
+            '</select><small class="dica">Quem envia os e-mails para esta empresa</small></label>' +
           '<div class="campo largo"><span>Logotipo</span><div class="logo-envio"><span class="logo-mini grande" id="f-logo-previa">' + (e.logo_path ? '' : 'Prévia') + '</span>' +
             '<span class="dica" style="flex:1;min-width:180px">PNG ou JPG, de preferência com fundo transparente. Aparece nos PDFs, no Excel e no portal.</span>' +
             '<button type="button" class="btn btn-p" id="f-logo-btn">Escolher arquivo</button></div></div>' +
           (e.id ? marcar('f-ativa', 'Empresa ativa', e.ativa !== false, 'Empresas inativas não aparecem para novos processos.') : '') +
+          '<div class="campo largo"><span>Vagas da empresa</span><small class="dica" style="margin:0 0 6px">Aparecem para escolher no "Novo Profiling Empresa".</small><div id="f-vagas" class="vg-lista"></div>' +
+            '<button type="button" class="btn btn-p" id="f-vaga-add" style="align-self:flex-start;margin-top:6px">+ Adicionar vaga</button></div>' +
         '</div>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar empresa', principal: true, aoClicar: salvar }]
     });
@@ -155,7 +156,7 @@
     btSalvar.disabled = !liberado;
     function liberar() { liberado = true; resto.classList.remove('oculto'); btSalvar.disabled = false; }
     function avisar(tipo, html) { status.innerHTML = html ? '<div class="aviso aviso-' + tipo + '">' + (tipo === 'carregando' ? '<span class="girando mini"></span>' : ui.icone(tipo === 'ok' ? 'ok' : 'alerta', 20)) + '<span>' + html + '</span></div>' : ''; }
-    function definir(id, v) { var x = el.querySelector(id); if (x && v != null && v !== '') { x.value = v; } }
+    function definir(id, v) { var x = el.querySelector(id); if (x && v != null && v !== '') { x.value = x.type === 'email' ? v : ui.maiusculas(v); } }
     ['#f-tel', '#f-telresp'].forEach(function (id) { var x = el.querySelector(id); x.addEventListener('input', function () { x.value = ui.formatarTelefone(x.value); }); });
     var cep = el.querySelector('#f-cep'); cep.addEventListener('input', function () { cep.value = ui.soNumeros(cep.value).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2'); });
 
@@ -214,6 +215,37 @@
       inp.click();
     });
 
+    // ---- vagas da empresa (nome, área, turno) ----
+    var vagas = [], vagasRemov = [], areasV = [];
+    var TURNOS = [['', 'Turno…'], ['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite'], ['integral', 'Integral']];
+    function desenharVagas() {
+      var box = document.querySelector('#f-vagas'); if (!box) return;
+      box.innerHTML = vagas.length ? vagas.map(function (v, i) {
+        return '<div class="vg-lin' + (v.ativa === false ? ' vg-off' : '') + '"><input class="entrada" data-vn="' + i + '" maxlength="120" placeholder="Nome da vaga" value="' + esc(v.nome || '') + '">' +
+          '<select class="entrada" data-va="' + i + '" aria-label="Área"><option value="">Área…</option>' + areasV.map(function (a) { return '<option value="' + a.id + '"' + (a.id === v.area_id ? ' selected' : '') + '>' + esc(a.nome) + '</option>'; }).join('') + '</select>' +
+          '<select class="entrada" data-vt="' + i + '" aria-label="Turno">' + TURNOS.map(function (t) { return '<option value="' + t[0] + '"' + (t[0] === (v.turno || '') ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select>' +
+          '<button type="button" class="btn btn-p btn-perigo" data-vx="' + i + '" aria-label="Remover vaga">✕</button></div>';
+      }).join('') : '<p class="dica" style="margin:0">Nenhuma vaga cadastrada.</p>';
+      box.querySelectorAll('[data-vn]').forEach(function (x) { x.addEventListener('input', function () { vagas[+x.getAttribute('data-vn')].nome = x.value; }); });
+      box.querySelectorAll('[data-va]').forEach(function (x) { x.addEventListener('change', function () { vagas[+x.getAttribute('data-va')].area_id = x.value || null; }); });
+      box.querySelectorAll('[data-vt]').forEach(function (x) { x.addEventListener('change', function () { vagas[+x.getAttribute('data-vt')].turno = x.value || null; }); });
+      box.querySelectorAll('[data-vx]').forEach(function (x) { x.addEventListener('click', function () { var v = vagas.splice(+x.getAttribute('data-vx'), 1)[0]; if (v.id) vagasRemov.push(v.id); desenharVagas(); }); });
+    }
+    (async function () {
+      try {
+        var ra = await window.CF.sb.from('areas').select('id,nome,ordem').order('ordem'); areasV = (ra && ra.data) || [];
+        if (e.id) { var rv = await window.CF.sb.from('empresa_vagas').select('*').eq('empresa_id', e.id).order('nome'); vagas = (rv && rv.data) || []; }
+      } catch (x) { /* sem vagas */ }
+      desenharVagas();
+      var bAdd = document.querySelector('#f-vaga-add');
+      if (bAdd) bAdd.addEventListener('click', function () { vagas.push({ nome: '', area_id: null, turno: null, ativa: true }); desenharVagas(); var l = document.querySelectorAll('#f-vagas [data-vn]'); if (l.length) l[l.length - 1].focus(); });
+    })();
+    async function salvarVagas(empresaId) {
+      if (vagasRemov.length) await window.CF.sb.from('empresa_vagas').delete().in('id', vagasRemov);
+      var lista = vagas.filter(function (v) { return (v.nome || '').trim(); }).map(function (v) { var o = { empresa_id: empresaId, nome: ui.maiusculas(v.nome.trim().replace(/\s+/g, ' ')), area_id: v.area_id || null, turno: v.turno || null, ativa: v.ativa !== false }; if (v.id) o.id = v.id; return o; });
+      if (lista.length) { var r = await window.CF.sb.from('empresa_vagas').upsert(lista); if (r.error) throw r.error; }
+    }
+
     async function salvar(fundo) {
       if (!liberado) { ui.toast('Busque o CNPJ primeiro.', 'erro'); return false; }
       var v = function (id) { var x = fundo.querySelector(id); return x ? x.value.trim() : ''; };
@@ -223,7 +255,7 @@
         id: e.id, razao_social: v('#f-razao').replace(/\s+/g, ' '), nome_fantasia: v('#f-fantasia').replace(/\s+/g, ' '),
         cnpj: ui.soNumeros(v('#f-cnpj')), telefone: v('#f-tel') || null, email: v('#f-email').toLowerCase() || null,
         endereco: v('#f-end') || null, cidade: (cid[0] || '').trim() || null, uf: /^[A-Z]{2}$/.test(uf) ? uf : null,
-        cep: ui.soNumeros(v('#f-cep')) || null, responsavel: v('#f-resp') || null, telefone_responsavel: v('#f-telresp') || null,
+        cep: ui.soNumeros(v('#f-cep')) || null, responsavel: v('#f-resp') || null, telefone_responsavel: v('#f-telresp') || null, contato_kolping: v('#f-contk') || null,
         situacao_receita: situacao
       };
       if (e.id) obj.ativa = fundo.querySelector('#f-ativa').checked;
@@ -234,6 +266,7 @@
       return ui.executar(fundo.querySelector('.janela-pe .btn-pri'), 'Salvando…', async function () {
         try {
           var salva = await dados.empresas.salvar(obj);
+          try { await salvarVagas(salva.id); } catch (xv) { ui.toast('Empresa salva, mas as vagas não: ' + api.traduzErro(xv), 'erro'); }
           if (novoLogo) {
             var caminho = await dados.empresas.enviarLogo(salva.id, novoLogo);
             await dados.empresas.salvar({ id: salva.id, logo_path: caminho });
@@ -328,13 +361,31 @@
           var perfil = NOMES_PERFIL[p.perfil] + (p.perfil === 'empresa' ? ' · ' + nomeEmpresa(p.empresa_id) : '');
           var situ = !p.ativo ? (p.aprovado ? 'Desativado' : 'Recusado') : 'Ativo';
           return '<tr><td><div class="cel-pessoa">' + avatarHTML(p) + '<b>' + esc(p.nome || '(sem nome)') + (p.id === eu ? ' <span class="voce">(você)</span>' : '') + '</b></div></td>' +
-            '<td>' + esc(p.email) + '</td><td>' + esc(perfil) + '</td><td>' + ui.pill(situ, 'neu') + '</td>' +
-            '<td><div class="acoes">' + (p.id === eu ? '' : '<button type="button" class="btn btn-p" data-editar="' + esc(p.id) + '">Editar</button>') + '</div></td></tr>';
+            '<td>' + esc(p.email) + '</td><td>' + esc(perfil) + '</td><td>' + ui.pill(situ, p.ativo ? 'sim' : 'nao') + '</td>' +
+            '<td><div class="acoes">' + (p.id === eu ? '' : '<button type="button" class="btn btn-p" data-editar="' + esc(p.id) + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir-p="' + esc(p.id) + '">Excluir</button>') + '</div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-editar]').forEach(function (b) {
         b.addEventListener('click', function () { formPessoa(lista.filter(function (p) { return p.id === b.getAttribute('data-editar'); })[0]); });
       });
+      box.querySelectorAll('[data-excluir-p]').forEach(function (b) {
+        b.addEventListener('click', function () { excluirPessoa(lista.filter(function (p) { return p.id === b.getAttribute('data-excluir-p'); })[0]); });
+      });
       fotos(bp); fotos(box);
+    }
+    function excluirPessoa(p) {
+      var j = ui.janela({ titulo: 'Excluir ' + (p.nome || p.email) + ' do sistema?', confirmarDescarte: false,
+        corpo: '<p style="margin:0;color:var(--texto-2)">O acesso e o cadastro serão <b>apagados definitivamente</b>. Para voltar, a pessoa precisará se cadastrar de novo.</p>' +
+          '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>As notas e observações que ela já lançou continuam nos processos, com o nome guardado.</span></div>' +
+          '<label class="campo" for="ex-conf"><span>Para confirmar, digite <b>EXCLUIR</b></span><input class="entrada" id="ex-conf" autocomplete="off"></label>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Excluir definitivamente', principal: true, aoClicar: async function (f) {
+          if (f.querySelector('#ex-conf').value.trim().toUpperCase() !== 'EXCLUIR') { ui.toast('Digite EXCLUIR para confirmar.', 'erro'); return false; }
+          try {
+            if (p.foto_path) { try { await window.CF.sb.storage.from('avatares').remove([p.foto_path]); } catch (e) { /* segue mesmo sem apagar a foto */ } }
+            await dados.pessoas.excluir(p.id);
+            ui.toast((p.nome || p.email) + ' foi excluído(a) do sistema.', 'ok'); await recarregar(); return true;
+          } catch (x) { erro(x); return false; }
+        } }] });
+      j.elemento.querySelector('.janela-pe .btn-pri').classList.add('btn-perigo-cheio');
     }
     function formPessoa(p) {
       var j = ui.janela({
@@ -373,7 +424,7 @@
      ================================================================ */
   async function abaAreas(alvo, botaoNovo) {
     var b = await dados.banco.carregarTudo();
-    alvo.innerHTML = '<p class="dica" style="margin:0">As áreas são os eixos do gráfico de radar. A ordem define a posição de cada eixo.</p>' + barraBusca('Buscar área') + '<div id="lista"></div>';
+    alvo.innerHTML = '<p class="dica" style="margin:4px 0 12px">As áreas são os eixos do gráfico de radar. A ordem define a posição de cada eixo.</p>' + barraBusca('Buscar área') + '<div id="lista"></div>';
     function desenhar() {
       contar('areas', b.areas.filter(function (a) { return a.ativa; }).length);
       var f = filtro(alvo);
@@ -383,7 +434,7 @@
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Ordem</th><th>Área</th><th>Testes</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (a) {
           var n = b.testes.filter(function (t) { return t.area_id === a.id && t.ativo; }).length;
-          return '<tr><td class="num">' + a.ordem + '</td><td><b>' + esc(a.nome) + '</b></td><td class="num">' + n + '</td><td>' + ui.pill(a.ativa ? 'Ativa' : 'Inativa', 'neu') + '</td>' +
+          return '<tr><td class="num">' + a.ordem + '</td><td><b>' + esc(a.nome) + '</b></td><td class="num">' + n + '</td><td>' + ui.pill(a.ativa ? 'Ativa' : 'Inativa', a.ativa ? 'sim' : 'nao') + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + a.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + a.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
       box.querySelectorAll('[data-editar]').forEach(function (bt) {
@@ -405,6 +456,7 @@
           var ordem = parseInt(fundo.querySelector('#fa-ordem').value, 10);
           if (!nome) { ui.toast('Informe o nome da área.', 'erro'); return false; }
           if (isNaN(ordem) || ordem < 0) { ui.toast('Informe uma ordem válida (0 ou mais).', 'erro'); return false; }
+          if (b.areas.some(function (x) { return x.id !== a.id && ui.normalizar(x.nome) === ui.normalizar(nome); })) { ui.toast('Já existe uma área com este nome.', 'erro'); return false; }
           try {
             await dados.banco.salvarArea({ id: a.id, nome: nome, ordem: ordem, ativa: a.id ? fundo.querySelector('#fa-ativa').checked : true });
             ui.toast('Área salva.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); return true;
@@ -465,7 +517,7 @@
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Teste</th><th>Área</th><th>Competências</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (t) {
           var a = areaDe(t), n = comps(t);
-          var situ = !t.ativo ? ui.pill('Inativo', 'neu') : (!n ? ui.pill('Sem vínculo', 'off') : (t.padrao ? ui.pill('Padrão', 'neu') : ui.pill('Ativo', 'neu')));
+          var situ = !t.ativo ? ui.pill('Inativo', 'nao') : (!n ? ui.pill('Sem vínculo', 'off') : ui.pill('Ativo', 'sim') + (t.padrao ? ' ' + ui.pill('Padrão', 'neu') : ''));
           return '<tr><td><b>' + esc(t.nome) + '</b></td><td>' + (a ? '<span class="tag-area">' + esc(a.nome) + '</span>' : ui.pill('sem área', 'off')) + '</td><td class="num">' + n + '</td><td>' + situ + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + t.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + t.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
@@ -475,6 +527,58 @@
     ligarFiltros(alvo, desenhar);
     desenhar();
     botaoNovo.addEventListener('click', function () { ed.formTeste(null, null); });
+  }
+
+  /* ================================================================
+     MATERIAIS
+     ================================================================ */
+  async function abaMateriais(alvo, botaoNovo) {
+    var b = await dados.banco.carregarTudo();
+    function usos(id) { var ts = {}; (b.testeMateriais || []).forEach(function (m) { if (m.material_id === id) ts[m.teste_id] = 1; }); return b.testes.filter(function (t) { return ts[t.id]; }); }
+    alvo.innerHTML = barraBusca('Buscar material') + '<div id="lista"></div>';
+    function desenhar() {
+      contar('materiais', (b.materiais || []).filter(function (m) { return m.ativo; }).length);
+      var f = filtro(alvo);
+      var itens = (b.materiais || []).filter(function (m) { return (m.ativo || f.inativos) && (!f.texto || ui.normalizar(m.nome).indexOf(f.texto) >= 0); });
+      var box = alvo.querySelector('#lista');
+      if (!itens.length) { box.innerHTML = vazio((b.materiais || []).length ? 'Nenhum material encontrado.' : 'Nenhum material cadastrado ainda. Use "Novo material", ou cadastre direto no teste.'); return; }
+      box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Material</th><th>Unidade</th><th>Usado em</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
+        itens.map(function (m) {
+          var u = usos(m.id);
+          return '<tr><td><b>' + esc(m.nome) + '</b></td><td>' + esc(m.unidade) + '</td><td>' + (u.length ? esc(u.length + ' teste' + (u.length > 1 ? 's' : '')) : '<span class="dica">nenhum teste</span>') + '</td>' +
+            '<td>' + ui.pill(m.ativo ? 'Ativo' : 'Inativo', m.ativo ? 'sim' : 'nao') + '</td>' +
+            '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + m.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + m.id + '">Excluir</button></div></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      box.querySelectorAll('[data-editar]').forEach(function (bt) { bt.addEventListener('click', function () { form(b.materiais.filter(function (m) { return m.id === bt.getAttribute('data-editar'); })[0]); }); });
+      box.querySelectorAll('[data-excluir]').forEach(function (bt) { bt.addEventListener('click', function () { excluir(b.materiais.filter(function (m) { return m.id === bt.getAttribute('data-excluir'); })[0]); }); });
+    }
+    function form(m) {
+      m = m || { unidade: 'UN.', ativo: true };
+      ui.janela({ titulo: m.id ? 'Editar material' : 'Novo material',
+        corpo: '<div class="form-grade">' + campo('fm-nome', 'Nome do material', m.nome, { obrig: true, max: 80, ph: 'Ex.: FITA CREPE' }) + campo('fm-un', 'Unidade', m.unidade, { max: 20, ph: 'UN., ROLO, FOLHA, METRO' }) +
+          (m.id ? '<div class="largo">' + marcar('fm-ativo', 'Material ativo', m.ativo) + '</div>' : '') + '</div>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar material', principal: true, aoClicar: async function (f) {
+          var nome = ui.maiusculas(f.querySelector('#fm-nome').value.trim().replace(/\s+/g, ' ')), un = ui.maiusculas(f.querySelector('#fm-un').value.trim()) || 'UN.';
+          if (!nome) { ui.toast('Informe o nome do material.', 'erro'); return false; }
+          if ((b.materiais || []).some(function (x) { return x.id !== m.id && ui.normalizar(x.nome) === ui.normalizar(nome); })) { ui.toast('Já existe um material com este nome.', 'erro'); return false; }
+          try { await dados.banco.salvarMaterial({ id: m.id, nome: nome, unidade: un, ativo: m.id ? f.querySelector('#fm-ativo').checked : true }); ui.toast('Material salvo.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); return true; }
+          catch (x) { erro(x); return false; }
+        } }] });
+    }
+    async function excluir(m) {
+      var u = usos(m.id);
+      if (u.length) {
+        ui.janela({ titulo: 'Não é possível excluir este material', confirmarDescarte: false,
+          corpo: '<p style="margin:0;color:var(--texto-2)"><b>' + esc(m.nome) + '</b> está em <b>' + u.length + ' teste(s)</b>. Tire-o desses testes primeiro, ou desative o material:</p><ul class="lista-pend">' + u.map(function (t) { return '<li>' + esc(t.nome) + '</li>'; }).join('') + '</ul>',
+          botoes: [{ texto: 'Entendi', principal: true, aoClicar: function () { return true; } }] });
+        return;
+      }
+      if (!(await ui.confirmar('Excluir o material?', '"' + m.nome + '" não está em nenhum teste.', 'Excluir', 'Cancelar'))) return;
+      try { await dados.banco.excluirMaterial(m.id); ui.toast('Material excluído.', 'ok'); b = await dados.banco.carregarTudo(); desenhar(); } catch (x) { erro(x); }
+    }
+    ligarFiltros(alvo, desenhar);
+    desenhar();
+    botaoNovo.addEventListener('click', function () { form(null); });
   }
 
   /* ================================================================
@@ -506,7 +610,7 @@
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Competência</th><th>Qualificação-chave</th><th>Testes</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (c) {
           var n = nTestes(c.id);
-          var situ = !c.ativa ? ui.pill('Inativa', 'neu') : (n ? ui.pill('Ativa', 'neu') : ui.pill('Sem vínculo', 'off'));
+          var situ = !c.ativa ? ui.pill('Inativa', 'nao') : (n ? ui.pill('Ativa', 'sim') : ui.pill('Sem vínculo', 'off'));
           return '<tr><td><b>' + esc(c.nome) + '</b></td><td>' + esc(nomeQual(c.qualificacao_id)) + '</td><td class="num">' + n + '</td><td>' + situ + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + c.id + '">Editar</button><button type="button" class="btn btn-p btn-perigo" data-excluir="' + c.id + '">Excluir</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
@@ -533,6 +637,7 @@
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar competência', principal: true, aoClicar: async function (fundo) {
           var nome = fundo.querySelector('#fc-nome').value.trim().replace(/\s+/g, ' ');
           if (!nome) { ui.toast('Informe o nome da competência.', 'erro'); return false; }
+          if (b.competencias.some(function (x) { return x.id !== c.id && ui.normalizar(x.nome) === ui.normalizar(nome); })) { ui.toast('Já existe uma competência com este nome.', 'erro'); return false; }
           try {
             if (!c.id) {
               var teste = fundo.querySelector('#fc-teste').value;

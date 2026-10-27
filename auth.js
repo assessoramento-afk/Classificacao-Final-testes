@@ -52,11 +52,32 @@
     if (aba === 'cadastro') formCadastro(raiz); else if (aba === 'esqueci') formEsqueci(raiz); else formEntrar(raiz);
   }
 
+  /* ---------- Entrar com Google / Microsoft ---------- */
+  var LOGO_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+  var LOGO_M = '<svg width="18" height="18" viewBox="0 0 23 23" aria-hidden="true"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>';
+  function botoesContas() {
+    if (!C.loginGoogle && !C.loginMicrosoft) return '';
+    return '<div class="sso">' +
+      (C.loginGoogle ? '<button type="button" class="btn btn-bloco" data-sso="google">' + LOGO_G + ' Entrar com Google <small>@kolpingsp.org</small></button>' : '') +
+      (C.loginMicrosoft ? '<button type="button" class="btn btn-bloco" data-sso="azure">' + LOGO_M + ' Entrar com Microsoft <small>@kolping-sp.org.br</small></button>' : '') +
+      '</div><div class="sso-ou">ou com e-mail e senha (empresas e quem preferir)</div>';
+  }
+  async function entrarCom(provedor, botao) {
+    if (!navigator.onLine) { ui.toast('Para entrar com ' + (provedor === 'google' ? 'Google' : 'Microsoft') + ' é preciso internet.', 'erro'); return; }
+    if (botao) { botao.disabled = true; }
+    var op = { redirectTo: window.location.origin + window.location.pathname };
+    if (provedor === 'google') op.queryParams = { hd: 'kolpingsp.org', prompt: 'select_account' };
+    if (provedor === 'azure') { op.scopes = 'email'; op.queryParams = { prompt: 'select_account' }; }
+    var r = await sb.auth.signInWithOAuth({ provider: provedor, options: op });   // vai para a página do Google/Microsoft e volta já conectado
+    if (r.error) { if (botao) botao.disabled = false; ui.toast(api.traduzErro(r.error), 'erro'); }
+  }
+  function ligarContas(area) { area.querySelectorAll('[data-sso]').forEach(function (b) { b.addEventListener('click', function () { entrarCom(b.getAttribute('data-sso'), b); }); }); }
+
   function msg(raiz, tipo, texto) { raiz.querySelector('#area-msg').innerHTML = texto ? aviso(tipo, texto) : ''; }
 
   function formEntrar(raiz) {
     var area = raiz.querySelector('#area-form');
-    area.innerHTML =
+    area.innerHTML = botoesContas() +
       '<form class="form" novalidate>' +
         '<label class="campo" for="e-email"><span>E-mail <span class="obrig">*</span></span>' +
         '<input class="entrada" id="e-email" type="email" required autocomplete="email" inputmode="email"></label>' +
@@ -64,7 +85,7 @@
         '<button type="submit" class="btn btn-pri btn-bloco">Entrar</button>' +
         '<button type="button" class="btn-link" id="ir-esqueci">Esqueci minha senha</button>' +
       '</form>';
-    ui.ligarVerSenha(area);
+    ui.ligarVerSenha(area); ligarContas(area);
     area.querySelector('#ir-esqueci').addEventListener('click', function () { mostrarAcesso(raiz, 'esqueci'); });
     area.querySelector('form').addEventListener('submit', async function (ev) {
       ev.preventDefault();
@@ -74,6 +95,7 @@
       msg(raiz, '', '');
       await executar(ev.submitter || area.querySelector('[type=submit]'), 'Entrando…', async function () {
         var r = await sb.auth.signInWithPassword({ email: email, password: senha });
+        if (!r.error && window.CF.offline) window.CF.offline.guardarChave(email, senha);
         if (r.error) msg(raiz, 'erro', api.traduzErro(r.error));
         // se deu certo, o app.js recebe o evento de login e abre o sistema
       });
@@ -177,5 +199,5 @@
     });
   }
 
-  window.CF.auth = { mostrarAcesso: mostrarAcesso, mostrarNovaSenha: mostrarNovaSenha };
+  window.CF.auth = { entrarCom: entrarCom,  mostrarAcesso: mostrarAcesso, mostrarNovaSenha: mostrarNovaSenha };
 })();

@@ -16,10 +16,13 @@
   var ICONES = {
     painel: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
     processos: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
+    escola: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/><path d="M22 9v6"/>',
     agenda: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     cadastros: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
-    banco: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/>',
+    banco: '<path d="M3 9.5 12 4l9 5.5"/><path d="M4.5 10v8M9 10v8M15 10v8M19.5 10v8"/><path d="M3 20h18"/>',
     config: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+    graficos: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    acomp: '<path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/>',
     portal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 20V9"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     olho: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -27,6 +30,7 @@
     nuvem: '<path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z"/><path d="M9 13l2 2 4-4"/>',
     nuvemOff: '<path d="M3 3l18 18"/><path d="M8.5 8.2A5 5 0 0 0 7 18h10M19.5 16.8A4 4 0 0 0 18 10a6 6 0 0 0-8-5.4"/>',
     alerta: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+    avaliar: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4"/>',
     busca: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
     mais: '<path d="M12 5v14M5 12h14"/>',
     link: '<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
@@ -63,7 +67,7 @@
     fundo.className = 'janela-fundo';
     var id = 'j' + Date.now();
     fundo.innerHTML =
-      '<div class="janela card" role="dialog" aria-modal="true" aria-labelledby="' + id + '">' +
+      '<div class="janela card" role="dialog" aria-modal="true" aria-labelledby="' + id + '"' + (opcoes.largura ? ' style="max-width:' + opcoes.largura + 'px;width:calc(100% - 24px)"' : '') + '>' +
         '<div class="janela-cab"><h2 id="' + id + '">' + esc(opcoes.titulo) + '</h2>' +
         '<button type="button" class="janela-x" aria-label="Fechar">×</button></div>' +
         '<div class="janela-corpo">' + (opcoes.corpo || '') + '</div>' +
@@ -113,7 +117,7 @@
       fundo.style.zIndex = '60';
       fundo.innerHTML =
         '<div class="janela card" role="alertdialog" aria-modal="true" style="max-width:420px">' +
-          '<div class="janela-corpo"><h2 style="font-size:18px">' + esc(titulo) + '</h2><p style="margin:0;color:var(--texto-2)">' + esc(mensagem) + '</p></div>' +
+          '<div class="janela-corpo"><h2 style="font-size:18px">' + esc(titulo) + '</h2><p style="margin:0;color:var(--texto-2);white-space:pre-line">' + esc(mensagem) + '</p></div>' +
           '<div class="janela-pe"><button type="button" class="btn" data-r="sim">' + esc(textoSim || 'Sim') + '</button>' +
           '<button type="button" class="btn btn-pri" data-r="nao">' + esc(textoNao || 'Cancelar') + '</button></div>' +
         '</div>';
@@ -197,6 +201,31 @@
     finally { if (botao) { botao.disabled = false; botao.textContent = original; } }
   }
 
-  window.CF.ui = { pill: pill, normalizar: normalizar, soNumeros: soNumeros, formatarCNPJ: formatarCNPJ, cnpjValido: cnpjValido,
+  /* Tudo o que é digitado fica em MAIÚSCULAS (menos e-mail, senha, busca,
+     números e campos marcados com data-normal, como o texto do agradecimento) */
+  function deveMaiusculo(el) {
+    if (!el || !el.classList || !el.classList.contains('entrada') || el.hasAttribute('data-normal')) return false;
+    // senhas nunca (mesmo com "mostrar senha", que troca o tipo para texto)
+    if (/senha|password/i.test(el.id + ' ' + (el.getAttribute('autocomplete') || '') + ' ' + (el.getAttribute('name') || ''))) return false;
+    if (el.tagName === 'TEXTAREA') return true;
+    if (el.tagName !== 'INPUT') return false;
+    var t = (el.getAttribute('type') || 'text').toLowerCase();
+    return t === 'text' || t === 'tel';
+  }
+  var compondo = false;
+  document.addEventListener('compositionstart', function () { compondo = true; }, true);
+  document.addEventListener('compositionend', function (e) { compondo = false; maiusculo(e.target); }, true);
+  function maiusculo(el) {
+    if (!deveMaiusculo(el)) return;
+    var v = el.value, m = v.toLocaleUpperCase('pt-BR');
+    if (v === m) return;
+    var i = el.selectionStart, f = el.selectionEnd;
+    el.value = m;
+    try { el.setSelectionRange(i, f); } catch (e) { /* alguns tipos não aceitam */ }
+  }
+  document.addEventListener('input', function (e) { if (!compondo) maiusculo(e.target); }, true);
+  function maiusculas(t) { return t == null ? t : String(t).toLocaleUpperCase('pt-BR'); }
+
+  window.CF.ui = { maiusculas: maiusculas, pill: pill, normalizar: normalizar, soNumeros: soNumeros, formatarCNPJ: formatarCNPJ, cnpjValido: cnpjValido,
     formatarTelefone: formatarTelefone, executar: executar, logo: logo, esc: esc, icone: icone, toast: toast, janela: janela, confirmar: confirmar, ligarVerSenha: ligarVerSenha, campoSenha: campoSenha, iniciais: iniciais };
 })();

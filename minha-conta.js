@@ -85,7 +85,8 @@
               if (s1 !== s2) { ui.toast('As duas senhas não são iguais.', 'erro'); return false; }
               var r = await sb.auth.updateUser({ password: s1 });
               if (r.error) { ui.toast(api.traduzErro(r.error), 'erro'); return false; }
-              ui.toast('Senha alterada com sucesso.', 'ok');
+              var pf = window.CF.perfilAtual || {}; if (window.CF.offline && pf.email) window.CF.offline.guardarChave(pf.email, s1);   // a senha também serve para entrar sem internet
+              ui.toast('Senha salva. Ela também serve para entrar sem internet.', 'ok');
               return true;
             } }
         ]

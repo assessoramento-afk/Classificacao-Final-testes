@@ -10,6 +10,11 @@
   var TEXTO_PADRAO = 'A Kolping Estadual de São Paulo agradece à {empresa} pela confiança e pela parceria neste processo seletivo para a vaga de {vaga}.\n\n' +
     'Juntos, abrimos portas para que jovens deem o primeiro passo no mundo do trabalho, com oportunidade, preparo e dignidade.';
   var ICONES = {
+    'escolas-cks': '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
+    feriados: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/>',
+    'email-acomp': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    integracoes: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    permissoes: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.5"/>',
     empresas: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
     avaliadores: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
     areas: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
@@ -28,7 +33,7 @@
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
   function fmt(n) { return n == null ? '' : Number(n).toFixed(2).replace('.', ','); }
   function numero(v) { var n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; }
-  function subAtual() { var m = (window.location.hash || '').match(/^#\/config\/([a-z]+)/); return m ? m[1] : null; }
+  function subAtual() { var m = (window.location.hash || '').match(/^#\/config\/([a-z-]+)/); return m ? m[1] : null; }
   function cabecalho(titulo, sub) {
     return '<a class="voltar" href="#/config">← Configurações</a><header class="cabecalho"><div><h1>' + esc(titulo) + '</h1><p>' + esc(sub) + '</p></div></header>';
   }
@@ -38,11 +43,16 @@
     var sub = subAtual();
     if (sub && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias', 'materiais'].indexOf(sub) >= 0) { window.CF.configPaginas.render(area, sub, ctx); return; }
     if (sub === 'notas') return paginaNotas(area);
-    if (sub === 'prereserva') return paginaPreReserva(area);
+    if (sub === 'prereserva') { window.location.hash = '#/config'; return; }
     if (sub === 'agradecimento') return paginaAgradecimento(area);
+    if (sub === 'email-acomp') return paginaEmailAcomp(area);
     if (sub === 'termo') return paginaTermo(area);
     if (sub === 'modelos') return paginaModelos(area);
     if (sub === 'saude') return paginaSaude(area);
+    if (sub === 'permissoes') return window.CF.telas.permissoes(area);
+    if (sub === 'integracoes') return paginaIntegracoes(area);
+    if (sub === 'feriados') return paginaFeriados(area);
+    if (sub === 'escolas-cks') return paginaEscolas(area);
     paginaInicial(area);
   };
 
@@ -76,17 +86,21 @@
     area.querySelector('#cfg-cards').innerHTML =
       '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
         card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
-        card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') + '</div></section>' +
+        card('escolas-cks', 'escola', 'Escolas e CKs', 'De onde vêm os alunos do Profiling Escolas') +
+        card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') +
+        '</div></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
-        card('notas', 'padrao', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
-        card('prereserva', 'padrao', 'Pré-reserva da agenda', cfg ? 'Prazo ' + cfg.prazo_pre_reserva_dias + ' dias · aviso ' + cfg.aviso_pre_reserva_dias + ' dia' + (cfg.aviso_pre_reserva_dias === 1 ? '' : 's') + ' antes' : '') +
+        card('notas', 'nota', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
         '</div></section>' +
       '<section class="grupo"><h2>Documentos</h2><div class="cards-cfg">' +
-        card('agradecimento', 'padrao', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('termo', 'padrao', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'padrao', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
+        card('agradecimento', 'agr', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'mail', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'termo', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'modelo', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
       '<section class="grupo"><h2>Sistema</h2><div class="cards-cfg">' +
-        card('saude', 'padrao', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
+        (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'perm', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
+        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
+        card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
+        card('saude', 'saude', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
   /* ---------- Notas de corte ---------- */
@@ -169,8 +183,44 @@
     var pct = limiteMb ? bytes * 100 / (limiteMb * 1048576) : 0, cls = pct >= 95 ? 'uso-verm' : (pct >= 80 ? 'uso-amar' : 'uso-verde');
     return '<div class="uso-l"><b>' + rotulo + '</b><div class="uso-barra ' + cls + '"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></div><span class="' + cls + '-tx">' + mb(bytes) + ' de ' + mb(limiteMb * 1048576) + ' · ' + Math.round(pct) + '%</span></div>';
   }
+  /* ---------- Cópias de segurança (Saúde do sistema) ---------- */
+  function proximoDomingo() {
+    var d = new Date(); d.setHours(3, 0, 0, 0);
+    var falta = (7 - d.getDay()) % 7; if (falta === 0 && new Date() >= d) falta = 7;
+    d.setDate(d.getDate() + falta); return d;
+  }
+  async function blocoCopias(box) {
+    var r = await window.CF.sb.from('backups').select('*').order('iniciado_em', { ascending: false }).limit(9);
+    if (r.error) { box.innerHTML = '<section class="card bloco sd-bloco"><span class="lbl">Cópias de segurança</span><p class="dica" style="margin:0">Rode o SQL fase6_11 no Supabase para ativar as cópias.</p></section>'; return; }
+    var l = r.data || [], u = l.filter(function (x) { return x.situacao === 'ok'; })[0], ult = l[0];
+    function kb(n) { return n == null ? '—' : n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+    function quando(s) { return new Date(s).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    var cor = ult && ult.situacao === 'erro' ? '#D9534F' : (u ? '#3FA66B' : '#8a8486');
+    var px = proximoDomingo();
+    box.innerHTML = '<section class="card bk-card" style="--c:' + cor + '"><span class="bk-ic">🗄️</span><div style="flex:1;min-width:220px">' +
+      (u ? '<b>Última cópia: ' + esc(quando(u.concluido_em || u.iniciado_em)) + ' <span class="bk-ok">ok</span></b><small>Banco: ' + kb(u.tamanho_bytes) + ' · ' + (u.registros || 0).toLocaleString('pt-BR') + ' registros · Fotos no espelho: ' + (u.fotos_total || 0) + ' (' + (u.fotos_novas || 0) + ' novas)</small>'
+         : '<b>Nenhuma cópia feita ainda</b><small>A primeira sai no próximo domingo, ou clique em "Fazer cópia agora".</small>') +
+      (ult && ult.situacao === 'erro' ? '<small style="color:#D9534F">A última tentativa falhou: ' + esc(ult.erro || '') + '</small>' : '') +
+      (ult && ult.situacao === 'rodando' ? '<small>Uma cópia está em andamento…</small>' : '') +
+      '<small>Próxima: ' + esc(quando(px.toISOString())) + ' · Drive › Classificação Final › Backups</small></div>' +
+      '<div class="bk-bts">' + (u && u.pasta_link ? '<a class="btn btn-p" target="_blank" rel="noopener" href="' + esc(u.pasta_link) + '">Abrir no Drive</a>' : '') + '<button type="button" class="btn btn-p" id="bk-agora">Fazer cópia agora</button></div></section>' +
+      (l.length ? '<section class="card bloco sd-bloco"><span class="lbl">Cópias anteriores</span><table class="bk-hist"><tbody>' + l.map(function (x) {
+        var dt = new Date(x.iniciado_em);
+        return '<tr><td>' + dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' <small class="dica">' + (x.origem === 'manual' ? 'manual' : 'automática') + '</small></td><td>' + kb(x.tamanho_bytes) + '</td><td>' +
+          (x.situacao === 'ok' ? (x.registros || 0).toLocaleString('pt-BR') + ' registros' : (x.situacao === 'erro' ? '<span style="color:#D9534F">falhou</span>' : 'em andamento')) + '</td><td style="text-align:right">' + (x.pasta_link ? '<a class="btn btn-p" target="_blank" rel="noopener" href="' + esc(x.pasta_link) + '">Abrir</a>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></section>' : '');
+    box.querySelector('#bk-agora').addEventListener('click', function (ev) {
+      ui.executar(ev.currentTarget, 'Fazendo a cópia…', async function () {
+        try { var x = await window.CF.drive.chamar('backup-semanal', { acao: 'executar' }); ui.toast('Cópia feita: ' + x.registros.toLocaleString('pt-BR') + ' registros, ' + x.fotos_novas + ' foto(s) nova(s).', 'ok'); }
+        catch (e) { ui.toast(e.message, 'erro'); }
+        blocoCopias(box);
+      });
+    });
+  }
+
   async function paginaSaude(area) {
-    area.innerHTML = cabecalho('Saúde do sistema', 'Só para administradores · atualizado ao abrir esta tela') + '<div id="sd"><div class="girando" style="margin:30px auto"></div></div>';
+    area.innerHTML = cabecalho('Saúde do sistema', 'Só para administradores · atualizado ao abrir esta tela') + '<div id="sd-bk"></div><div id="sd"><div class="girando" style="margin:30px auto"></div></div>';
+    blocoCopias(area.querySelector('#sd-bk'));
     var cab = area.querySelector('.cabecalho');
     cab.insertAdjacentHTML('beforeend', '<div class="botoes-topo"><button type="button" class="btn" id="sd-atual">⟳ Atualizar</button><button type="button" class="btn" id="sd-manut">🛠 Modo manutenção</button></div>');
     var sd, cfg;
@@ -193,9 +243,10 @@
           '<button type="button" class="btn-link" id="sd-lim">Ajustar limites do plano</button></p></section>' +
         '<section class="card bloco sd-bloco"><span class="lbl">Erros · ' + sd.erros_hoje + ' hoje · ' + sd.erros_novos + ' novo(s)</span>' +
           ((sd.erros || []).length ? (sd.erros || []).map(function (g, i) {
-            return '<div class="sd-item' + (g.novo ? ' novo' : '') + '"><div class="sd-tx"><b>' + esc(g.mensagem) + '</b><small>' + g.vezes + ' vez(es) · ' + g.aparelhos + ' aparelho(s)' + (g.tipos_aparelho ? ' (' + esc(g.tipos_aparelho) + ')' : '') + ' · tela ' + esc(g.tela || '?') + ' · versão ' + esc(g.versoes || '?') + ' · último ' + new Date(g.ultimo).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
-              '<div class="acoes"><button type="button" class="btn btn-p" data-det="' + i + '">Ver detalhes</button><button type="button" class="btn btn-pri btn-p" data-rel="' + i + '">📋 Copiar relatório para o Claude</button></div></div>';
-          }).join('') + (sd.erros_novos ? '<button type="button" class="btn-link" id="sd-vistos">Marcar todos como vistos</button>' : '') : '<p class="dica" style="margin:0">✓ Nenhum erro nos últimos 30 dias.</p>') + '</section>' +
+            return '<div class="sd-item' + (g.novo ? ' novo' : '') + (g.voltou ? ' sd-voltou' : '') + '"><div class="sd-tx"><b>' + esc(g.mensagem) + '</b>' + (g.voltou ? '<span class="sd-volta">voltou depois de resolvido</span>' : '') + '<small>' + g.vezes + ' vez(es) · ' + g.aparelhos + ' aparelho(s)' + (g.tipos_aparelho ? ' (' + esc(g.tipos_aparelho) + ')' : '') + ' · tela ' + esc(g.tela || '?') + ' · versão ' + esc(g.versoes || '?') + (g.voltou ? ' · resolvido em ' + new Date(g.resolvido_em).toLocaleDateString('pt-BR') + (g.resolvido_versao ? ' (versão ' + esc(g.resolvido_versao) + ')' : '') : '') + ' · último ' + new Date(g.ultimo).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</small></div>' +
+              '<div class="acoes"><button type="button" class="btn btn-p" data-det="' + i + '">Ver detalhes</button><button type="button" class="btn btn-pri btn-p" data-rel="' + i + '">📋 Copiar relatório para o Claude</button><button type="button" class="btn btn-p" data-res="' + i + '">✓ Marcar como resolvido</button></div></div>';
+          }).join('') + (sd.erros_novos ? '<button type="button" class="btn-link" id="sd-vistos">Marcar todos como vistos</button>' : '') : '<p class="dica" style="margin:0">✓ Nenhum erro em aberto nos últimos 30 dias.</p>') +
+          (sd.erros_resolvidos ? '<button type="button" class="btn-link" id="sd-resolvidos">Ver resolvidos (' + sd.erros_resolvidos + ')</button>' : '') + '</section>' +
         '<section class="card bloco sd-bloco"><span class="lbl">Envios e aparelhos</span>' +
           (sd.recusados_hoje ? '<div class="sd-item"><div class="sd-tx"><b>' + sd.recusados_hoje + ' lançamento(s) recusado(s) hoje</b><small>' + (sd.recusas_motivos || []).map(function (x) { return esc(x.motivo) + ' (' + x.vezes + ')'; }).join(' · ') + '</small></div></div>' : '') +
           (sd.aparelhos_parados || []).map(function (a) { return '<div class="sd-item"><div class="sd-tx"><b>' + esc(a.pessoa) + ' · ' + esc(a.nome || 'aparelho') + ': ' + a.pendentes + ' item(ns) aguardando desde ' + new Date(a.desde).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</b><small>versão ' + esc(a.versao || '?') + ' · visto ' + new Date(a.visto_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' · peça para abrir o sistema com internet</small></div>' + ui.pill('⏳ parado', 'off') + '</div>'; }).join('') +
@@ -213,6 +264,21 @@
       var el = area.querySelector('#sd');
       el.querySelectorAll('[data-det]').forEach(function (b) { b.addEventListener('click', function () { detalhes(sd.erros[+b.getAttribute('data-det')]); }); });
       el.querySelectorAll('[data-rel]').forEach(function (b) { b.addEventListener('click', function () { copiarRelatorio(sd.erros[+b.getAttribute('data-rel')]); }); });
+      el.querySelectorAll('[data-res]').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          var g = sd.erros[+b.getAttribute('data-res')];
+          if (!(await ui.confirmar('Marcar como resolvido?', 'O erro sai da lista. Se acontecer de novo, volta a aparecer com o aviso "voltou depois de resolvido".', 'Marcar como resolvido', 'Cancelar'))) return;
+          try { await dados.saude.resolver(g.assinatura); if (window.CF.verificarMonitores) window.CF.verificarMonitores(); ui.toast('Erro marcado como resolvido.', 'ok'); carregar(); } catch (e) { erro(e); }
+        });
+      });
+      if (el.querySelector('#sd-resolvidos')) el.querySelector('#sd-resolvidos').addEventListener('click', async function () {
+        try {
+          var l = await dados.saude.resolvidos();
+          ui.janela({ titulo: 'Erros resolvidos', confirmarDescarte: false,
+            corpo: l.length ? l.map(function (x) { return '<div class="sd-det"><b>' + esc(x.mensagem || x.assinatura) + '</b><small style="display:block">' + x.vezes + ' vez(es) antes de resolver · tela ' + esc(x.tela || '?') + ' · resolvido em ' + new Date(x.resolvido_em).toLocaleString('pt-BR') + (x.versao ? ' (versão ' + esc(x.versao) + ')' : '') + (x.por ? ' por ' + esc(x.por) : '') + '</small></div>'; }).join('') : '<p class="dica">Nenhum erro resolvido.</p>',
+            botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
+        } catch (e) { erro(e); }
+      });
       if (el.querySelector('#sd-vistos')) el.querySelector('#sd-vistos').addEventListener('click', async function () { try { await dados.saude.marcarVistos(null); if (window.CF.verificarMonitores) window.CF.verificarMonitores(); carregar(); } catch (e) { erro(e); } });
       el.querySelector('#sd-lim').addEventListener('click', limites);
     }
@@ -270,20 +336,44 @@
     { k: 'termo', nome: 'Termo de consentimento', det: '1 página por jovem', opcoes: [['padrao', 'Jovem + responsável (menores de 18)']] },
     { k: 'materiais', nome: 'Lista de materiais', det: 'por turma, com conferência', opcoes: [['padrao', 'Com caixas de conferência e observações']] },
     { k: 'ficha_tela', nome: 'Ficha do candidato (tela)', det: 'como a ficha abre no sistema', opcoes: [['lateral', 'Coluna lateral (modelo D)'], ['cards', 'Cards']] },
-    { k: 'ficha', nome: 'Ficha do candidato (PDF)', det: 'Fase 5' }, { k: 'relatorio', nome: 'Classificação e relatório (PDF)', det: 'Fase 5' },
-    { k: 'excel', nome: 'Planilha Excel do processo', det: 'Fase 5' }, { k: 'certificado', nome: 'Certificado de participação', det: 'Fase 5' }];
+    { k: 'ficha', nome: 'Ficha do candidato (PDF)', det: 'A4 · 1 página por candidato (mais, se houver muitas observações)', opcoes: [['lateral', 'Coluna lateral (modelo D)']] },
+    { k: 'ficha_excel', nome: 'Ficha do candidato (Excel)', det: 'abas Ficha e Dados', opcoes: [['formatada', 'Formatada como o PDF · abas Ficha e Dados']] },
+    { k: 'relatorio', nome: 'Classificação e relatório (PDF)', det: 'capa, agradecimento, informações, ranking com links e fichas', opcoes: [['padrao', 'Capa só com logos, ranking clicável e fichas no modelo D']] },
+    { k: 'excel', nome: 'Planilha Excel do processo', det: 'arquivo completo do processo', opcoes: [['completa', 'Abas Processo, Classificação, Notas por teste, Competências, Observações e Presença']] }, { k: 'certificado', nome: 'Certificado de participação', det: 'A4 deitado · 1 por jovem', opcoes: [['padrao', 'Com logos, texto do processo e assinatura']] }];
+  // Exemplos com dados fictícios (para escolher o modelo)
+  var EX_INFO = { empresa: 'EMPRESA EXEMPLO', vaga: 'AUXILIAR ADMINISTRATIVO', processo: '2º SEMESTRE 2026' };
+  var EX_JOVENS = [['ANA BEATRIZ SOUZA LIMA', 'K7M-4Q2', 'feminino', '2009-03-12', 'MARIA SOUZA LIMA', 'mãe'], ['BRUNO HENRIQUE COSTA', 'P3T-8W1', 'masculino', '2006-07-02', '', ''],
+    ['CAIO MENDES ROCHA', 'R5D-2K9', 'masculino', '2010-01-20', 'JOSÉ MENDES ROCHA', 'pai'], ['DÉBORA ALVES PINTO', 'H9F-6N3', 'feminino', '2008-11-05', 'ROSA ALVES', 'mãe']].map(function (x) {
+      return { nome: x[0], codigo: x[1], genero: x[2], nascimento: x[3], responsavel_nome: x[4], responsavel_parentesco: x[5], turma: 'TURMA A', turmaCurta: 'TURMA A', dias: '23/11 e 24/11', telefone: '' };
+    });
+  function abrirArquivo(url) { window.open(url, '_blank', 'noopener'); }
+  var EXEMPLOS = {
+    cracha: function (op) { window.CF.documentos.imprimir('Exemplo · Crachás', window.CF.documentos.crachas(EX_INFO, EX_JOVENS, { qr: op !== 'sem_qr' })); },
+    presenca: function () { window.CF.documentos.imprimir('Exemplo · Lista de presença', window.CF.documentos.presenca(EX_INFO, { nome: 'TURMA A', dias: ['2026-11-23', '2026-11-24'] }, EX_JOVENS)); },
+    termo: function (op, cfg) { window.CF.documentos.imprimir('Exemplo · Termo de consentimento', window.CF.documentos.termos(EX_INFO, EX_JOVENS.slice(0, 2), { jovem: cfg.texto_termo_jovem || TERMO_JOVEM, responsavel: cfg.texto_termo_responsavel || TERMO_RESP })); },
+    ficha_tela: function () { abrirArquivo('assets/exemplos/ficha_tela.png'); },
+    ficha: function () { abrirArquivo('assets/exemplos/ficha.pdf'); },
+    ficha_excel: function () { abrirArquivo('assets/exemplos/ficha.xlsx'); },
+    relatorio: function () { abrirArquivo('assets/exemplos/relatorio.pdf'); },
+    excel: function () { abrirArquivo('assets/exemplos/processo.xlsx'); },
+    certificado: function () { abrirArquivo('assets/exemplos/certificado.pdf'); }
+  };
   async function paginaModelos(area) {
     var cfg = await dados.config.carregar(), atual = Object.assign({}, cfg.modelos_documento || {});
     area.innerHTML = cabecalho('Modelos de documentos', 'Escolha qual modelo cada documento usa como padrão') +
-      '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Documento</th><th>Modelo padrão</th><th>Modelos disponíveis</th></tr></thead><tbody>' +
-      DOCS.map(function (d) {
-        if (!d.opcoes) return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td><td><span class="dica">em construção</span></td><td></td></tr>';
+      '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Documento</th><th>Modelo padrão</th><th>Modelos disponíveis</th><th></th></tr></thead><tbody>' +
+      DOCS.slice().sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); }).map(function (d) {
+        var ex = EXEMPLOS[d.k] ? '<button type="button" class="btn btn-p" data-ex="' + d.k + '">Ver exemplo</button>' : '';
+        if (!d.opcoes) return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td><td><span class="dica">em construção</span></td><td></td><td style="text-align:right">' + ex + '</td></tr>';
         var v = atual[d.k] || d.opcoes[0][0];
         return '<tr><td><b>' + esc(d.nome) + '</b><small class="sub-cel">' + esc(d.det) + '</small></td>' +
           '<td>' + (d.opcoes.length > 1 ? '<select class="entrada sel-modelo" data-doc="' + d.k + '" aria-label="Modelo padrão de ' + esc(d.nome) + '">' + d.opcoes.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>'
-            : ui.pill(d.opcoes[0][1], 'sim')) + '</td><td class="num">' + d.opcoes.length + '</td></tr>';
+            : ui.pill(d.opcoes[0][1], 'sim')) + '</td><td class="num">' + d.opcoes.length + '</td><td style="text-align:right">' + ex + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<p class="dica" style="margin:0">Novos modelos aparecem aqui conforme forem criados. Trocar o padrão não muda documentos já impressos.</p>';
+      '<p class="dica" style="margin:0">"Ver exemplo" abre o documento com dados fictícios, no modelo escolhido na linha. Novos modelos aparecem aqui conforme forem criados. Trocar o padrão não muda documentos já impressos.</p>';
+    area.querySelectorAll('[data-ex]').forEach(function (b) {
+      b.addEventListener('click', function () { var k = b.getAttribute('data-ex'), sel = area.querySelector('[data-doc="' + k + '"]'); EXEMPLOS[k](sel ? sel.value : (atual[k] || ''), cfg); });
+    });
     area.querySelectorAll('[data-doc]').forEach(function (sel) {
       sel.addEventListener('change', async function () {
         atual[sel.getAttribute('data-doc')] = sel.value;
@@ -327,6 +417,211 @@
       ui.executar(ev.currentTarget, 'Salvando…', async function () {
         try { await dados.config.salvar({ texto_termo_jovem: tj.value.trim(), texto_termo_responsavel: tr.value.trim() }); ui.toast('Texto do termo salvo.', 'ok'); } catch (x) { erro(x); }
       });
+    });
+    previa();
+  }
+
+  /* ---------- Escolas e CKs (origem dos alunos do Profiling Escolas) ---------- */
+  async function paginaEscolas(area) {
+    var aba = 'escolas', lista = { escolas: [], cks: [] }, pode = window.CF.perm.pode('config_empresas');
+    area.innerHTML = cabecalho('Escolas e CKs', 'De onde vêm os alunos das turmas de profiling. Aparecem para escolher na "Nova turma de profiling" e no cadastro do aluno.') + '<div id="ec"></div>';
+    var box = area.querySelector('#ec');
+    var CAMPOS = { escolas: [['nome', 'Nome da escola *', 160], ['cidade', 'Cidade', 80], ['telefone', 'Telefone', 20], ['contato_nome', 'Contato na escola', 80], ['contato_email', 'E-mail do contato', 120], ['inep', 'Código INEP (opcional)', 12]],
+                   cks: [['nome', 'Nome da CK *', 160], ['cidade', 'Cidade', 80], ['responsavel', 'Responsável', 80], ['telefone', 'Telefone', 20]] };
+    async function carregar() {
+      var r = await Promise.all([window.CF.sb.from('escolas').select('*').order('nome'), window.CF.sb.from('cks').select('*').order('nome')]);
+      if (r[0].error) { box.innerHTML = '<div class="aviso aviso-erro"><span>Rode o SQL fase6_17 no Supabase para ativar as escolas e CKs.</span></div>'; return; }
+      lista = { escolas: r[0].data || [], cks: r[1].data || [] }; desenhar();
+    }
+    function desenhar() {
+      var l = lista[aba];
+      box.innerHTML = '<div class="pt-filtros"><button type="button" class="pt-chip' + (aba === 'escolas' ? ' on' : '') + '" data-aba="escolas">Escolas ' + lista.escolas.length + '</button>' +
+        '<button type="button" class="pt-chip' + (aba === 'cks' ? ' on' : '') + '" data-aba="cks">CKs ' + lista.cks.length + '</button>' +
+        (pode ? '<button type="button" class="btn btn-pri btn-p" id="ec-novo" style="margin-left:auto">+ ' + (aba === 'escolas' ? 'Nova escola' : 'Nova CK') + '</button>' : '') + '</div>' +
+        '<section class="card tabela-card">' + (l.length ? '<table class="tabela"><thead><tr><th>' + (aba === 'escolas' ? 'Escola' : 'CK') + '</th><th>Cidade</th><th>Contato</th><th></th></tr></thead><tbody>' + l.map(function (x) {
+          var cont = aba === 'escolas' ? [x.contato_nome, x.telefone].filter(Boolean).join(' · ') : [x.responsavel, x.telefone].filter(Boolean).join(' · ');
+          return '<tr' + (x.ativa === false ? ' class="inativo"' : '') + '><td><b>' + esc(x.nome) + '</b>' + (x.inep ? '<small class="dica" style="display:block">INEP ' + esc(x.inep) + '</small>' : '') + (x.ativa === false ? ' ' + ui.pill('Inativa', 'nao') : '') + '</td><td>' + esc(x.cidade || '—') + '</td><td>' + esc(cont || '—') + '</td>' +
+            '<td style="text-align:right">' + (pode ? '<button type="button" class="btn btn-p" data-ed="' + x.id + '">Editar</button>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<p class="dica" style="margin:8px">Nenhuma ' + (aba === 'escolas' ? 'escola' : 'CK') + ' cadastrada ainda.</p>') + '</section>';
+      box.querySelectorAll('[data-aba]').forEach(function (b) { b.addEventListener('click', function () { aba = b.getAttribute('data-aba'); desenhar(); }); });
+      var bn = box.querySelector('#ec-novo'); if (bn) bn.addEventListener('click', function () { editar({}); });
+      box.querySelectorAll('[data-ed]').forEach(function (b) { b.addEventListener('click', function () { editar(lista[aba].filter(function (x) { return x.id === b.getAttribute('data-ed'); })[0]); }); });
+    }
+    function editar(x) {
+      var tab = aba, cs = CAMPOS[tab];
+      ui.janela({ titulo: (x.id ? 'Editar ' : 'Nova ') + (tab === 'escolas' ? 'escola' : 'CK'),
+        corpo: '<div class="form-grade">' + cs.map(function (c) { return '<label class="campo' + (c[0] === 'nome' ? ' largo' : '') + '"><span>' + esc(c[1]) + '</span><input class="entrada" data-c="' + c[0] + '" maxlength="' + c[2] + '" value="' + esc(x[c[0]] || '') + '"></label>'; }).join('') + '</div>' +
+          (x.id ? '<label class="marca"><input type="checkbox" id="ec-ativa"' + (x.ativa !== false ? ' checked' : '') + '> <span>' + (tab === 'escolas' ? 'Escola ativa' : 'CK ativa') + ' (inativas não aparecem para novas turmas)</span></label>' : ''),
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (el) {
+          var o = {}; el.querySelectorAll('[data-c]').forEach(function (i) { var v = i.value.trim(); o[i.getAttribute('data-c')] = v ? (i.getAttribute('data-c') === 'contato_email' ? v.toLowerCase() : ui.maiusculas(v)) : null; });
+          if (o.telefone) o.telefone = ui.formatarTelefone(o.telefone);
+          if (!o.nome) { ui.toast('Informe o nome.', 'erro'); return false; }
+          if (x.id) { o.ativa = el.querySelector('#ec-ativa').checked; }
+          try {
+            var r = x.id ? await window.CF.sb.from(tab).update(o).eq('id', x.id) : await window.CF.sb.from(tab).insert(o);
+            if (r.error) throw r.error; ui.toast('Salvo.', 'ok'); await carregar(); return true;
+          } catch (e) { erro(e); return false; }
+        } }] });
+    }
+    await carregar();
+  }
+
+  /* ---------- Feriados e eventos (feriados, pontos facultativos, Kolping Estadual, lembretes) ---------- */
+  async function paginaFeriados(area) {
+    var G = window.CF.agendaG, T = G.TIPOS_ESP, pode = window.CF.perm.pode('config_modelos');
+    var st = { ano: String(new Date().getFullYear()), tipo: '' }, lista = [];
+    area.innerHTML = cabecalho('Feriados e eventos', 'Aparecem na Agenda e na Google Agenda. Não travam dias, mas o sistema pergunta antes de marcar uma turma num feriado, ponto facultativo ou evento da Kolping Estadual.') + '<div id="fe"></div>';
+    var box = area.querySelector('#fe');
+    function br(d) { return d.slice(8, 10) + '/' + d.slice(5, 7); }
+    async function carregar() { lista = await G.especiais(); desenhar(); }
+    function desenhar() {
+      var anos = {}; lista.forEach(function (e) { anos[e.data_ini.slice(0, 4)] = true; }); anos[st.ano] = true;
+      var vis = lista.filter(function (e) { return e.data_ini.slice(0, 4) === st.ano && (!st.tipo || e.tipo === st.tipo); });
+      box.innerHTML = '<div class="pt-filtros">' + Object.keys(anos).sort().map(function (a) { return '<button type="button" class="pt-chip' + (a === st.ano ? ' on' : '') + '" data-ano="' + a + '">' + a + '</button>'; }).join('') +
+        '<span style="width:12px"></span>' + [['', 'Todos']].concat(Object.keys(T).map(function (k) { return [k, T[k].nome]; })).map(function (t) { return '<button type="button" class="pt-chip' + (st.tipo === t[0] ? ' on' : '') + '" data-tipo="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') +
+        (pode ? '<span style="margin-left:auto;display:flex;gap:8px"><button type="button" class="btn btn-p" id="fe-pdf">⬆ Importar eventos (PDF)</button><button type="button" class="btn btn-pri btn-p" id="fe-novo">+ Adicionar</button></span>' : '') + '</div>' +
+        '<section class="card tabela-card">' + (vis.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Data</th><th>Evento</th><th>Tipo</th><th></th></tr></thead><tbody>' + vis.map(function (e) {
+          return '<tr><td style="white-space:nowrap">' + br(e.data_ini) + (e.data_fim !== e.data_ini ? ' a ' + br(e.data_fim) : '') + '</td><td><b>' + esc(e.titulo) + '</b>' + (e.detalhe ? '<small class="dica" style="display:block">' + esc(e.detalhe) + '</small>' : '') + '</td>' +
+            '<td><span class="fe-tipo" style="--c:' + T[e.tipo].cor + '">' + esc(T[e.tipo].nome) + '</span></td><td style="text-align:right;white-space:nowrap">' +
+            (pode ? '<button type="button" class="btn btn-p" data-ed="' + e.id + '">Editar</button> <button type="button" class="btn btn-p btn-perigo" data-ex="' + e.id + '">Excluir</button>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '<p class="dica" style="margin:8px 0">Nada cadastrado neste ano' + (st.tipo ? ' para este tipo' : '') + '.</p>') + '</section>';
+      box.querySelectorAll('[data-ano]').forEach(function (b) { b.addEventListener('click', function () { st.ano = b.getAttribute('data-ano'); desenhar(); }); });
+      box.querySelectorAll('[data-tipo]').forEach(function (b) { b.addEventListener('click', function () { st.tipo = b.getAttribute('data-tipo'); desenhar(); }); });
+      var bp = box.querySelector('#fe-pdf'); if (bp) bp.addEventListener('click', function () { window.CF.importarEventos.abrir(function () { carregar(); G.sincronizar(true); }); });
+      var bn = box.querySelector('#fe-novo'); if (bn) bn.addEventListener('click', function () { editar({ tipo: st.tipo || 'feriado', titulo: '', detalhe: '', data_ini: '', data_fim: '' }); });
+      box.querySelectorAll('[data-ed]').forEach(function (b) { b.addEventListener('click', function () { editar(lista.filter(function (e) { return e.id === b.getAttribute('data-ed'); })[0]); }); });
+      box.querySelectorAll('[data-ex]').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          var e = lista.filter(function (x) { return x.id === b.getAttribute('data-ex'); })[0];
+          if (!(await ui.confirmar('Excluir "' + e.titulo + '"?', 'Sai também da Google Agenda na próxima atualização.', 'Excluir', 'Cancelar'))) return;
+          try { var r = await window.CF.sb.rpc('especiais_excluir', { p_ids: [e.id] }); if (r.error) throw r.error; ui.toast('Excluído.', 'ok'); await carregar(); G.sincronizar(true); } catch (x) { erro(x); }
+        });
+      });
+    }
+    function editar(e) {
+      ui.janela({ titulo: e.id ? 'Editar' : 'Adicionar feriado ou evento',
+        corpo: '<div class="form-grade"><label class="campo"><span>Tipo</span><select class="entrada" id="fe-t">' + Object.keys(T).map(function (k) { return '<option value="' + k + '"' + (e.tipo === k ? ' selected' : '') + '>' + esc(T[k].nome) + '</option>'; }).join('') + '</select></label>' +
+          '<label class="campo"><span>Nome *</span><input class="entrada" id="fe-n" maxlength="160" value="' + esc(e.titulo) + '"></label></div>' +
+          '<div class="form-grade"><label class="campo"><span>De *</span><input class="entrada" type="date" id="fe-di" value="' + e.data_ini + '"></label><label class="campo"><span>Até</span><input class="entrada" type="date" id="fe-df" value="' + (e.data_fim !== e.data_ini ? e.data_fim : '') + '"></label></div>' +
+          '<label class="campo"><span>Observação</span><input class="entrada" id="fe-o" maxlength="200" value="' + esc(e.detalhe || '') + '" placeholder="Ex.: Municipal · após 14h · a confirmar"></label>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (el) {
+          var x = { id: e.id || null, tipo: el.querySelector('#fe-t').value, titulo: el.querySelector('#fe-n').value.trim(), detalhe: el.querySelector('#fe-o').value.trim(), data_ini: el.querySelector('#fe-di').value, data_fim: el.querySelector('#fe-df').value || el.querySelector('#fe-di').value };
+          if (!x.titulo || !x.data_ini) { ui.toast('Informe o nome e a data.', 'erro'); return false; }
+          if (x.data_fim < x.data_ini) { ui.toast('A data final precisa ser depois da inicial.', 'erro'); return false; }
+          try { var r = await window.CF.sb.rpc('especiais_salvar', { p: [x] }); if (r.error) throw r.error; ui.toast('Salvo.', 'ok'); await carregar(); G.sincronizar(true); return true; } catch (z) { erro(z); return false; }
+        } }] });
+    }
+    await carregar();
+  }
+
+  /* ---------- Integrações (Google Drive) · só o responsável ---------- */
+  async function paginaIntegracoes(area) {
+    var q = (window.location.hash.split('?')[1] || ''), pr = {};
+    q.split('&').forEach(function (x) { var k = x.split('='); if (k[0]) pr[k[0]] = decodeURIComponent(k[1] || ''); });
+    if (pr.drive === 'ok') ui.toast('Google Drive conectado.', 'ok');
+    if (pr.drive === 'erro') ui.toast('Não foi possível conectar o Drive: ' + (pr.msg || 'erro desconhecido'), 'erro');
+    if (pr.drive) history.replaceState(null, '', '#/config/integracoes');
+    area.innerHTML = cabecalho('Integrações', 'Ligações do sistema com outros serviços') + '<div id="int-drive"><div class="girando" style="margin:20px auto"></div></div>';
+    var box = area.querySelector('#int-drive');
+    async function desenhar() {
+      var st;
+      try { var r = await window.CF.sb.rpc('integracao_drive_status'); if (r.error) throw r.error; st = r.data; }
+      catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
+      box.innerHTML = '<section class="card drv-card" style="--c:' + (st.conectado ? '#3FA66B' : '#8a8486') + '"><span class="drv-ic">📁</span><div style="flex:1;min-width:0">' +
+        (st.conectado
+          ? '<b>Google Drive · conectado</b><small>como ' + esc(st.email || '?') + ' · Drive compartilhado "' + esc(st.drive_nome || '') + '" · desde ' + new Date(st.conectado_em).toLocaleDateString('pt-BR') + '</small>' +
+            '<small>' + (st.arquivos ? 'Último envio: ' + new Date(st.ultimo_envio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' · ' + st.arquivos + ' arquivo(s) salvos' : 'Nenhum arquivo enviado ainda') + '</small>'
+          : '<b>Google Drive</b><small>Não conectado. Os arquivos baixados não estão sendo salvos no Drive.</small><small>Ao clicar, entre com <b>projetogol@kolpingsp.org</b> e autorize.</small>') +
+        '</div><div class="drv-bts">' + (st.conectado ? '<button type="button" class="btn btn-p" id="drv-testar">Testar</button><button type="button" class="btn btn-p btn-perigo" id="drv-sair">Desconectar</button>'
+          : '<button type="button" class="btn btn-pri" id="drv-con">Conectar Google Drive</button>') + '</div></section>' +
+        '<p class="dica">Tudo o que a equipe baixa no sistema (PDFs, planilhas, fichas, históricos e gráficos) também é salvo no Drive compartilhado, em pastas por empresa e processo. Gerar de novo o mesmo documento substitui o anterior; o Drive guarda as versões antigas.</p>' +
+        (st.conectado ? '<section class="card drv-card" style="--c:' + (st.agenda_erro ? '#D9534F' : (st.agenda_id ? '#3FA66B' : '#8a8486')) + '"><span class="drv-ic">📅</span><div style="flex:1;min-width:0">' +
+          '<b>Google Agenda · ' + (st.agenda_id ? '"Classificação Final · Turmas"' : 'ainda não criada') + '</b>' +
+          (st.agenda_id ? '<small>' + st.agenda_eventos + ' dia(s) de turma na agenda · ' + st.agenda_google + ' evento(s) criados direto no Google' + (st.agenda_sinc_em ? ' · última atualização ' + new Date(st.agenda_sinc_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '') + '</small>' : '<small>Clique em "Sincronizar agora" para criar a agenda e levar as turmas.</small>') +
+          (st.agenda_erro ? '<small style="color:#D9534F">' + esc(st.agenda_erro) + '</small>' : '') +
+          '</div><div class="drv-bts"><button type="button" class="btn btn-p" id="ag-sinc">Sincronizar agora</button>' +
+          (st.agenda_id ? '<a class="btn btn-p" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/u/0/r/settings/calendar/' + btoa(st.agenda_id).replace(/=+$/, '') + '">Compartilhar / link Outlook</a>' : '') +
+          '<button type="button" class="btn btn-p" id="ag-recon">Reconectar Google</button></div></section>' +
+          (st.agenda_id ? '<section class="card" style="padding:12px 18px"><b>Agendas que o sistema lê</b><p class="dica" style="margin:2px 0 6px">As agendas marcadas aparecem na Agenda do sistema na cor escolhida, com o nome da agenda, e podem virar turma ou ser excluídas pelo sistema (com confirmação).</p><div id="ag-lidas"><div class="girando" style="margin:10px auto"></div></div></section>' : '') +
+          '<p class="dica">Para a equipe ver a agenda: no Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
+          'Para quem usa o Outlook: copie o <b>Endereço secreto no formato iCal</b> e, no Outlook, use <b>Adicionar calendário › Assinar da Web</b>. ' +
+          'Se aparecer "ainda não autorizou a agenda", clique em <b>Reconectar Google</b> e entre com projetogol@kolpingsp.org.</p>' : '');
+      var con = box.querySelector('#drv-con');
+      if (con) con.addEventListener('click', function (ev) {
+        ui.executar(ev.currentTarget, 'Abrindo o Google…', async function () {
+          try { var r = await window.CF.drive.chamar('drive-conectar', { acao: 'inicio' }); window.location.href = r.url; } catch (e) { ui.toast(e.message, 'erro'); }
+        });
+      });
+      var boxL = box.querySelector('#ag-lidas');
+      if (boxL) (async function () {
+        var lidas = Array.isArray(st.agendas_lidas) ? st.agendas_lidas : [], ids = {}; lidas.forEach(function (a) { ids[a.id] = true; });
+        try {
+          var r = await window.CF.agendaG.listarAgendas();
+          var lista = (r.agendas || []).filter(function (a) { return a.id !== r.propria; });
+          boxL.innerHTML = '<div class="ag-lista-agendas">' + '<div class="ag-li"><span>🔒</span><div><b>Classificação Final · Turmas</b><small>mantida pelo sistema (turmas, feriados, Kolping Estadual)</small></div><span class="pill" style="background:#3FA66B">Mantida pelo sistema</span></div>' +
+            lista.map(function (a, i) {
+              var corAtual = (lidas.filter(function (x) { return x.id === a.id; })[0] || {}).cor || 'azul', CA = window.CF.agendaG.CORES_AG;
+              return '<div class="ag-li"><input type="checkbox" data-ag="' + i + '"' + (ids[a.id] ? ' checked' : '') + ' aria-label="Ler esta agenda"><div><b>' + esc(a.nome) + (a.principal ? ' (principal)' : '') + '</b><small>' + (/holiday|feriado/i.test(a.id + a.nome) ? 'agenda do Google · o sistema já tem os feriados' : (/contacts|anivers/i.test(a.id + a.nome) ? 'agenda automática do Google' : 'agenda da conta')) + '</small></div>' +
+                '<span class="ag-cores" role="radiogroup" aria-label="Cor">' + Object.keys(CA).map(function (k) { return '<button type="button" class="ag-cor' + (k === corAtual ? ' on' : '') + '" data-cor="' + i + '|' + k + '" title="' + k + '" style="background:' + CA[k] + '"></button>'; }).join('') + '</span></div>';
+            }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="btn btn-pri btn-p" id="ag-lidas-salvar">Salvar agendas lidas</button></div>';
+          boxL.querySelectorAll('.ag-cor').forEach(function (bt) {
+            bt.addEventListener('click', function () { var i = bt.getAttribute('data-cor').split('|')[0]; boxL.querySelectorAll('.ag-cor[data-cor^="' + i + '|"]').forEach(function (x) { x.classList.remove('on'); }); bt.classList.add('on'); });
+          });
+          boxL.querySelector('#ag-lidas-salvar').addEventListener('click', function (ev) {
+            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var i = +c.getAttribute('data-ag'), a = lista[i], on = boxL.querySelector('.ag-cor.on[data-cor^="' + i + '|"]'); sel.push({ id: a.id, nome: a.nome, cor: on ? on.getAttribute('data-cor').split('|')[1] : 'azul' }); } });
+            ui.executar(ev.currentTarget, 'Salvando…', async function () {
+              try { var x = await window.CF.sb.rpc('agendas_lidas_salvar', { p: sel }); if (x.error) throw x.error; ui.toast('Agendas salvas. Atualizando…', 'ok'); await window.CF.agendaG.sincronizar(false); } catch (e) { erro(e); }
+            });
+          });
+        } catch (e) {
+          boxL.innerHTML = '<p class="dica" style="margin:4px 0">' + esc(/autorizou|scope|insufficient|403/i.test(e.message) ? 'Para listar as agendas, clique em "Reconectar Google" e autorize de novo (a permissão nova de agendas).' : e.message) + '</p>';
+        }
+      })();
+      var as = box.querySelector('#ag-sinc');
+      if (as) as.addEventListener('click', function (ev) { ui.executar(ev.currentTarget, 'Sincronizando…', async function () { await window.CF.agendaG.sincronizar(false); desenhar(); }); });
+      var ar = box.querySelector('#ag-recon');
+      if (ar) ar.addEventListener('click', function (ev) {
+        ui.executar(ev.currentTarget, 'Abrindo o Google…', async function () {
+          try { var r = await window.CF.drive.chamar('drive-conectar', { acao: 'inicio' }); window.location.href = r.url; } catch (e) { ui.toast(e.message, 'erro'); }
+        });
+      });
+      var te = box.querySelector('#drv-testar');
+      if (te) te.addEventListener('click', function (ev) {
+        ui.executar(ev.currentTarget, 'Testando…', async function () {
+          try { var r = await window.CF.drive.chamar('drive-salvar', { acao: 'testar' }); ui.toast('Tudo certo: o sistema acessa o Drive "' + r.drive + '".', 'ok'); } catch (e) { ui.toast(e.message, 'erro'); }
+        });
+      });
+      var sa = box.querySelector('#drv-sair');
+      if (sa) sa.addEventListener('click', async function () {
+        if (!(await ui.confirmar('Desconectar o Google Drive?', 'Os arquivos já salvos continuam no Drive. Os próximos downloads deixam de ser copiados até conectar de novo.', 'Desconectar', 'Cancelar'))) return;
+        try { await window.CF.drive.chamar('drive-conectar', { acao: 'desconectar' }); ui.toast('Google Drive desconectado.', 'ok'); desenhar(); } catch (e) { ui.toast(e.message, 'erro'); }
+      });
+    }
+    desenhar();
+  }
+
+  /* ---------- Texto do e-mail do acompanhamento ---------- */
+  var EMAIL_PADRAO = window.CF.EMAIL_ACOMP_PADRAO = 'Olá, equipe da {empresa}!\n\nComo parte do acompanhamento do Projeto Gol Jovens Talentos, a avaliação de {avaliacao} de {jovem} ({aprovado} pela empresa em {aprovado_em}) {situacao}.\n\n' +
+    'A avaliação é rápida: uma nota de 1 a 5 e, se quiserem, uma observação. Basta entrar no sistema Classificação Final, em Resultados:\n{link}\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\n{remetente}\nKolping Estadual de São Paulo · (11) 4183-6018';
+  async function paginaEmailAcomp(area) {
+    var cfg = await dados.config.carregar(), VARS = ['empresa', 'jovem', 'avaliacao', 'aprovado', 'aprovado_em', 'situacao', 'link', 'remetente'];
+    var EX = { empresa: 'EMPRESA EXEMPLO', jovem: 'NOME DO JOVEM', avaliacao: '3 meses', aprovado: 'aprovada', aprovado_em: '02/12/2026', situacao: 'está pendente desde 17/03/2027', link: window.location.origin + window.location.pathname, remetente: 'RACHEL' };
+    area.innerHTML = cabecalho('E-mail do acompanhamento', 'Texto usado no botão "Preparar e-mail". O sistema não envia: o e-mail abre no Outlook de quem clicou.') +
+      '<div class="agr-grade"><section class="card bloco" style="gap:12px"><label class="lbl" for="em-texto">Texto</label>' +
+        '<textarea class="entrada" id="em-texto" data-normal rows="14" maxlength="3000" style="line-height:1.6">' + esc(cfg.texto_email_acomp || EMAIL_PADRAO) + '</textarea>' +
+        '<div class="vars"><span class="dica">Inserir:</span>' + VARS.map(function (v) { return '<button type="button" class="chip-var" data-var="' + v + '">{' + v + '}</button>'; }).join('') + '</div>' +
+        '<div class="botoes-fim"><button type="button" class="btn" id="em-padrao">Restaurar texto padrão</button><button type="button" class="btn btn-pri" id="em-salvar">Salvar</button></div></section>' +
+        '<section class="grupo"><span class="lbl">Prévia (exemplo)</span><div class="folha" id="em-previa" style="white-space:pre-line"></div></section></div>';
+    var tx = area.querySelector('#em-texto'), pv = area.querySelector('#em-previa');
+    function previa() { pv.innerHTML = esc(tx.value).replace(/\{(\w+)\}/g, function (m, k) { return EX[k] != null ? '<b>' + esc(EX[k]) + '</b>' : m; }); }
+    tx.addEventListener('input', previa);
+    area.querySelectorAll('[data-var]').forEach(function (b) {
+      b.addEventListener('click', function () { var ins = '{' + b.getAttribute('data-var') + '}', i = tx.selectionStart || tx.value.length, f = tx.selectionEnd || i; tx.value = tx.value.slice(0, i) + ins + tx.value.slice(f); tx.focus(); previa(); });
+    });
+    area.querySelector('#em-padrao').addEventListener('click', async function () { if (await ui.confirmar('Restaurar o texto padrão?', 'O texto atual será substituído (só fica salvo ao clicar em Salvar).', 'Restaurar', 'Cancelar')) { tx.value = EMAIL_PADRAO; previa(); } });
+    area.querySelector('#em-salvar').addEventListener('click', function (ev) {
+      var t = tx.value.trim(); if (t.length < 20) { ui.toast('O texto está muito curto.', 'erro'); return; }
+      ui.executar(ev.currentTarget, 'Salvando…', async function () { try { await dados.config.salvar({ texto_email_acomp: t }); ui.toast('Texto do e-mail salvo.', 'ok'); } catch (x) { erro(x); } });
     });
     previa();
   }
