@@ -11,7 +11,7 @@
 
   function erro(e) { console.error(e); ui.toast(api.traduzErro(e), 'erro'); }
   function porId(l, id) { return l.filter(function (x) { return x.id === id; })[0]; }
-  function nomeEmpresa(a, id) { var e = porId(a.empresas, id); return e ? e.nome_fantasia : 'Empresa'; }
+  function nomeEmpresa(a, id) { var e = porId(a.empresas, id); return e ? e.nome_fantasia : 'Profiling Escolas'; }
 
   /* ---------- Informações compartilhadas ---------- */
   // Descrição de cada dia ocupado: { data: {tipo, titulo, sub, ...} }

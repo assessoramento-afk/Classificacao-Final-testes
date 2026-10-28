@@ -37,7 +37,7 @@
     });
   }
   function resumo(a) {
-    if (!a.aprovado) return { cls: 'nao', txt: 'Não aprovado pela empresa' };
+    if (!a.aprovado) return { cls: 'nao', txt: flex(a.genero, 'Reprovado', 'Reprovada') + ' pela empresa' };
     var ms = marcos(a), atr = ms.filter(function (x) { return x.estado === 'atrasada'; }), pen = ms.filter(function (x) { return x.estado === 'pendente'; });
     if (atr.length) return { cls: 'atrasada', txt: 'Atrasada: ' + atr[0].marco + ' meses (prazo encerrou em ' + dataBR(atr[0].limite) + ')' };
     if (pen.length) return { cls: 'pendente', txt: 'Aguardando: ' + pen[0].marco + ' meses (vence ' + dataBR(pen[0].limite) + ')' };
@@ -45,16 +45,22 @@
     var prox = ms.filter(function (x) { return x.estado === 'futura'; })[0];
     return { cls: 'emdia', txt: 'Em dia · próxima em ' + dataBR(prox.vence) };
   }
+  // Barra de progresso das avaliações (3, 6, 9 e 12 meses) + contratação
   function trilha(a) {
-    var ms = marcos(a), s = '';
-    ms.forEach(function (x, i) {
+    var ms = marcos(a), r = resumo(a);
+    var COR = { atrasada: '#D9534F', pendente: '#b38600', emdia: '#3FA66B', concluido: '#5b6b8a', nao: '#8a8486' };
+    var ROT = { atrasada: 'Atrasada', pendente: 'Aguardando', emdia: 'Em dia', concluido: 'Concluído', nao: '' };
+    var pend = ms.filter(function (x) { return x.estado === 'atrasada' || x.estado === 'pendente'; })[0], prox = ms.filter(function (x) { return x.estado === 'futura'; })[0];
+    var frase = r.cls === 'atrasada' ? pend.marco + ' meses venceu em ' + dataBR(pend.limite) : (r.cls === 'pendente' ? pend.marco + ' meses até ' + dataBR(pend.limite)
+      : (r.cls === 'concluido' ? 'todas as avaliações feitas' : (prox ? 'próxima: <b>' + prox.marco + ' meses</b> em ' + dataBR(prox.vence) : '')));
+    var seg = ms.map(function (x) {
       var cls = { feita: 'ok', pendente: 'pe', atrasada: 'at', futura: '' }[x.estado];
-      var tip = x.marco + ' meses · ' + (x.estado === 'feita' ? 'nota ' + x.avaliacao.nota + (x.avaliacao.observacao ? ' · ' + x.avaliacao.observacao : '') : (x.estado === 'futura' ? 'disponível em ' + dataBR(x.vence) : (x.estado === 'pendente' ? 'aguardando, prazo até ' + dataBR(x.limite) : 'atrasada desde ' + dataBR(x.limite))));
-      s += (i ? '<span class="ac-lin"></span>' : '') + '<span class="ac-dot ' + cls + '" title="' + esc(tip) + '">' + (x.estado === 'feita' ? '✓' : x.marco + 'm') + '</span>';
-    });
-    var ct = a.contratado === true ? 'ok' : (a.contratado === false ? 'nao' : '');
-    s += '<span class="ac-lin"></span><span class="ac-dot ac-ct ' + ct + '">' + (a.contratado === true ? 'Contratado' : (a.contratado === false ? 'Não contratado' : 'Contratado?')) + '</span>';
-    return '<span class="ac-trilha">' + s + '</span>';
+      var tip = x.marco + ' meses · ' + (x.estado === 'feita' ? 'nota ' + x.avaliacao.nota + (x.avaliacao.observacao ? ' · ' + x.avaliacao.observacao : '') : (x.estado === 'futura' ? 'a partir de ' + dataBR(x.vence) : 'prazo até ' + dataBR(x.limite)));
+      return '<i class="' + cls + '" title="' + esc(tip) + '"></i>';
+    }).join('');
+    var ct = a.contratado === true ? '<span class="tb-ct ok">' + flex(a.genero, 'Contratado', 'Contratada') + ' ✓</span>' : (a.contratado === false ? '<span class="tb-ct nao">Não ' + flex(a.genero, 'contratado', 'contratada') + '</span>' : '<span class="tb-ct">Contratado?</span>');
+    return '<div class="tb"><div class="tb-st" style="--c:' + (COR[r.cls] || '#8a8486') + '"><b>● ' + (ROT[r.cls] || '') + '</b>' + (frase ? ' · ' + frase : '') + '</div>' +
+      '<div class="tb-barra">' + seg + ct + '</div><div class="tb-rot">' + ms.map(function (x) { return '<span>' + x.marco + ' meses' + (x.estado === 'feita' ? ' ✓' : '') + '</span>'; }).join('') + '<span class="tb-esp"></span></div></div>';
   }
   function pendencias(lista) {
     var out = [];
@@ -88,14 +94,14 @@
   function janelaAprovar(j, a, aoSalvar) {
     var jan = ui.janela({
       titulo: j.nome,
-      corpo: '<p style="margin:0 0 12px">' + esc(flex(j.genero, 'O jovem', 'A jovem')) + ' foi ' + flex(j.genero, 'aprovado', 'aprovada') + ' pela empresa?</p>' +
-        '<div class="ac-simnao"><button type="button" class="btn" data-v="sim" aria-pressed="' + (!!(a && a.aprovado)) + '">Sim</button><button type="button" class="btn" data-v="nao" aria-pressed="' + (!!(a && !a.aprovado)) + '">Não</button></div>' +
+      corpo: '<p style="margin:0 0 12px">Qual foi a decisão da empresa sobre ' + esc(flex(j.genero, 'o jovem', 'a jovem')) + '?</p>' +
+        '<div class="ac-simnao"><button type="button" class="btn" data-v="sim" aria-pressed="' + (!!(a && a.aprovado)) + '">✓ ' + flex(j.genero, 'Aprovado', 'Aprovada') + '</button><button type="button" class="btn" data-v="nao" aria-pressed="' + (!!(a && !a.aprovado)) + '">✕ ' + flex(j.genero, 'Reprovado', 'Reprovada') + '</button></div>' +
         '<label class="campo" id="ac-dt-box" style="margin-top:14px;' + (a && a.aprovado ? '' : 'display:none') + '"><span>Data em que foi ' + flex(j.genero, 'aprovado', 'aprovada') + ' pela empresa</span>' +
         '<input class="entrada" type="date" id="ac-dt" max="' + hojeISO() + '" value="' + esc((a && a.aprovado_em) || hojeISO()) + '"></label>' +
         '<p class="dica" style="margin:10px 0 0">A partir dessa data o sistema pede uma avaliação a cada 3 meses e, ao completar 1 ano, pergunta se ' + flex(j.genero, 'o jovem', 'a jovem') + ' foi ' + flex(j.genero, 'contratado', 'contratada') + '.</p>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (el) {
         var esc2 = el.querySelector('[data-v][aria-pressed="true"]');
-        if (!esc2) { ui.toast('Escolha Sim ou Não.', 'erro'); return false; }
+        if (!esc2) { ui.toast('Escolha ' + flex(j.genero, 'Aprovado', 'Aprovada') + ' ou ' + flex(j.genero, 'Reprovado', 'Reprovada') + '.', 'erro'); return false; }
         var sim = esc2.getAttribute('data-v') === 'sim', dt = el.querySelector('#ac-dt').value;
         if (sim && !dt) { ui.toast('Informe a data.', 'erro'); return false; }
         try { await rpc('acomp_marcar', { p_part: j.participacao_id, p_aprovado: sim, p_data: sim ? dt : null }); ui.toast('Informação salva.', 'ok'); aoSalvar(); }
@@ -243,7 +249,7 @@
           var r = resumo(a), cor = CORS[r.cls] || '#8a8486', pend = pendencias([a])[0];
           return '<tr style="--c:' + cor + '"><td class="pt-nm pt-barra"><b>' + esc(a.nome) + '</b><small>' + esc(a.vaga + (a.identificacao ? ' · ' + a.identificacao : '')) + '</small></td>' +
             '<td>' + dataBR(a.aprovado_em) + (a.aprovado_por ? '<small class="dica" style="display:block">por ' + esc(a.aprovado_por) + '</small>' : '') + '</td>' +
-            '<td><span class="pill" style="background:' + cor + ';color:#fff">' + (ROT[r.cls] || '') + '</span><small class="dica" style="display:block;margin-top:3px">' + esc(r.txt) + '</small>' + trilha(a) + '</td>' +
+            '<td>' + trilha(a) + '</td>' +
             '<td style="text-align:right;white-space:nowrap">' + (pend ? '<button type="button" class="btn btn-pri btn-p" data-av="' + a.participacao_id + '">Avaliar agora</button>' : '<button type="button" class="btn btn-p" data-ver="' + a.participacao_id + '">Ver avaliações</button>') + '</td></tr>';
         }).join('') + '</tbody></table></div></section>'
           : '<section class="card bloco"><p style="margin:0">' + (lista.length ? 'Nenhum jovem neste filtro.' : 'Nenhum jovem aprovado ainda. Em <b>Resultados</b>, abra um processo e marque "Aprovar" nos jovens escolhidos.') + '</p></section>');
@@ -341,10 +347,10 @@
           '<div class="tabela-rolar"><table class="pt-rk"><thead><tr><th>Pos.</th><th>Jovem</th><th>Nota final</th><th>Situação</th><th class="pt-col-emp">Na empresa</th></tr></thead><tbody>' +
           vis.map(function (j) {
             var a = acomp[j.participacao_id], pode = j.situacao === 'aprovado' || j.situacao === 'backup', cel;
-            if (a && a.aprovado) cel = '<div><b class="pt-ok">✓ ' + flex(j.genero, 'Aprovado', 'Aprovada') + ' pela empresa</b> <span class="dica">em ' + dataBR(a.aprovado_em) + '</span>' +
-              ((a.avaliacoes || []).length ? '' : ' <button type="button" class="btn btn-p pt-alt" data-mk="' + j.participacao_id + '">Alterar</button>') + '</div><div style="margin-top:6px">' + trilha(a) + '</div>';
-            else if (a) cel = '<span class="pt-nao">Não ' + flex(j.genero, 'aprovado', 'aprovada') + ' pela empresa</span> <button type="button" class="btn btn-p pt-alt" data-mk="' + j.participacao_id + '">Alterar</button>';
-            else if (pode) cel = '<span class="pt-pergunta"><span class="dica">' + flex(j.genero, 'Aprovado', 'Aprovada') + ' pela empresa?</span><button type="button" class="btn btn-p" data-mk="' + j.participacao_id + '">Informar</button></span>';
+            if (a && a.aprovado) cel = '<div class="ne"><span class="ne-p ok">✓ ' + flex(j.genero, 'Aprovado', 'Aprovada') + '</span> <span class="dica">em ' + dataBR(a.aprovado_em) + '</span>' +
+              ((a.avaliacoes || []).length ? '' : ' <button type="button" class="btn btn-p pt-alt" data-mk="' + j.participacao_id + '">Alterar</button>') + '</div><div style="margin-top:8px">' + trilha(a) + '</div>';
+            else if (a) cel = '<div class="ne"><span class="ne-p nao">✕ ' + flex(j.genero, 'Reprovado', 'Reprovada') + '</span> <button type="button" class="btn btn-p pt-alt" data-mk="' + j.participacao_id + '">Alterar</button></div>';
+            else if (pode) cel = '<div class="ne"><span class="ne-p">Aguardando decisão</span> <button type="button" class="btn btn-p" data-mk="' + j.participacao_id + '">Informar</button></div>';
             else cel = '<span class="dica">—</span>';
             var mot = j.motivo && j.situacao !== 'incompleto' ? K.textoMotivo(j.motivo, j.genero) : (j.situacao === 'reprovado' ? 'Nota final abaixo de ' + K.corteTxt(c.processo.corte_backup) : '');
             return '<tr style="--c:' + (COR[j.situacao] || COR.desistencia) + '"><td class="pt-pos">' + (j.posicao ? j.posicao + 'º' : '—') + '</td>' +

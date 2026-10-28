@@ -17,17 +17,17 @@
     var st = { filtro: 'proximas', busca: '' }, ag, parts;
     area.innerHTML = '<a class="voltar" href="#/cadastros">← Cadastros</a><div id="tt"><div class="girando" style="margin:30px auto"></div></div>';
     var box = area.querySelector('#tt');
-    var G = window.CF.agendaG, gev = [], pend = [], coresAg = {};
+    var G = window.CF.agendaG, gev = [], pend = [], coresAg = {}, oriT = null;
     async function carregar() {
       var r = await Promise.all([dados.agenda.carregarTudo(), dados.jovens.todasParticipacoes(), G ? G.eventosGoogle() : [], G ? G.pendentes() : []]);
-      ag = r[0]; parts = r[1]; gev = r[2]; pend = r[3]; coresAg = G ? await G.coresAgendas() : {};
+      ag = r[0]; parts = r[1]; gev = r[2]; pend = r[3]; coresAg = G ? await G.coresAgendas() : {}; oriT = window.CF.origensDados ? await window.CF.origensDados().catch(function () { return null; }) : null;
     }
     try { await carregar(); }
     catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
     var hoje = hojeISO(), lista;
     function montar() { lista = ag.turmas.map(function (t) {
       var p = (ag.processos || []).filter(function (x) { return x.id === t.processo_id; })[0] || {};
-      var e = (ag.empresas || []).filter(function (x) { return x.id === p.empresa_id; })[0] || {};
+      var e = p.tipo === 'escola' ? { nome_fantasia: '🎓 ' + ((window.CF.nomeOrigens && oriT) ? window.CF.nomeOrigens(oriT, p.id) || 'Profiling Escolas' : 'Profiling Escolas') } : ((ag.empresas || []).filter(function (x) { return x.id === p.empresa_id; })[0] || {});
       var dias = ag.dias.filter(function (d) { return d.turma_id === t.id; }).map(function (d) { return String(d.data).slice(0, 10); }).sort();
       var momento = !dias.length ? 'sem data' : (dias[dias.length - 1] < hoje ? 'encerrada' : (dias[0] <= hoje ? 'hoje' : 'proxima'));
       var dd = ag.dias.filter(function (d) { return d.turma_id === t.id; }).sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });

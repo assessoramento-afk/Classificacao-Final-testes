@@ -199,10 +199,10 @@
       var notas = {}; r2[2].forEach(function (x) { notas[x.participacao_id + '|' + x.criterio_id] = { valor: Number(x.valor), pontos: x.pontos == null ? null : Number(x.pontos), av: x.avaliador_id, em: x.lancado_em }; });
       var obs = {}; r2[4].forEach(function (x) { obs[x.participacao_id + '|' + x.teste_id] = { texto: x.texto, em: x.em, autor: x.autor_id }; });
       var emp = r[5].filter(function (e) { return e.id === r[0].empresa_id; })[0] || {};
-      var pres = {}; r2[0].forEach(function (x) { pres[x.participacao_id + '|' + x.dia] = { presente: x.presente, em: x.registrado_em }; });
+      var pres = {}; r2[0].forEach(function (x) { pres[x.participacao_id + '|' + x.dia] = { presente: x.presente, em: x.registrado_em, justificada: !!x.justificada, justificativa: x.justificativa || '', jpor: x.justificada_por || null }; });
       var grupos = {}; r[3].forEach(function (x) { grupos[x.grupo] = x.avaliador_id; });
       var equipe = {}; r[4].forEach(function (x) { equipe[x.id] = x.nome; });
-      return { turma: t, processo: r[0], empresa: { id: emp.id, nome: emp.nome_fantasia || '' },
+      return { turma: t, processo: r[0], empresa: { id: emp.id, nome: emp.nome_fantasia || (r[0] && r[0].tipo === 'escola' ? 'PROFILING ESCOLAS' : '') },
         dias: r[1].map(function (d) { return d.data; }).sort(),
         jovens: parts.map(function (x) { var j = r2[1].filter(function (y) { return y.id === x.jovem_id; })[0] || {}; return { id: x.id, jovem_id: x.jovem_id, nome: j.nome, genero: j.genero, foto_path: j.foto_path, codigo: x.codigo, grupo: x.grupo }; })
           .sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'pt-BR'); }),

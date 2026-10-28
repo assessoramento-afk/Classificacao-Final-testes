@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   var estado = { carregado: false, dono: false, f: {} };
-  var ROTA = { painel: 'graficos_ver', avaliar: 'avaliar_notas', processos: 'processos_ver', acompanhamento: 'acomp_ver',
+  var ROTA = { painel: 'graficos_ver', avaliar: 'avaliar_notas', processos: 'processos_ver', escolas: 'processos_ver', acompanhamento: 'acomp_ver',
                cadastros: 'cadastros_jovens', banco: 'banco_ver', portal: 'portal_ver' };
   var CONFIG = ['config_empresas', 'config_pessoas', 'pessoas_excluir', 'config_modelos', 'banco_editar'];
   function chave(id) { return 'cf_perm_' + id; }

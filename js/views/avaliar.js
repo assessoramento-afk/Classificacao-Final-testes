@@ -25,7 +25,7 @@
     var r = [];
     snap.jovens.forEach(function (j) {
       var man = (snap.desistencias || []).filter(function (d) { return d.participacao_id === j.id; })[0];
-      var falta = snap.dias.filter(function (d) { var x = snap.presencas[j.id + '|' + d]; return x && x.presente === false; })[0];
+      var falta = (snap.processo && snap.processo.tipo === 'escola') ? null : snap.dias.filter(function (d) { var x = snap.presencas[j.id + '|' + d]; return x && x.presente === false; })[0];
       if (man || falta) r.push({ j: j, man: man, falta: falta });
     });
     return r;
@@ -73,7 +73,7 @@
           var dias = ag.dias.filter(function (d) { return d.turma_id === t.id; }).map(function (d) { return d.data; }).sort();
           if (!dias.length || dias[dias.length - 1] < h) return;
           var e = ag.empresas.filter(function (x) { return x.id === p.empresa_id; })[0] || {};
-          itens.push({ id: t.id, nome: t.nome, empresa: e.nome_fantasia || '', vaga: p.vaga, dias: dias, horario: t.horario });
+          itens.push({ id: t.id, nome: t.nome, empresa: e.nome_fantasia || (p.tipo === 'escola' ? 'PROFILING ESCOLAS' : ''), vaga: p.vaga, dias: dias, horario: t.horario });
         });
       } catch (e) { console.warn(e); }
     }
@@ -177,9 +177,41 @@
       area.querySelector('#pr-lista').innerHTML = itens.map(function (j) {
         var v = presente(snap, j.id, dia);
         var man = (snap.desistencias || []).some(function (d) { return d.participacao_id === j.id; }), fech = !!snap.turma.concluida_em;
-        return '<div class="pres" id="pj-' + j.id + '"><span class="ft">' + esc(ui.iniciais(j.nome)) + '</span><div class="tx"><b>' + esc(j.nome) + '</b><small>' + esc(j.codigo) + (v === false ? ' · desistência' : (man ? ' · desistência registrada' : '')) + '</small></div>' +
-          '<div class="tg" role="group" aria-label="Presença de ' + esc(j.nome) + '"><button type="button" data-p="' + j.id + '" data-v="1" aria-pressed="' + (v === true) + '"' + (fech ? ' disabled' : '') + '>Presente</button><button type="button" data-p="' + j.id + '" data-v="0" aria-pressed="' + (v === false) + '"' + (fech ? ' disabled' : '') + '>Faltou</button></div></div>';
+        var esc0 = snap.processo && snap.processo.tipo === 'escola', px = snap.presencas[j.id + '|' + dia] || {};
+        var notaF = v === false ? (esc0 ? (px.justificada ? ' · falta justificada' : ' · faltou') : ' · desistência') : (man ? ' · desistência registrada' : '');
+        return '<div class="pres' + (esc0 && v === false && px.justificada ? ' pres-just' : '') + '" id="pj-' + j.id + '"><span class="ft">' + esc(ui.iniciais(j.nome)) + '</span><div class="tx"><b>' + esc(j.nome) + '</b><small>' + esc(j.codigo) + notaF + '</small></div>' +
+          '<div class="tg" role="group" aria-label="Presença de ' + esc(j.nome) + '"><button type="button" data-p="' + j.id + '" data-v="1" aria-pressed="' + (v === true) + '"' + (fech ? ' disabled' : '') + '>Presente</button><button type="button" data-p="' + j.id + '" data-v="0" aria-pressed="' + (v === false) + '"' + (fech ? ' disabled' : '') + '>Faltou</button></div>' +
+          (esc0 && v === false && !fech ? '<button type="button" class="btn btn-p pres-jb" data-just="' + j.id + '">' + (px.justificada ? 'Desfazer justificativa' : 'Justificar') + '</button>' : '') +
+          (esc0 && v === false && px.justificada && px.justificativa ? '<small class="pres-jt">' + esc(px.justificativa + (px.jpor && snap.equipe[px.jpor] && px.justificativa.indexOf('conferido') < 0 ? ' · conferido por ' + snap.equipe[px.jpor].split(' ')[0] : '')) + '</small>' : '') + '</div>';
       }).join('') || '<div class="card vazio">Ninguém encontrado.</div>';
+      area.querySelectorAll('[data-just]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var j = snap.jovens.filter(function (x) { return x.id === b.getAttribute('data-just'); })[0], k = j.id + '|' + dia, px2 = snap.presencas[k] || {};
+          if (!navigator.onLine) { ui.toast('Para justificar a falta é preciso estar com internet.', 'erro'); return; }
+          if (px2.justificada) {
+            ui.confirmar('Desfazer a justificativa?', j.nome + ' volta a ficar como "faltou" neste dia.', 'Desfazer', 'Cancelar').then(async function (ok) {
+              if (!ok) return;
+              try { var r = await window.CF.sb.rpc('justificar_falta', { p_part: j.id, p_dia: dia, p_desfazer: true }); if (r.error) throw r.error; px2.justificada = false; px2.justificativa = ''; snap.presencas[k] = px2; OFF.guardarTurma(snap); desenhar(); ui.toast('Justificativa desfeita.', 'ok'); }
+              catch (e) { erro(e); }
+            });
+            return;
+          }
+          ui.janela({ titulo: 'Justificar falta · ' + j.nome, confirmarDescarte: false,
+            corpo: '<p class="dica" style="margin:0 0 8px">Dia ' + (di + 1) + ' (' + D.curta(dia) + '). O atestado <b>não é guardado</b> no sistema: fica registrado só a data em que foi apresentado e quem conferiu.</p>' +
+              '<div class="form-grade"><label class="campo"><span>Atestado apresentado em</span><input class="entrada" type="date" id="js-dt" value="' + D.hoje() + '" max="' + D.hoje() + '"></label>' +
+              '<label class="campo"><span>Observação (opcional)</span><input class="entrada" id="js-obs" maxlength="120" placeholder="Ex.: consulta médica"></label></div>' +
+              '<p class="dica" style="margin:6px 0 0">A falta justificada não conta horas no certificado, mas não prejudica o aluno.</p>',
+            botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Justificar falta', principal: true, aoClicar: async function (el) {
+              try {
+                var r = await window.CF.sb.rpc('justificar_falta', { p_part: j.id, p_dia: dia, p_apresentado: el.querySelector('#js-dt').value || null, p_obs: ui.maiusculas(el.querySelector('#js-obs').value.trim()) || null });
+                if (r.error) throw r.error;
+                var quem = ((window.CF.perfilAtual || {}).nome || '').split(' ')[0];
+                px2.justificada = true; px2.justificativa = 'Atestado apresentado em ' + D.curta(el.querySelector('#js-dt').value || D.hoje()) + (quem ? ' · conferido por ' + quem : ''); snap.presencas[k] = px2; OFF.guardarTurma(snap);
+                desenhar(); ui.toast('Falta justificada.', 'ok'); return true;
+              } catch (e) { erro(e); return false; }
+            } }] });
+        });
+      });
       area.querySelectorAll('[data-p]').forEach(function (b) {
         b.addEventListener('click', function () {
           var j = snap.jovens.filter(function (x) { return x.id === b.getAttribute('data-p'); })[0];

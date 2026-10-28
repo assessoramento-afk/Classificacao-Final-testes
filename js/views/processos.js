@@ -145,27 +145,42 @@
     ligarCartoes(box, function () { semInternet(area); });
   }
 
+  /* Escolas, CKs e origens das turmas de profiling */
+  async function origensDados() {
+    var r = await Promise.all([window.CF.sb.from('escolas').select('*').order('nome'), window.CF.sb.from('cks').select('*').order('nome'), window.CF.sb.from('processo_origens').select('*')]);
+    return { escolas: (r[0] && r[0].data) || [], cks: (r[1] && r[1].data) || [], origens: (r[2] && r[2].data) || [] };
+  }
+  function nomeOrigens(ori, procId) {
+    return (ori.origens || []).filter(function (o) { return o.processo_id === procId; }).map(function (o) {
+      var x = o.escola_id ? porId(ori.escolas, o.escola_id) : porId(ori.cks, o.ck_id); return x ? x.nome : ''; }).filter(Boolean).join(' · ');
+  }
+  window.CF.origensDados = origensDados; window.CF.nomeOrigens = nomeOrigens;
+  window.CF.telas.escolas = function (area, ctx) { lista(area, ctx, 'escola'); };
+
   /* ================================================================
      LISTA
      ================================================================ */
-  async function lista(area, ctx) {
-    var admin = ctx.perfil.perfil === 'admin';
+  async function lista(area, ctx, tipoL) {
+    var admin = ctx.perfil.perfil === 'admin', ESC = tipoL === 'escola', ori = { escolas: [], cks: [], origens: [] };
     var filtroSit = 'todos', busca = '', aba = 'aberto', ano = '';
-    area.innerHTML = '<header class="cabecalho"><div><h1>Profiling Empresas</h1><p>Processos seletivos de cada empresa parceira</p></div>' +
-      (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + 'Novo Profiling Empresa</button>' : '') + '</header>' +
+    area.innerHTML = '<header class="cabecalho"><div><h1>' + (ESC ? 'Profiling Escolas' : 'Profiling Empresas') + '</h1><p>' + (ESC ? 'Turmas de alunos das escolas e das CKs' : 'Processos seletivos de cada empresa parceira') + '</p></div>' +
+      (admin ? '<button type="button" class="btn btn-pri" id="b-novo">' + ui.icone('mais', 17) + (ESC ? 'Nova turma de profiling' : 'Novo Profiling Empresa') + '</button>' : '') + '</header>' +
       '<div class="segmentos abas-proc" role="tablist" id="abas-p"></div>' +
       '<div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-p" placeholder="Buscar por empresa, vaga ou processo"></label><select class="entrada oculto" id="ano-p" aria-label="Ano" style="width:170px"></select></div>' +
       '<div class="filtros" id="filtros" role="group" aria-label="Situação"></div><div id="procs"><div class="girando" style="margin:30px auto"></div></div>';
     var procs = [], empresas = [], ag = null, nJovens = {};
     try { var r = await Promise.all([dados.processos.listar(), dados.empresas.listar().catch(function () { return []; }), dados.agenda.carregarTudo().catch(function () { return null; }), dados.jovens.todasParticipacoes().catch(function () { return []; })]); procs = r[0]; empresas = r[1]; ag = r[2];
       r[3].forEach(function (x) { nJovens[x.processo_id] = (nJovens[x.processo_id] || 0) + 1; });
-      if (!empresas.length && ag) empresas = ag.empresas; }
+      if (!empresas.length && ag) empresas = ag.empresas;
+      procs = procs.filter(function (p) { return (p.tipo || 'empresa') === (ESC ? 'escola' : 'empresa'); });
+      if (ESC) ori = await origensDados().catch(function () { return ori; }); }
     catch (e) {
       if (!navigator.onLine || /fetch|network|internet/i.test(String(e && e.message))) { semInternet(area); return; }
       erro(e); area.querySelector('#procs').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return;
     }
     guardarResumo(procs, empresas, ag);
-    if (admin) area.querySelector('#b-novo').addEventListener('click', function () { assistente(null, 1, ctx); });
+    if (admin) area.querySelector('#b-novo').addEventListener('click', function () { if (ESC) novaTurmaEscola(ctx, ag); else assistente(null, 1, ctx, null, 'empresa'); });
+    if (ESC) { var ib = area.querySelector('#busca-p'); if (ib) ib.placeholder = 'Buscar por turma, escola ou CK'; }
     area.querySelector('#busca-p').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
 
     var FIM = ['liberado', 'cancelado'];
@@ -187,18 +202,18 @@
       fb.querySelectorAll('[data-sit]').forEach(function (b) { b.addEventListener('click', function () { filtroSit = b.getAttribute('data-sit'); desenhar(); }); });
       var itens = abertos.filter(function (p) {
         if (filtroSit !== 'todos' && p.situacao !== filtroSit) return false;
-        var e = porId(empresas, p.empresa_id) || {};
+        var e = ESC ? { nome_fantasia: nomeOrigens(ori, p.id) } : (porId(empresas, p.empresa_id) || {});
         return !busca || ui.normalizar([e.nome_fantasia, e.razao_social, p.vaga, p.identificacao].join(' ')).indexOf(busca) >= 0;
       });
       var box = area.querySelector('#procs');
       if (!itens.length) {
-        box.innerHTML = '<div class="card vazio">' + (procs.length ? 'Nenhum processo encontrado.' : 'Nenhum processo ainda.' + (admin ? ' Use "Novo Profiling Empresa" para começar.' : '')) + '</div>';
+        box.innerHTML = '<div class="card vazio">' + (procs.length ? 'Nenhum processo encontrado.' : (ESC ? 'Nenhuma turma de profiling ainda.' + (admin ? ' Use "Nova turma de profiling" para começar.' : '') : 'Nenhum processo ainda.' + (admin ? ' Use "Novo Profiling Empresa" para começar.' : ''))) + '</div>';
         return;
       }
       box.innerHTML = '<div class="procs">' + itens.map(function (p) {
-        var e = porId(empresas, p.empresa_id) || {}, cor = (SITUACOES[p.situacao] || SITUACOES.montagem)[1];
+        var e = ESC ? { nome_fantasia: nomeOrigens(ori, p.id) || 'Sem origem' } : (porId(empresas, p.empresa_id) || {}), cor = (SITUACOES[p.situacao] || SITUACOES.montagem)[1];
         return '<div class="card proc" role="link" tabindex="0" data-href="#/processos/' + p.id + '" style="--sc:' + cor + '">' +
-          '<div class="proc-cab">' + logoHTML(e) + '<div class="proc-tit"><h3>' + esc(e.nome_fantasia || 'Empresa') + '</h3><small>' + esc(p.vaga) + ' · ' + esc(p.identificacao) + '</small>' +
+          '<div class="proc-cab">' + (ESC ? '<span class="logo-mini logo-esc">🎓</span>' : logoHTML(e)) + '<div class="proc-tit"><h3>' + esc(e.nome_fantasia || 'Empresa') + '</h3><small>' + esc(p.vaga) + ' · ' + esc(p.identificacao) + '</small>' +
           '<div>' + selo(p.situacao) + '</div></div></div>' +
           '<div class="nums"><div><b>' + turmasDe(ag, p.id).length + '</b><span>turmas</span></div><div><b>' + (nJovens[p.id] || 0) + '</b><span>jovens</span></div><div><b>' + esc(periodoReal(ag, p)) + '</b><span>período</span></div></div>' +
           areaAvaliar(p, turmasDe(ag, p.id).map(function (t) { return { id: t.id, nome: t.nome, dias: diasDaTurma(ag, t.id) }; })) + '</div>';
@@ -237,14 +252,19 @@
      ================================================================ */
   async function painel(area, ctx, id) {
     var admin = ctx.perfil.perfil === 'admin';
-    area.innerHTML = '<a class="voltar" href="#/processos">← Profiling Empresas</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
-    var p, testesProc, empresas, b, ag;
+    area.innerHTML = '<a class="voltar" href="#/processos" id="p-voltar">← Profiling Empresas</a><div id="painel"><div class="girando" style="margin:30px auto"></div></div>';
+    var p, testesProc, empresas, b, ag, ESC = false, oriP = null;
     try {
       var r = await Promise.all([dados.processos.obter(id), dados.processos.testes(id), dados.empresas.listar().catch(function () { return []; }), dados.banco.carregarTudo(), dados.agenda.carregarTudo(), dados.jovens.doProcesso(id).catch(function () { return []; })]);
       p = r[0]; testesProc = r[1]; empresas = r[2]; b = r[3]; ag = r[4]; var jovensP = r[5];
       if (!empresas.length) empresas = ag.empresas;
     } catch (e) { erro(e); area.querySelector('#painel').innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>Processo não encontrado.</span></div>'; return; }
-    var e = porId(empresas, p.empresa_id) || {};
+    ESC = p.tipo === 'escola';
+    if (ESC) {   // turma de profiling: origem no lugar da empresa
+      oriP = await origensDados().catch(function () { return { escolas: [], cks: [], origens: [] }; });
+      var vt = area.querySelector('#p-voltar'); if (vt) { vt.href = '#/escolas'; vt.textContent = '← Profiling Escolas'; }
+    }
+    var e = ESC ? { nome_fantasia: nomeOrigens(oriP, p.id) || 'Sem origem' } : (porId(empresas, p.empresa_id) || {});
     var montagem = p.situacao === 'montagem';
     var turmas = turmasDe(ag, p.id).sort(function (x, y) { return (diasDaTurma(ag, x.id)[0] || '').localeCompare(diasDaTurma(ag, y.id)[0] || ''); });
     var podeTurma = admin && (p.situacao === 'montagem' || p.situacao === 'andamento');
@@ -252,16 +272,17 @@
     var falta = [testesProc.length ? null : 'testes', turmas.length ? null : 'turma', jovensP.length ? null : 'jovens'].filter(Boolean);
     var incompletosJ = jovensP.filter(function (x) { return !x.termo_recebido_em || !(x.jovem && x.jovem.foto_path); }).length;
     var etapas = [['montagem', 'Montagem', 'dados, testes, turmas e jovens'], ['andamento', 'Em andamento', 'lançamento das notas'], ['revisao', 'Revisão', 'conferência e fechamento'], ['liberado', 'Liberado', 'resultado para a empresa']];
+    if (p.tipo === 'escola') etapas = [['montagem', 'Montagem', 'dados, testes, turma e alunos'], ['andamento', 'Em andamento', 'presença e notas'], ['revisao', 'Consolidação', 'conferir os resultados'], ['liberado', 'Entrega', 'certificados e fichas']];
     var idxAtual = etapas.map(function (x) { return x[0]; }).indexOf(p.situacao);
     var porArea = {};
     testesProc.forEach(function (pt) { var t = porId(b.testes, pt.teste_id); var a = t && porId(b.areas, t.area_id); var n = a ? a.nome : 'SEM ÁREA'; porArea[n] = (porArea[n] || 0) + 1; });
     var resumoAreas = Object.keys(porArea).map(function (k) { return k + ' ' + porArea[k]; }).join(' · ');
     area.querySelector('#painel').innerHTML =
-      '<header class="cabecalho"><div class="painel-tit">' + logoHTML(e, 'grande') + '<div><h1>' + esc(e.nome_fantasia || '') + ' · ' + esc(p.vaga) + '</h1>' +
+      '<header class="cabecalho"><div class="painel-tit">' + (ESC ? '<span class="logo-mini grande logo-esc">🎓</span>' : logoHTML(e, 'grande')) + '<div><h1>' + esc(e.nome_fantasia || '') + ' · ' + esc(p.vaga) + '</h1>' +
         '<p>' + esc(p.identificacao) + ' · período ' + esc(periodoReal(ag, p)) + '</p></div></div>' +
         '<div class="painel-acoes">' + selo(p.situacao) +
         (['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn btn-pri" href="#/processos/' + p.id + '/classificacao">🏆 Classificação</a>' : '') +
-        (ctx.perfil.perfil === 'admin' && ['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn" href="#/processos/' + p.id + '/revisao">' + ({ andamento: '📋 Enviar para revisão', revisao: '✅ Revisar e liberar', liberado: '🔓 Liberado · ver' }[p.situacao]) + '</a>' : '') +
+        (!ESC && ctx.perfil.perfil === 'admin' && ['andamento', 'revisao', 'liberado'].indexOf(p.situacao) >= 0 ? '<a class="btn" href="#/processos/' + p.id + '/revisao">' + ({ andamento: '📋 Enviar para revisão', revisao: '✅ Revisar e liberar', liberado: '🔓 Liberado · ver' }[p.situacao]) + '</a>' : '') +
         (admin && montagem ? '<button type="button" class="btn" id="p-editar">Editar</button><div class="iniciar-box"><button type="button" class="btn btn-pri btn-iniciar" id="p-iniciar"' + (falta.length ? ' disabled' : '') + '>Iniciar processo</button>' + (falta.length ? '<small>Falta: ' + esc(falta.join(' e ')) + '</small>' : '') + '</div>' : '') + '</div></header>' +
       '<div class="etapas" role="list">' + etapas.map(function (x, i) {
         return '<div role="listitem" class="' + (i < idxAtual ? 'feita' : (i === idxAtual ? 'atual' : '')) + '"' + (i === idxAtual ? ' aria-current="step"' : '') + '><b>' + (i + 1) + ' · ' + esc(x[1]) + '</b>' + esc(x[2]) + '</div>';
@@ -442,17 +463,84 @@
   /* ================================================================
      NOVO / EDITAR PROCESSO (4 passos)
      ================================================================ */
-  async function assistente(proc, passoInicial, ctx, testesAtuais) {
+  /* ---------- Nova turma de profiling (escolas): tudo numa janela só ---------- */
+  async function novaTurmaEscola(ctx, ag) {
+    var D = window.CF.datas, r;
+    try { r = await Promise.all([dados.banco.carregarTudo(), origensDados(), ag ? Promise.resolve(ag) : dados.agenda.carregarTudo()]); } catch (e) { erro(e); return; }
+    var b = r[0], ori = r[1], agd = r[2], qtd = 1, horas = {}, origens = [], marc = {};
+    var testes = (b.testes || []).filter(function (t) { return t.ativo !== false; }).sort(function (x, y) { return x.nome.localeCompare(y.nome, 'pt-BR'); });
+    var hoje = new Date(), ident = (hoje.getMonth() < 6 ? '1º' : '2º') + ' semestre ' + hoje.getFullYear();
+    var opcoes = ori.escolas.filter(function (x) { return x.ativa !== false; }).map(function (x) { return ['e:' + x.id, x.nome, 'Escola']; })
+      .concat(ori.cks.filter(function (x) { return x.ativa !== false; }).map(function (x) { return ['c:' + x.id, x.nome, 'CK']; }));
+    var j = ui.janela({ titulo: 'Nova turma de profiling', largura: 820,
+      corpo: '<div class="form-grade"><label class="campo" for="ne-nome"><span>Nome da turma <span class="obrig">*</span></span><input class="entrada" id="ne-nome" maxlength="60" placeholder="Ex.: TURMA 1 · ' + hoje.getFullYear() + '/' + (hoje.getMonth() < 6 ? 1 : 2) + '"></label>' +
+          '<div class="campo"><span>Quantos dias?</span><div class="tu-qtd" role="group" aria-label="Quantos dias"><button type="button" class="btn btn-p" data-qmenos aria-label="Menos um dia">−</button><b id="ne-qn">1 dia</b><button type="button" class="btn btn-p" data-qmais aria-label="Mais um dia">+</button></div></div></div>' +
+        '<div class="campo"><span>Origem dos alunos (escola e/ou CK) <span class="obrig">*</span></span>' + (opcoes.length ? '<div class="ne-ori">' + opcoes.map(function (o) { return '<label class="ne-chip"><input type="checkbox" data-ori="' + o[0] + '"> <span>' + esc(o[1]) + ' <small>' + o[2] + '</small></span></label>'; }).join('') + '</div>'
+          : '<p class="dica" style="margin:0">Cadastre as escolas e CKs em Configurações › Escolas e CKs.</p>') + '</div>' +
+        '<div class="campo"><span>Dias e horários <span class="obrig">*</span></span><div id="ne-cal" class="cal-escolha"></div><div id="ne-dias"></div></div>' +
+        '<div class="campo"><span>Testes do banco <span class="obrig">*</span></span><small class="dica" style="margin:0 0 6px">A Entrevista Biográfica não vem marcada; a competência "Comportamento" dela vira a nota de comportamento no banco de talentos.</small>' +
+          '<div class="ne-testes">' + testes.map(function (t) { return '<label class="ne-teste"><input type="checkbox" data-tst="' + t.id + '"> <span>' + esc(t.nome) + (t.codigo ? ' <small class="cod cod-teste">' + esc(t.codigo) + '</small>' : '') + '</span></label>'; }).join('') + '</div></div>' +
+        '<div class="form-grade"><label class="campo" for="ne-vagas"><span>Vagas (máx. alunos)</span><input class="entrada" id="ne-vagas" type="number" min="1" max="60" value="20"></label></div>',
+      botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Criar turma', principal: true, aoClicar: async function (f) {
+        var nome = ui.maiusculas(f.querySelector('#ne-nome').value.trim().replace(/\s+/g, ' ')), escolhidos = cal.valor(), vagas = parseInt(f.querySelector('#ne-vagas').value, 10);
+        var tst = testes.filter(function (t) { return marc[t.id]; });
+        if (!nome) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
+        if (!origens.length) { ui.toast('Escolha pelo menos uma escola ou CK.', 'erro'); return false; }
+        if (escolhidos.length !== qtd) { ui.toast(qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os ' + qtd + ' dias da turma.', 'erro'); return false; }
+        var diasH = escolhidos.map(function (d) { var h = horas[d] || { inicio: '08:00', fim: '12:00' }; return { data: d, inicio: h.inicio, fim: h.fim }; });
+        var ruim = diasH.filter(function (d) { return !d.inicio || !d.fim || d.fim <= d.inicio; })[0];
+        if (ruim) { ui.toast('No dia ' + D.curta(ruim.data) + ', o horário de fim precisa ser depois do início.', 'erro'); return false; }
+        if (!tst.length) { ui.toast('Escolha pelo menos um teste.', 'erro'); return false; }
+        if (isNaN(vagas) || vagas < 1 || vagas > 60) { ui.toast('Vagas entre 1 e 60.', 'erro'); return false; }
+        if (window.CF.agendaG && !(await window.CF.agendaG.confirmarDias(escolhidos, espLista))) return false;
+        var id;
+        try {
+          id = await dados.processos.salvar({ id: null, tipo: 'escola', empresa_id: null, vaga: nome, identificacao: ident, observacoes: null,
+            origens: origens.map(function (k) { return k.charAt(0) === 'e' ? { escola_id: k.slice(2) } : { ck_id: k.slice(2) }; }),
+            testes: tst.map(function (t) { return { teste_id: t.id, nivel: null }; }) });
+        } catch (x) { erro(x); return false; }
+        try {
+          await dados.agenda.salvarTurma({ id: null, processo_id: id, nome: nome, vagas: vagas, dias: diasH });
+          if (window.CF.agendaG) window.CF.agendaG.sincronizar(true);
+          ui.toast('Turma de profiling criada: ' + D.listaDias(escolhidos) + '.', 'ok');
+        } catch (x) { ui.toast('A turma de profiling foi criada, mas os dias não: ' + api.traduzErro(x) + ' Cadastre os dias no painel.', 'erro'); }
+        window.location.hash = '#/processos/' + id; return true;
+      } }]
+    });
+    var el = j.elemento;
+    el.querySelectorAll('[data-ori]').forEach(function (c) { c.addEventListener('change', function () { var k = c.getAttribute('data-ori'); origens = origens.filter(function (x) { return x !== k; }); if (c.checked) origens.push(k); c.closest('label').classList.toggle('on', c.checked); }); });
+    el.querySelectorAll('[data-tst]').forEach(function (c) { c.addEventListener('change', function () { marc[c.getAttribute('data-tst')] = c.checked; c.closest('label').classList.toggle('on', c.checked); }); });
+    var boxD = el.querySelector('#ne-dias');
+    function mostrar(l) {
+      boxD.innerHTML = l.map(function (d, i) {
+        var h = horas[d] || (horas[d] = { inicio: (horas[l[0]] || {}).inicio || '08:00', fim: (horas[l[0]] || {}).fim || '12:00' });
+        return '<div class="tu-dia"><b>Dia ' + (i + 1) + '</b><span>' + esc(D.longa(d)) + '</span><input class="entrada" type="time" data-hi="' + d + '" value="' + h.inicio + '" aria-label="Início do dia ' + (i + 1) + '"><span>às</span><input class="entrada" type="time" data-hf="' + d + '" value="' + h.fim + '" aria-label="Fim do dia ' + (i + 1) + '"></div>';
+      }).join('');
+      boxD.querySelectorAll('[data-hi]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hi')].inicio = x.value; }); });
+      boxD.querySelectorAll('[data-hf]').forEach(function (x) { x.addEventListener('change', function () { horas[x.getAttribute('data-hf')].fim = x.value; }); });
+    }
+    var cal = window.CF.calendario.escolher(el.querySelector('#ne-cal'), { max: qtd, selecionados: [], ocupados: window.CF.agendaUtil.ocupados(agd, null), eventos: {}, aoMudar: mostrar });
+    if (window.CF.agendaG) window.CF.agendaG.eventosGoogle().then(function (l) { if (l.length) cal.definirEventos(window.CF.agendaG.mapaEventos(l)); });
+    var espLista = [];
+    if (window.CF.agendaG) window.CF.agendaG.especiais().then(function (l) { espLista = l; if (l.length) cal.definirEspeciais(window.CF.agendaG.mapaEspeciais(l)); });
+    function mudarQtd(n) { qtd = Math.min(10, Math.max(1, n)); el.querySelector('#ne-qn').textContent = qtd + (qtd === 1 ? ' dia' : ' dias'); cal.definirMax(qtd); }
+    el.querySelector('[data-qmenos]').addEventListener('click', function () { mudarQtd(qtd - 1); });
+    el.querySelector('[data-qmais]').addEventListener('click', function () { mudarQtd(qtd + 1); });
+  }
+
+  async function assistente(proc, passoInicial, ctx, testesAtuais, tipoNovo) {
     var r;
-    try { r = await Promise.all([dados.empresas.listar(), dados.banco.carregarTudo(), dados.processos.modelos(), dados.config.carregar()]); }
+    var tipo = (proc && proc.tipo) || tipoNovo || 'empresa', escola = tipo === 'escola';
+    try { r = await Promise.all([dados.empresas.listar(), dados.banco.carregarTudo(), dados.processos.modelos(), dados.config.carregar(), escola ? origensDados() : null,
+      escola && proc ? window.CF.sb.from('processo_origens').select('escola_id,ck_id').eq('processo_id', proc.id).then(function (x) { return x.data || []; }) : []]); }
     catch (e) { erro(e); return; }
-    var empresas = r[0], b = r[1], modelos = r[2], cfg = r[3];
+    var empresas = r[0], b = r[1], modelos = r[2], cfg = r[3], ori = r[4] || { escolas: [], cks: [] };
     var novo = !proc;
     var st = {
       empresa_id: proc ? proc.empresa_id : '', vaga: proc ? proc.vaga : '', identificacao: proc ? proc.identificacao : '',
       data_inicio: proc ? proc.data_inicio || '' : '', data_fim: proc ? proc.data_fim || '' : '', observacoes: proc ? proc.observacoes || '' : '',
       ap: proc ? Number(proc.corte_aprovado) : Number(cfg.corte_aprovado), bk: proc ? Number(proc.corte_backup) : Number(cfg.corte_backup),
-      testes: {}, buscaT: ''
+      testes: {}, buscaT: '', origens: (r[5] || []).map(function (o) { return o.escola_id ? 'e:' + o.escola_id : 'c:' + o.ck_id; })
     };
     if (testesAtuais) testesAtuais.forEach(function (pt) { st.testes[pt.teste_id] = { nivel: pt.nivel || '' }; });
     else b.testes.filter(function (t) { return t.padrao && t.ativo; }).forEach(function (t) { st.testes[t.id] = { nivel: '' }; });
@@ -461,7 +549,7 @@
     var empresasOp = empresas.filter(function (x) { return x.ativa || x.id === st.empresa_id; }).sort(function (x, y) { return x.nome_fantasia.localeCompare(y.nome_fantasia, 'pt-BR'); });
 
     var j = ui.janela({
-      titulo: novo ? 'Novo Profiling Empresa' : 'Editar Profiling Empresa',
+      titulo: escola ? (novo ? 'Nova turma de profiling' : 'Editar turma de profiling') : (novo ? 'Novo Profiling Empresa' : 'Editar Profiling Empresa'),
       corpo: '<div class="passos" id="w-passos"></div><div id="w-corpo"></div>',
       botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: '← Voltar', aoClicar: function () { if (!ler()) return false; passo--; desenhar(); return false; } },
                { texto: 'Continuar →', principal: true, aoClicar: function () { return avancar(); } }]
@@ -483,7 +571,18 @@
       btVoltar.classList.toggle('oculto', passo === 1);
       btSeguir.textContent = passo === 4 ? (novo ? 'Criar processo' : 'Salvar alterações') : 'Continuar →';
       var c = el.querySelector('#w-corpo');
-      if (passo === 1) {
+      if (passo === 1 && escola) {
+        var todasO = ori.escolas.filter(function (x) { return x.ativa !== false; }).map(function (x) { return { k: 'e:' + x.id, n: x.nome, t: 'Escola' }; })
+          .concat(ori.cks.filter(function (x) { return x.ativa !== false; }).map(function (x) { return { k: 'c:' + x.id, n: x.nome, t: 'CK' }; }));
+        c.innerHTML = '<div class="form-grade">' +
+          '<label class="campo" for="w-vaga"><span>Nome da turma <span class="obrig">*</span></span><input class="entrada" id="w-vaga" maxlength="120" value="' + esc(st.vaga) + '" placeholder="Ex.: TURMA 1"></label>' +
+          '<label class="campo" for="w-ident"><span>Identificação <span class="obrig">*</span></span><input class="entrada" id="w-ident" maxlength="80" value="' + esc(st.identificacao) + '" placeholder="Ex.: 2º semestre 2026"></label>' +
+          '<div class="campo largo"><span>Origem dos alunos <span class="obrig">*</span></span><div class="chips-o" id="w-ori">' + (todasO.length ? todasO.map(function (o) {
+            return '<label class="chip-o"><input type="checkbox" value="' + o.k + '"' + (st.origens.indexOf(o.k) >= 0 ? ' checked' : '') + '><span>' + esc(o.n) + ' <small>' + o.t + '</small></span></label>'; }).join('')
+            : '<small class="dica">Nenhuma escola ou CK cadastrada. Cadastre em Configurações › Escolas e CKs.</small>') + '</div><small class="dica">Uma ou mais escolas e/ou CKs.</small></div>' +
+          '<label class="campo largo" for="w-obs"><span>Observações</span><textarea class="entrada" id="w-obs" rows="2" maxlength="1000">' + esc(st.observacoes) + '</textarea></label></div>' +
+          '<p class="dica" style="margin:0">Depois de criar, cadastre a turma (dias e horários) e os alunos no painel.</p>';
+      } else if (passo === 1) {
         c.innerHTML = '<div class="form-grade">' +
           '<label class="campo largo" for="w-emp"><span>Empresa <span class="obrig">*</span></span><select class="entrada" id="w-emp"><option value="">Escolha a empresa…</option>' +
             empresasOp.map(function (x) { return '<option value="' + x.id + '"' + (x.id === st.empresa_id ? ' selected' : '') + '>' + esc(x.nome_fantasia) + '</option>'; }).join('') + '</select>' +
@@ -580,7 +679,12 @@
     // Lê os campos do passo atual e valida
     function ler() {
       var c = el.querySelector('#w-corpo');
-      if (passo === 1) {
+      if (passo === 1 && escola) {
+        st.vaga = c.querySelector('#w-vaga').value.trim().replace(/\s+/g, ' ');
+        st.identificacao = c.querySelector('#w-ident').value.trim().replace(/\s+/g, ' ');
+        st.observacoes = c.querySelector('#w-obs').value.trim();
+        st.origens = Array.prototype.map.call(c.querySelectorAll('#w-ori input:checked'), function (x) { return x.value; });
+      } else if (passo === 1) {
         st.empresa_id = c.querySelector('#w-emp').value; st.vaga = c.querySelector('#w-vaga').value.trim().replace(/\s+/g, ' ');
         if (st._vagaNova && st._vagaNova() && st.empresa_id && st.vaga && window.CF.perm.pode('config_empresas')) {   // guarda a vaga nova na empresa
           window.CF.sb.from('empresa_vagas').upsert({ empresa_id: st.empresa_id, nome: ui.maiusculas(st.vaga) }, { onConflict: 'empresa_id,nome', ignoreDuplicates: true }).then(function () {}, function () {});
@@ -592,7 +696,11 @@
       return true;
     }
     function validar() {
-      if (passo === 1) {
+      if (passo === 1 && escola) {
+        if (!st.vaga) { ui.toast('Informe o nome da turma.', 'erro'); return false; }
+        if (!st.identificacao) { ui.toast('Informe a identificação (ex.: 2º semestre 2026).', 'erro'); return false; }
+        if (!st.origens.length) { ui.toast('Escolha pelo menos uma escola ou CK.', 'erro'); return false; }
+      } else if (passo === 1) {
         if (!st.empresa_id) { ui.toast('Escolha a empresa.', 'erro'); return false; }
         if (!st.vaga) { ui.toast('Informe a vaga.', 'erro'); return false; }
         if (!st.identificacao) { ui.toast('Informe a identificação (ex.: 2º semestre 2026).', 'erro'); return false; }
@@ -613,13 +721,14 @@
       ler(); if (!validar()) return false;
       if (passo < 4) { passo++; desenhar(); return false; }
       var ordem = b.testes.slice().sort(function (x, y) { return (x.padrao === y.padrao ? 0 : (x.padrao ? -1 : 1)) || areaNome(x).localeCompare(areaNome(y), 'pt-BR') || x.nome.localeCompare(y.nome, 'pt-BR'); });
-      var payload = { id: proc ? proc.id : null, empresa_id: st.empresa_id, vaga: st.vaga, identificacao: st.identificacao, data_inicio: st.data_inicio || null, data_fim: st.data_fim || null,
+      var payload = { id: proc ? proc.id : null, tipo: tipo, empresa_id: escola ? null : st.empresa_id,
+        origens: escola ? st.origens.map(function (k) { return k.charAt(0) === 'e' ? { escola_id: k.slice(2) } : { ck_id: k.slice(2) }; }) : [], vaga: st.vaga, identificacao: st.identificacao, data_inicio: st.data_inicio || null, data_fim: st.data_fim || null,
         observacoes: st.observacoes || null, corte_aprovado: st.ap, corte_backup: st.bk,
         testes: ordem.filter(function (t) { return st.testes[t.id]; }).map(function (t) { return { teste_id: t.id, nivel: st.testes[t.id].nivel || null }; }) };
       return ui.executar(btSeguir, 'Salvando…', async function () {
         try {
           var id = await dados.processos.salvar(payload);
-          ui.toast(novo ? 'Processo criado.' : 'Processo atualizado.', 'ok');
+          ui.toast(escola ? (novo ? 'Turma de profiling criada.' : 'Turma de profiling atualizada.') : (novo ? 'Processo criado.' : 'Processo atualizado.'), 'ok');
           if (window.location.hash === '#/processos/' + id) window.dispatchEvent(new HashChangeEvent('hashchange')); else window.location.hash = '#/processos/' + id;
           return true;
         } catch (x) { erro(x); return false; }

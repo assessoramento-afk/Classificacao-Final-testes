@@ -126,17 +126,17 @@
   window.CF.telas.painel = async function (area, ctx) {
     var p = ctx.perfil, admin = p.perfil === 'admin' && (!window.CF.perm || window.CF.perm.pode('graficos_acomp'));
     var primeiroNome = String(p.nome || '').split(' ')[0] || '';
-    var st = { periodo: 'ano', empresa: '' }, base;
+    var st = { periodo: 'ano', empresa: '', tipo: 'todos' }, base;
     area.innerHTML = '<div id="gf"><div class="girando" style="margin:40px auto"></div></div>';
     var box = area.querySelector('#gf');
     try {
       var r = await Promise.all([dados.agenda.carregarTudo(), dados.jovens.todasParticipacoes(),
         admin ? window.CF.sb.rpc('acomp_listar', { p_proc: null }).then(function (x) { return x.error ? [] : x.data; }) : Promise.resolve([]),
-        window.CF.agendaG ? window.CF.agendaG.eventosGoogle() : Promise.resolve([]), window.CF.agendaG ? window.CF.agendaG.coresAgendas() : Promise.resolve({})]);
-      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {}, gev: r[3] || [], coresG: r[4] || {} };
+        window.CF.agendaG ? window.CF.agendaG.eventosGoogle() : Promise.resolve([]), window.CF.agendaG ? window.CF.agendaG.coresAgendas() : Promise.resolve({}), window.CF.origensDados ? window.CF.origensDados().catch(function () { return null; }) : Promise.resolve(null)]);
+      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {}, gev: r[3] || [], coresG: r[4] || {}, ori: r[5] || { escolas: [], cks: [], origens: [] } };
     } catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
     var ag = base.ag, procs = ag.processos || [], empresas = ag.empresas || [];
-    function nomeEmp(id) { var e = empresas.filter(function (x) { return x.id === id; })[0]; return e ? (e.nome_fantasia || e.razao_social || '') : ''; }
+    function nomeEmp(id, pid) { if (!id && pid && window.CF.nomeOrigens) return window.CF.nomeOrigens(base.ori, pid); var e = empresas.filter(function (x) { return x.id === id; })[0]; return e ? (e.nome_fantasia || e.razao_social || '') : ''; }
     function diasTurma(tid) { return ag.dias.filter(function (d) { return d.turma_id === tid; }).map(function (d) { return String(d.data).slice(0, 10); }).sort(); }
     function inicioProc(pid) { var ds = []; ag.turmas.filter(function (x) { return x.processo_id === pid; }).forEach(function (x) { ds = ds.concat(diasTurma(x.id)); }); ds.sort(); return ds[0] || null; }
     function desde() {
@@ -151,7 +151,7 @@
 
     function calcular() {
       var d0 = desde(), h = hoje();
-      var ps = procs.filter(function (x) { return (!st.empresa || x.empresa_id === st.empresa) && x.situacao !== 'cancelado'; });
+      var ps = procs.filter(function (x) { return (!st.empresa || x.empresa_id === st.empresa) && x.situacao !== 'cancelado' && (st.tipo === 'todos' || (x.tipo || 'empresa') === st.tipo); });
       var noPeriodo = ps.filter(function (x) { var i = inicioProc(x.id); return i ? i >= d0 : st.periodo === 'tudo'; });
       var turmasF = ag.turmas.filter(function (x) { return ps.some(function (y) { return y.id === x.processo_id; }); });
       // jovens avaliados: participantes de turmas já realizadas no período
@@ -228,10 +228,17 @@
         ['#5b6b8a', d.avaliados, 'Jovens avaliados', 'em ' + d.nProcPeriodo + ' processo' + (d.nProcPeriodo === 1 ? '' : 's') + ' no período'],
         ['#3FA66B', aprov == null ? '—' : aprov + '%', 'Aprovação média', d.totAll ? 'backup ' + pct(d.tot.backup, d.totAll) + '% · desistência ' + pct(d.tot.desistencia, d.totAll) + '%' : 'sem resultados no período']
       ];
-      if (admin) kpis.push(['#D9534F', d.ac.atrasadas, 'Avaliações atrasadas', 'acompanhamento das empresas']);
+      if (admin && st.tipo !== 'escola') kpis.push(['#D9534F', d.ac.atrasadas, 'Avaliações atrasadas', 'acompanhamento das empresas']);
+      if (st.tipo !== 'empresa') {   // Profiling Escolas: alunos atendidos, turmas e escolas/CKs no período
+        var d0e = desde(), pe = procs.filter(function (x) { return x.tipo === 'escola' && x.situacao !== 'cancelado'; }).filter(function (x) { var i = inicioProc(x.id); return i ? i >= d0e : st.periodo === 'tudo'; });
+        var alunos = {}; (base.parts || []).forEach(function (x) { if (pe.some(function (y) { return y.id === x.processo_id; })) alunos[x.jovem_id] = 1; });
+        var origs = {}; ((base.ori || {}).origens || []).forEach(function (o) { if (pe.some(function (y) { return y.id === o.processo_id; })) origs[o.escola_id || o.ck_id] = 1; });
+        kpis.push(['#2f6fd0', Object.keys(alunos).length, 'Alunos no Profiling Escolas', pe.length + ' turma' + (pe.length === 1 ? '' : 's') + ' · ' + Object.keys(origs).length + ' escola(s)/CK(s)']);
+      }
       box.innerHTML =
         '<div class="gf-topo"><div><h1>Olá, ' + esc(primeiroNome) + '!</h1><p class="dica">Gráficos do Projeto Gol Jovens Talentos</p></div>' +
-          '<div class="gf-filtros">' + [['3m', 'Últimos 3 meses'], ['ano', 'Este ano'], ['tudo', 'Tudo']].map(function (x) {
+          '<div class="gf-filtros">' + [['empresa', 'Empresas'], ['escola', 'Escolas'], ['todos', 'Todos']].map(function (x) {
+            return '<button type="button" class="pt-chip' + (st.tipo === x[0] ? ' on' : '') + '" data-tipo="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '<span class="gf-sep"></span>' + [['3m', 'Últimos 3 meses'], ['ano', 'Este ano'], ['tudo', 'Tudo']].map(function (x) {
             return '<button type="button" class="pt-chip' + (st.periodo === x[0] ? ' on' : '') + '" data-per="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
             '<select class="entrada gf-emp" id="gf-emp" aria-label="Empresa"><option value="">Empresa: todas</option>' + empresas.slice().sort(function (a, b) { return (a.nome_fantasia || '').localeCompare(b.nome_fantasia || ''); }).map(function (e) {
               return '<option value="' + e.id + '"' + (st.empresa === e.id ? ' selected' : '') + '>' + esc(e.nome_fantasia || e.razao_social) + '</option>'; }).join('') + '</select>' +
@@ -243,9 +250,10 @@
           (d.proximas.length ? '<ul class="gf-lst">' + d.proximas.map(function (x) {
             var q = x.ds[0] === hoje() ? 'hoje' + (x.ds[1] ? ' e ' + dataBR(x.ds[1]).slice(0, 5) : '') : x.ds.map(function (s) { return dataBR(s).slice(0, 5); }).join(' e ');
             if (x.g) return '<li><span><b>' + esc(x.g.titulo) + '</b><span class="gtag"' + (function () { var c = (base.coresG || {})[x.g.agenda_id]; return c ? ' style="background:' + c.cor + ';color:' + window.CF.agendaG.textoSobre(c.cor) + '"' : ''; })() + '>' + esc(((base.coresG || {})[x.g.agenda_id] || {}).nome || x.g.agenda_nome || 'Google') + '</span><small>' + (x.g.dia_inteiro ? 'dia inteiro' : esc(window.CF.agendaG.hora(x.g.inicio) + '–' + window.CF.agendaG.hora(x.g.fim))) + '</small></span><span' + (x.ds[0] === hoje() ? ' class="gf-hoje"' : '') + '>' + esc(q) + '</span></li>';
-            return '<li><span><b>' + esc(x.t.nome) + '</b><small>' + esc(nomeEmp(x.p.empresa_id) + ' · ' + x.p.vaga) + '</small></span><span' + (x.ds[0] === hoje() ? ' class="gf-hoje"' : '') + '>' + esc(q) + '</span></li>'; }).join('') + '</ul>'
+            return '<li><span><b>' + esc(x.t.nome) + '</b><small>' + esc((x.p.tipo === 'escola' ? '🎓 ' : '') + nomeEmp(x.p.empresa_id, x.p.id) + ' · ' + x.p.vaga) + '</small></span><span' + (x.ds[0] === hoje() ? ' class="gf-hoje"' : '') + '>' + esc(q) + '</span></li>'; }).join('') + '</ul>'
             : '<p class="dica" style="margin:18px 0">Nenhuma turma marcada.</p>') + '</section></div>';
       box.querySelectorAll('[data-per]').forEach(function (b) { b.addEventListener('click', function () { st.periodo = b.getAttribute('data-per'); desenhar(); }); });
+      box.querySelectorAll('[data-tipo]').forEach(function (b) { b.addEventListener('click', function () { st.tipo = b.getAttribute('data-tipo'); if (st.tipo === 'escola') st.empresa = ''; desenhar(); }); });
       box.querySelector('#gf-emp').addEventListener('change', function () { st.empresa = this.value; desenhar(); });
       box.querySelectorAll('[data-png]').forEach(function (b) {
         b.addEventListener('click', async function () {

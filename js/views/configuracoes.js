@@ -10,6 +10,7 @@
   var TEXTO_PADRAO = 'A Kolping Estadual de São Paulo agradece à {empresa} pela confiança e pela parceria neste processo seletivo para a vaga de {vaga}.\n\n' +
     'Juntos, abrimos portas para que jovens deem o primeiro passo no mundo do trabalho, com oportunidade, preparo e dignidade.';
   var ICONES = {
+    'escolas-cks': '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
     feriados: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/>',
     'email-acomp': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
     integracoes: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
@@ -51,6 +52,7 @@
     if (sub === 'permissoes') return window.CF.telas.permissoes(area);
     if (sub === 'integracoes') return paginaIntegracoes(area);
     if (sub === 'feriados') return paginaFeriados(area);
+    if (sub === 'escolas-cks') return paginaEscolas(area);
     paginaInicial(area);
   };
 
@@ -84,6 +86,7 @@
     area.querySelector('#cfg-cards').innerHTML =
       '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
         card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
+        card('escolas-cks', 'escola', 'Escolas e CKs', 'De onde vêm os alunos do Profiling Escolas') +
         card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') +
         '</div></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
@@ -416,6 +419,51 @@
       });
     });
     previa();
+  }
+
+  /* ---------- Escolas e CKs (origem dos alunos do Profiling Escolas) ---------- */
+  async function paginaEscolas(area) {
+    var aba = 'escolas', lista = { escolas: [], cks: [] }, pode = window.CF.perm.pode('config_empresas');
+    area.innerHTML = cabecalho('Escolas e CKs', 'De onde vêm os alunos das turmas de profiling. Aparecem para escolher na "Nova turma de profiling" e no cadastro do aluno.') + '<div id="ec"></div>';
+    var box = area.querySelector('#ec');
+    var CAMPOS = { escolas: [['nome', 'Nome da escola *', 160], ['cidade', 'Cidade', 80], ['telefone', 'Telefone', 20], ['contato_nome', 'Contato na escola', 80], ['contato_email', 'E-mail do contato', 120], ['inep', 'Código INEP (opcional)', 12]],
+                   cks: [['nome', 'Nome da CK *', 160], ['cidade', 'Cidade', 80], ['responsavel', 'Responsável', 80], ['telefone', 'Telefone', 20]] };
+    async function carregar() {
+      var r = await Promise.all([window.CF.sb.from('escolas').select('*').order('nome'), window.CF.sb.from('cks').select('*').order('nome')]);
+      if (r[0].error) { box.innerHTML = '<div class="aviso aviso-erro"><span>Rode o SQL fase6_17 no Supabase para ativar as escolas e CKs.</span></div>'; return; }
+      lista = { escolas: r[0].data || [], cks: r[1].data || [] }; desenhar();
+    }
+    function desenhar() {
+      var l = lista[aba];
+      box.innerHTML = '<div class="pt-filtros"><button type="button" class="pt-chip' + (aba === 'escolas' ? ' on' : '') + '" data-aba="escolas">Escolas ' + lista.escolas.length + '</button>' +
+        '<button type="button" class="pt-chip' + (aba === 'cks' ? ' on' : '') + '" data-aba="cks">CKs ' + lista.cks.length + '</button>' +
+        (pode ? '<button type="button" class="btn btn-pri btn-p" id="ec-novo" style="margin-left:auto">+ ' + (aba === 'escolas' ? 'Nova escola' : 'Nova CK') + '</button>' : '') + '</div>' +
+        '<section class="card tabela-card">' + (l.length ? '<table class="tabela"><thead><tr><th>' + (aba === 'escolas' ? 'Escola' : 'CK') + '</th><th>Cidade</th><th>Contato</th><th></th></tr></thead><tbody>' + l.map(function (x) {
+          var cont = aba === 'escolas' ? [x.contato_nome, x.telefone].filter(Boolean).join(' · ') : [x.responsavel, x.telefone].filter(Boolean).join(' · ');
+          return '<tr' + (x.ativa === false ? ' class="inativo"' : '') + '><td><b>' + esc(x.nome) + '</b>' + (x.inep ? '<small class="dica" style="display:block">INEP ' + esc(x.inep) + '</small>' : '') + (x.ativa === false ? ' ' + ui.pill('Inativa', 'nao') : '') + '</td><td>' + esc(x.cidade || '—') + '</td><td>' + esc(cont || '—') + '</td>' +
+            '<td style="text-align:right">' + (pode ? '<button type="button" class="btn btn-p" data-ed="' + x.id + '">Editar</button>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<p class="dica" style="margin:8px">Nenhuma ' + (aba === 'escolas' ? 'escola' : 'CK') + ' cadastrada ainda.</p>') + '</section>';
+      box.querySelectorAll('[data-aba]').forEach(function (b) { b.addEventListener('click', function () { aba = b.getAttribute('data-aba'); desenhar(); }); });
+      var bn = box.querySelector('#ec-novo'); if (bn) bn.addEventListener('click', function () { editar({}); });
+      box.querySelectorAll('[data-ed]').forEach(function (b) { b.addEventListener('click', function () { editar(lista[aba].filter(function (x) { return x.id === b.getAttribute('data-ed'); })[0]); }); });
+    }
+    function editar(x) {
+      var tab = aba, cs = CAMPOS[tab];
+      ui.janela({ titulo: (x.id ? 'Editar ' : 'Nova ') + (tab === 'escolas' ? 'escola' : 'CK'),
+        corpo: '<div class="form-grade">' + cs.map(function (c) { return '<label class="campo' + (c[0] === 'nome' ? ' largo' : '') + '"><span>' + esc(c[1]) + '</span><input class="entrada" data-c="' + c[0] + '" maxlength="' + c[2] + '" value="' + esc(x[c[0]] || '') + '"></label>'; }).join('') + '</div>' +
+          (x.id ? '<label class="marca"><input type="checkbox" id="ec-ativa"' + (x.ativa !== false ? ' checked' : '') + '> <span>' + (tab === 'escolas' ? 'Escola ativa' : 'CK ativa') + ' (inativas não aparecem para novas turmas)</span></label>' : ''),
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (el) {
+          var o = {}; el.querySelectorAll('[data-c]').forEach(function (i) { var v = i.value.trim(); o[i.getAttribute('data-c')] = v ? (i.getAttribute('data-c') === 'contato_email' ? v.toLowerCase() : ui.maiusculas(v)) : null; });
+          if (o.telefone) o.telefone = ui.formatarTelefone(o.telefone);
+          if (!o.nome) { ui.toast('Informe o nome.', 'erro'); return false; }
+          if (x.id) { o.ativa = el.querySelector('#ec-ativa').checked; }
+          try {
+            var r = x.id ? await window.CF.sb.from(tab).update(o).eq('id', x.id) : await window.CF.sb.from(tab).insert(o);
+            if (r.error) throw r.error; ui.toast('Salvo.', 'ok'); await carregar(); return true;
+          } catch (e) { erro(e); return false; }
+        } }] });
+    }
+    await carregar();
   }
 
   /* ---------- Feriados e eventos (feriados, pontos facultativos, Kolping Estadual, lembretes) ---------- */

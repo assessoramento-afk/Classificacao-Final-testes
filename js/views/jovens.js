@@ -6,6 +6,46 @@
    ===================================================================== */
 (function () {
   'use strict';
+  /* ---------- Dados completos do jovem (escola/CK, série, contato, endereço, CPF, PcD) ---------- */
+  var origensCache = null;
+  async function origens() { if (!origensCache) origensCache = window.CF.origensDados ? await window.CF.origensDados().catch(function () { return { escolas: [], cks: [] }; }) : { escolas: [], cks: [] }; return origensCache; }
+  function extraHTML(j, aberto, ori, comResp) {
+    var esc2 = window.CF.ui.esc;
+    function sel(id, lista, atual, vazio) { return '<select class="entrada" id="' + id + '"><option value="">' + vazio + '</option>' + lista.filter(function (x) { return x.ativa !== false || x.id === atual; }).map(function (x) { return '<option value="' + x.id + '"' + (x.id === atual ? ' selected' : '') + '>' + esc2(x.nome) + '</option>'; }).join('') + '</select>'; }
+    var PER = [['', 'Período…'], ['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite'], ['integral', 'Integral']];
+    function cpfFmt(c) { c = String(c || '').replace(/\D/g, ''); return c.length === 11 ? c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9) : c; }
+    return '<details class="jx"' + (aberto ? ' open' : '') + '><summary>Dados completos <small>escola ou CK, contato, endereço, documentos e PcD</small></summary>' +
+      '<p class="jx-t">Origem</p><div class="form-grade"><label class="campo"><span>Escola</span>' + sel('jx-esc', ori.escolas || [], j.escola_id, 'Nenhuma') + '</label><label class="campo"><span>CK (Comunidade Kolping)</span>' + sel('jx-ck', ori.cks || [], j.ck_id, 'Nenhuma') + '</label></div>' +
+      '<div class="form-grade jx-3"><label class="campo"><span>Série/ano</span><input class="entrada" id="jx-serie" maxlength="30" value="' + esc2(j.serie || '') + '" placeholder="Ex.: 2º ANO EM"></label>' +
+        '<label class="campo"><span>Período</span><select class="entrada" id="jx-per">' + PER.map(function (x) { return '<option value="' + x[0] + '"' + ((j.periodo || '') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
+        '<label class="campo"><span>RA</span><input class="entrada" id="jx-ra" maxlength="20" value="' + esc2(j.ra || '') + '"></label></div>' +
+      '<p class="jx-t">Contato</p><div class="form-grade"><label class="campo"><span>E-mail do aluno</span><input class="entrada" id="jx-email" type="email" maxlength="120" value="' + esc2(j.email || '') + '"></label>' +
+        '<label class="campo"><span>Telefone do responsável</span><input class="entrada" id="jx-rtel" inputmode="tel" maxlength="15" value="' + esc2(j.responsavel_telefone || '') + '" placeholder="(11) 00000-0000"></label></div>' +
+      (comResp ? '<div class="form-grade"><label class="campo"><span>Nome do responsável</span><input class="entrada" id="jx-rnome" maxlength="120" value="' + esc2(j.responsavel_nome || '') + '"></label><label class="campo"><span>Parentesco</span><input class="entrada" id="jx-rpar" maxlength="40" value="' + esc2(j.responsavel_parentesco || '') + '" placeholder="MÃE, PAI, AVÓ…"></label></div>' : '') +
+      '<p class="jx-t">Endereço e documentos</p><div class="form-grade jx-3"><label class="campo"><span>Bairro</span><input class="entrada" id="jx-bairro" maxlength="80" value="' + esc2(j.bairro || '') + '"></label>' +
+        '<label class="campo"><span>Cidade</span><input class="entrada" id="jx-cidade" maxlength="80" value="' + esc2(j.cidade || '') + '"></label>' +
+        '<label class="campo"><span>CPF</span><input class="entrada" id="jx-cpf" inputmode="numeric" maxlength="14" value="' + esc2(cpfFmt(j.cpf)) + '" placeholder="000.000.000-00"></label></div>' +
+      '<p class="jx-t">Pessoa com deficiência (PcD)</p><label class="marca"><input type="checkbox" id="jx-pcd"' + (j.pcd ? ' checked' : '') + '> <span>Sim, é pessoa com deficiência</span></label>' +
+        '<label class="campo' + (j.pcd ? '' : ' oculto') + '" id="jx-pcdo-l" style="margin-top:6px"><span>Observação (tipo ou adaptação necessária)</span><input class="entrada" id="jx-pcdo" maxlength="200" value="' + esc2(j.pcd_obs || '') + '"></label>' +
+        '<div class="aviso aviso-info" style="margin-top:8px"><span>Dado sensível (LGPD): registre só com a autorização do responsável no termo de consentimento. Visível só para a equipe da Kolping.</span></div></details>';
+  }
+  function ligarExtra(el) {
+    var cpf = el.querySelector('#jx-cpf'); if (cpf) cpf.addEventListener('input', function () { var c = cpf.value.replace(/\D/g, '').slice(0, 11); cpf.value = c.length > 9 ? c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9) : (c.length > 6 ? c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6) : (c.length > 3 ? c.slice(0, 3) + '.' + c.slice(3) : c)); });
+    var rt = el.querySelector('#jx-rtel'); if (rt) rt.addEventListener('input', function () { rt.value = window.CF.ui.formatarTelefone(rt.value); });
+    var pc = el.querySelector('#jx-pcd'); if (pc) pc.addEventListener('change', function () { el.querySelector('#jx-pcdo-l').classList.toggle('oculto', !pc.checked); });
+  }
+  function lerExtra(el, extra) {
+    if (!el.querySelector('#jx-esc')) return null;
+    var M = window.CF.ui.maiusculas, v = function (id) { var x = el.querySelector(id); return x ? x.value.trim() : ''; };
+    var cpf = v('#jx-cpf').replace(/\D/g, '');
+    if (cpf && cpf.length !== 11) { window.CF.ui.toast('CPF incompleto: são 11 números.', 'erro'); return false; }
+    return Object.assign({ escola_id: v('#jx-esc') || null, ck_id: v('#jx-ck') || null, serie: M(v('#jx-serie')) || null, periodo: v('#jx-per') || null, ra: v('#jx-ra') || null,
+      email: v('#jx-email').toLowerCase() || null, responsavel_telefone: v('#jx-rtel') || null, responsavel_nome: el.querySelector('#jx-rnome') ? M(v('#jx-rnome')) || null : undefined,
+      responsavel_parentesco: el.querySelector('#jx-rpar') ? M(v('#jx-rpar')) || null : undefined, bairro: M(v('#jx-bairro')) || null, cidade: M(v('#jx-cidade')) || null, cpf: cpf || null,
+      pcd: el.querySelector('#jx-pcd').checked, pcd_obs: v('#jx-pcdo') || null }, extra || {});
+  }
+  async function salvarExtra(jovemId, obj) { if (!obj || !jovemId) return; var r = await window.CF.sb.rpc('jovem_dados_salvar', { p_jovem: jovemId, p: obj }); if (r.error) throw r.error; }
+
   var ui = window.CF.ui, api = window.CF.api, dados = window.CF.dados, esc = ui.esc, D = window.CF.datas;
   var GENEROS = [['feminino', 'Feminino'], ['masculino', 'Masculino'], ['outro', 'Outro'], ['nao_informado', 'Prefiro não informar']];
   var NOME_G = { feminino: 'Feminino', masculino: 'Masculino', outro: 'Outro', nao_informado: 'Não informado' };
@@ -148,10 +188,12 @@
           '<div class="campo"><span>Termo de consentimento</span><div class="termo-linha">' + (pa ? '<button type="button" class="btn btn-p" id="fj-imp">🖨 Imprimir termo</button>' : '<span class="dica">Depois de salvar, imprima o termo para o jovem assinar.</span>') +
             '<label class="marcar"><input type="checkbox" id="fj-termo"' + (pa && pa.termo_recebido_em ? ' checked' : '') + '><span><b>Termo assinado recebido</b><small>' +
               (pa && pa.termo_recebido_em ? 'Registrado em ' + new Date(pa.termo_recebido_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Ao marcar, o sistema guarda a data e quem registrou.') + '</small></span></label></div></div>' +
+          '<div id="fj-extra"></div>' +
           (pa ? '<p class="dica" style="margin:0">Código do jovem neste processo: <span class="cod">' + esc(pa.codigo) + '</span></p>' : '<p class="dica" style="margin:0">O <b>código</b> do jovem é gerado ao salvar e sai no crachá.</p>'),
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar cadastro', principal: true, aoClicar: salvar }]
       });
       var el = jn.elemento;
+      origens().then(function (ori) { var bx = el.querySelector('#fj-extra'); if (!bx) return; bx.innerHTML = extraHTML(j, p.tipo === 'escola', ori, false); ligarExtra(bx); });
       if (j.foto_path) dados.jovens.urlFoto(j.foto_path).then(function (u) { if (u) el.querySelector('#fj-foto').innerHTML = '<img src="' + esc(u) + '" alt="">'; });
       el.querySelectorAll('[data-gen]').forEach(function (b) { b.addEventListener('click', function () { genero = b.getAttribute('data-gen'); el.querySelectorAll('[data-gen]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); }); });
       var tel = el.querySelector('#fj-tel'); tel.addEventListener('input', function () { tel.value = ui.formatarTelefone(tel.value); });
@@ -196,6 +238,8 @@
           nome: nome, genero: genero, nascimento: nasc || null, telefone: f.querySelector('#fj-tel').value || null, convocacao: f.querySelector('#fj-conv').value || null,
           responsavel_nome: f.querySelector('#fj-rnome').value.trim() || null, responsavel_parentesco: f.querySelector('#fj-rpar').value.trim() || null,
           termo_recebido: f.querySelector('#fj-termo').checked };
+        var extra = lerExtra(f, { responsavel_nome: f.querySelector('#fj-rnome').value.trim() ? ui.maiusculas(f.querySelector('#fj-rnome').value.trim()) : null, responsavel_parentesco: f.querySelector('#fj-rpar').value.trim() ? ui.maiusculas(f.querySelector('#fj-rpar').value.trim()) : null });
+        if (extra === false) return false;
         var bt = f.querySelector('.janela-pe .btn-pri');
         return ui.executar(bt, 'Salvando…', async function () {
           try {
@@ -211,6 +255,7 @@
               }
             }
             var r = await dados.jovens.salvar(payload);
+            try { await salvarExtra(r.jovem_id, extra); } catch (e) { ui.toast('Cadastro salvo, mas os dados completos não: ' + api.traduzErro(e), 'erro'); }
             if (arquivoFoto) { try { await dados.jovens.salvarFoto(r.jovem_id, arquivoFoto); } catch (e) { ui.toast('Cadastro salvo, mas a foto não foi enviada: ' + api.traduzErro(e), 'erro'); } }
             ui.toast(novo ? 'Jovem cadastrado · código ' + r.codigo + '.' : 'Cadastro atualizado.', 'ok');
             st.turma = payload.turma_id; await recarregar(); return true;
@@ -534,7 +579,7 @@
             '<div class="campo"><span>Gênero <span class="obrig">*</span></span><div class="segmentos seg-genero" role="group" aria-label="Gênero">' + GENEROS.map(function (g) { return '<button type="button" data-gen="' + g[0] + '" aria-pressed="' + (genero === g[0]) + '">' + g[1] + '</button>'; }).join('') + '</div></div>' +
             '<div class="form-grade"><label class="campo" for="fp-nasc"><span>Nascimento</span><input class="entrada" type="date" id="fp-nasc" value="' + esc(j.nascimento || '') + '" max="' + D.hoje() + '"></label>' +
             '<label class="campo" for="fp-tel"><span>Telefone</span><input class="entrada" id="fp-tel" inputmode="tel" maxlength="15" value="' + esc(j.telefone || '') + '" placeholder="(11) 00000-0000"></label></div></div></div>' +
-          '<p class="dica" style="margin:0">' + (novo ? 'Depois, para colocar o jovem num processo, use "+ Já cadastrado" na tela de jovens do processo.' : 'As alterações valem para todos os processos deste jovem.') + '</p>',
+          '<div id="fp-extra"></div><p class="dica" style="margin:0">' + (novo ? 'Depois, para colocar o jovem num processo, use "+ Já cadastrado" na tela de jovens do processo.' : 'As alterações valem para todos os processos deste jovem.') + '</p>',
         botoes: (!novo && window.CF.perm.pode('cadastros_jovens') && !parts.some(function (x) { return x.jovem_id === j.id; }) ? [{ texto: 'Excluir jovem', aoClicar: async function () {
           if (!(await ui.confirmar('Excluir ' + j.nome + '?', 'O cadastro e a foto são apagados. Não dá para desfazer.', 'Excluir', 'Cancelar'))) return false;
           try {
@@ -548,6 +593,7 @@
           if (!genero) { ui.toast('Escolha o gênero.', 'erro'); return false; }
           if (nasc && (nasc > D.hoje() || idade(nasc) > 40)) { ui.toast('Confira a data de nascimento.', 'erro'); return false; }
           var dadosJ = { nome: nome, genero: genero, nascimento: nasc || null, telefone: f.querySelector('#fp-tel').value || null };
+          var extraP = lerExtra(f); if (extraP === false) return false;
           return ui.executar(f.querySelector('.janela-pe .btn-pri'), 'Salvando…', async function () {
             try {
               if (novo) {
@@ -555,12 +601,14 @@
                 if (ig.length && !(await ui.confirmar('Já existe um jovem com este nome' + (nasc ? ' e nascimento' : ''), ig[0].nome + (ig[0].nascimento ? ' · nascimento ' + D.completa(ig[0].nascimento) : '') + '. Cadastrar mesmo assim (outra pessoa)?', 'Cadastrar mesmo assim', 'Voltar'))) return false;
               }
               var salvo = novo ? await dados.jovens.criar(dadosJ) : await dados.jovens.atualizar(j.id, dadosJ);
+              try { await salvarExtra(salvo.id || j.id, extraP); } catch (e) { ui.toast('Salvo, mas os dados completos não: ' + api.traduzErro(e), 'erro'); }
               if (arquivoFoto) { try { await dados.jovens.salvarFoto(salvo.id, arquivoFoto); } catch (e) { ui.toast('Salvo, mas a foto não foi enviada: ' + api.traduzErro(e), 'erro'); } }
               ui.toast(novo ? 'Jovem cadastrado.' : 'Cadastro atualizado.', 'ok'); await recarregar(); return true;
             } catch (e) { erro(e); return false; }
           });
         } }]) });
       var el = jn.elemento;
+      origens().then(function (ori) { var bx = el.querySelector('#fp-extra'); if (!bx) return; bx.innerHTML = extraHTML(j, !!(j.escola_id || j.ck_id), ori, true); ligarExtra(bx); });
       if (j.foto_path) dados.jovens.urlFoto(j.foto_path).then(function (u) { if (u) el.querySelector('#fp-foto').innerHTML = '<img src="' + esc(u) + '" alt="">'; });
       el.querySelectorAll('[data-gen]').forEach(function (b) { b.addEventListener('click', function () { genero = b.getAttribute('data-gen'); el.querySelectorAll('[data-gen]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); }); });
       var tel = el.querySelector('#fp-tel'); tel.addEventListener('input', function () { tel.value = ui.formatarTelefone(tel.value); });
