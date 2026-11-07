@@ -9,7 +9,7 @@
   var ui = window.CF.ui, esc = ui.esc;
   var RODAPE_INST = '<b>Kolping Estadual de São Paulo</b> · R. Rio Branco, 36 - Cohab II, Carapicuíba - SP, 06326-030 · Telefone: (11) 4183-6018';
 
-  var BASE = '@font-face{font-family:P;src:url(assets/fonts/poppins-regular.woff2)}@font-face{font-family:P;font-weight:700;src:url(assets/fonts/poppins-bold.woff2)}' +
+  var BASE = '@font-face{font-family:CodigoCracha;font-weight:700;src:url(assets/fonts/codigo-cracha.woff) format("woff")}@font-face{font-family:P;src:url(assets/fonts/poppins-regular.woff2)}@font-face{font-family:P;font-weight:700;src:url(assets/fonts/poppins-bold.woff2)}' +
     '@page{size:A4 portrait;margin:0}@page paisagem{size:A4 landscape;margin:0}*{box-sizing:border-box}' +
     'body{font-family:P,Arial,sans-serif;color:#222;margin:0;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
     '.pg{position:relative;width:210mm;height:297mm;padding:13mm 14mm 26mm 21mm;background:#fff;page-break-after:always;break-after:page;overflow:hidden}.pg:last-child{page-break-after:auto;break-after:auto}' +
@@ -33,8 +33,8 @@
     '.cr{width:94mm;height:59mm;border:1px dashed #8f898b;display:flex;overflow:hidden;background:#fff}.cr.vazio{border-color:transparent}.cr .f1{width:5.8mm;background:#272323}.cr .f2{width:1.3mm;background:#ee7330}' +
     '.cr .cc{flex:1;display:flex;flex-direction:column;min-width:0}.cr .lg{display:flex;justify-content:space-between;align-items:center;padding:2.6mm 3.7mm 0}.cr .lg .k{width:35mm}.cr .lg .g{width:12mm;height:12mm}' +
     '.cr .nm{flex:1;display:flex;align-items:center;justify-content:center;padding:0 3.5mm;text-align:center}.cr .nm span{font-size:31px;line-height:1.05;font-weight:700;color:#272323}.cr .nm span.longo{font-size:26px}' +
-    '.cr .rp{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:2mm;padding:0 2.6mm 2.1mm 3.7mm}.cr .cd{justify-self:start;white-space:nowrap;font:700 12.5px ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;color:#272323;border:1.4px solid #272323;border-radius:5px;padding:1px 6px}' +
-    '.cr .tm{font-size:10.5px;font-weight:700;color:#444;text-align:center;align-self:center;white-space:nowrap;word-spacing:.15em;letter-spacing:.02em;max-width:36mm;overflow:hidden;text-overflow:ellipsis}.cr .q{justify-self:end;width:12.2mm;height:12.2mm}.cr .q svg{width:100%;height:100%;display:block}' +
+    '.cr .rp{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:2mm;padding:0 2.6mm 2.1mm 3.7mm}.cr .cd{justify-self:start;white-space:nowrap;font:700 15px CodigoCracha,ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;color:#272323;border:1.4px solid #272323;border-radius:5px;padding:1px 7px}.cr .cd .dg{color:#ee7330}' +
+    '.cr .tm{font-size:10.5px;font-weight:700;color:#444;text-align:center;align-self:center;white-space:nowrap;word-spacing:.15em;letter-spacing:.02em;max-width:36mm;overflow:hidden;text-overflow:ellipsis}.cr .q{justify-self:end;width:15mm;height:15mm}.cr .q svg{width:100%;height:100%;display:block}' +
     '@media screen{body{background:#cfcaca;padding:16px}.pg{margin:0 auto 16px;box-shadow:0 6px 20px rgba(0,0,0,.2)}}';
 
   function rodape(tipo, total, i) {
@@ -108,7 +108,7 @@
       var n = nomes[i].final;
       celulas.push('<div class="cr"><div class="f1"></div><div class="f2"></div><div class="cc"><div class="lg"><img class="k" src="assets/img/kolping_light.png" alt=""><img class="g" src="assets/img/gol_light.png" alt=""></div>' +
         '<div class="nm"><span class="' + (n.length > 18 ? 'longo' : '') + '">' + esc(n) + '</span></div>' +
-        '<div class="rp"><span class="cd">' + esc(j.codigo || '') + '</span><span class="tm">' + esc(j.turmaCurta || '') + '</span>' + (comQR ? '<span class="q">' + qr(j.codigo || '') + '</span>' : '<span></span>') + '</div></div></div>');
+        '<div class="rp"><span class="cd">' + esc(j.codigo || '').replace(/[0-9]/g, function (d) { return '<span class="dg">' + d + '</span>'; }) + '</span><span class="tm">' + esc(j.turmaCurta || '') + '</span>' + (comQR ? '<span class="q">' + qr(j.codigo || '') + '</span>' : '<span></span>') + '</div></div></div>');
     });
     var paginas = [];
     for (var k = 0; k < celulas.length; k += 8) paginas.push('<section class="pg folha-cr"><div class="cr-grade">' + celulas.slice(k, k + 8).join('') + '</div></section>');

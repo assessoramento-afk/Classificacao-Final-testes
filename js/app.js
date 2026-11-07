@@ -109,7 +109,7 @@
   function atualizarUsuario() {
     var p = estado.perfil; if (!p) return;
     var n = raiz.querySelector('#u-nome');
-    if (n) n.textContent = p.nome || p.email;
+    if (n) { n.textContent = p.nome || p.email; n.title = p.nome || p.email; }
     window.CF.foto.preencherAvatar(raiz.querySelector('#u-avatar'), p);
     window.CF.online.atualizarMeusDados(p);
   }
@@ -301,7 +301,9 @@
         var mudouUsuario = !estado.sessao || !sessao || estado.sessao.user.id !== sessao.user.id;
         estado.sessao = sessao;
         if (window.location.hash.indexOf('access_token') >= 0) history.replaceState(null, '', window.location.pathname);
-        abrirSistema(mudouUsuario);
+        var esp = window.CF.esperaEntrada;   // efeito "ACESSO LIBERADO" da tela de entrada
+        if (esp && evento === 'SIGNED_IN') { window.CF.esperaEntrada = null; esp.then(function () { abrirSistema(mudouUsuario); }); }
+        else abrirSistema(mudouUsuario);
         return;
       }
       if (evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') { estado.sessao = sessao; }

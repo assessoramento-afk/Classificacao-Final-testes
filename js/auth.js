@@ -20,6 +20,28 @@
       '<p class="acesso-rodape">Kolping Estadual de São Paulo · versão ' + esc(C.versao) + '</p></div></main>';
   }
 
+  /* ---------- Leitor "cofre digital" da entrada (anéis + logo do Projeto Gol) ---------- */
+  function leitorHTML() {
+    return '<div class="lt" id="lt" aria-live="polite"><div class="lt-laser"></div>' +
+      '<svg class="lt-hud" viewBox="0 0 210 210" aria-hidden="true">' +
+        '<g class="lt-anel lt-r1"><circle cx="105" cy="105" r="100" fill="none" stroke="#f4f1ef" stroke-width="3" stroke-dasharray="40 14" opacity=".95"/></g>' +
+        '<g class="lt-anel lt-r2"><circle cx="105" cy="105" r="86" fill="none" stroke="#ee7330" stroke-width="2" stroke-dasharray="6 8" opacity=".85"/></g>' +
+        '<g class="lt-anel lt-r3"><circle cx="105" cy="105" r="72" fill="none" stroke="#ffd2b3" stroke-width="5" stroke-dasharray="90 40" opacity=".85"/></g>' +
+        '<circle class="lt-centro" cx="105" cy="105" r="58" fill="#141212" stroke="#f4f1ef" stroke-width="2"/>' +
+        '<image href="assets/img/gol_dark.png" x="53" y="52" width="104" height="106"/></svg>' +
+      '<div class="lt-let" id="lt-let">ACESSO RESTRITO</div></div>';
+  }
+  var ltTimer = null;
+  function leitor(estado, texto) {   // estado: '' | 'lendo' | 'ok' | 'erro'
+    var lt = document.getElementById('lt'); if (!lt) return;
+    clearInterval(ltTimer);
+    lt.className = 'lt' + (estado ? ' ' + estado : '');
+    var letr = document.getElementById('lt-let');
+    if (estado === 'lendo') { var pc = 0; letr.textContent = 'VERIFICANDO… 0%'; ltTimer = setInterval(function () { pc = Math.min(95, pc + 10); letr.textContent = 'VERIFICANDO… ' + pc + '%'; }, 90); }
+    else letr.textContent = texto || 'ACESSO RESTRITO';
+  }
+  function espera(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
   function aviso(tipo, texto) {
     return '<div class="aviso aviso-' + tipo + '" role="' + (tipo === 'erro' ? 'alert' : 'status') + '">' +
       ui.icone(tipo === 'ok' ? 'ok' : 'alerta', 18) + '<span>' + esc(texto) + '</span></div>';
@@ -38,7 +60,7 @@
   /* ---------- Tela principal de acesso ---------- */
   function mostrarAcesso(raiz, aba, mensagem) {
     aba = aba || 'entrar';
-    raiz.innerHTML = moldura(
+    raiz.innerHTML = moldura((aba === 'entrar' ? leitorHTML() : '') +
         '<div class="segmentos" role="tablist" aria-label="Acesso">' +
           '<button type="button" role="tab" data-aba="entrar" aria-selected="' + (aba === 'entrar') + '">Entrar</button>' +
           '<button type="button" role="tab" data-aba="cadastro" aria-selected="' + (aba === 'cadastro') + '">Criar cadastro</button>' +
@@ -94,10 +116,20 @@
       if (!emailValido(email) || !senha) { msg(raiz, 'erro', 'Preencha o e-mail e a senha.'); return; }
       msg(raiz, '', '');
       await executar(ev.submitter || area.querySelector('[type=submit]'), 'Entrando…', async function () {
-        var r = await sb.auth.signInWithPassword({ email: email, password: senha });
+        leitor('lendo');
+        var liberar; window.CF.esperaEntrada = new Promise(function (r) { liberar = r; });   // o app.js espera o "ACESSO LIBERADO" antes de abrir
+        var t0 = Date.now(), r = await sb.auth.signInWithPassword({ email: email, password: senha });
+        await espera(Math.max(0, 1000 - (Date.now() - t0)));   // a conferência mostra pelo menos 1 s
         if (!r.error && window.CF.offline) window.CF.offline.guardarChave(email, senha);
-        if (r.error) msg(raiz, 'erro', api.traduzErro(r.error));
-        // se deu certo, o app.js recebe o evento de login e abre o sistema
+        if (r.error) {
+          window.CF.esperaEntrada = null; liberar();
+          leitor('erro', /invalid|credenciais|incorret/i.test(String(r.error.message)) ? 'E-MAIL OU SENHA INCORRETOS' : 'NÃO FOI POSSÍVEL ENTRAR');
+          msg(raiz, 'erro', api.traduzErro(r.error));
+          setTimeout(function () { leitor(''); }, 2200);
+          return;
+        }
+        leitor('ok', 'ACESSO LIBERADO');
+        await espera(900); liberar();   // se deu certo, o app.js recebe o evento de login e abre o sistema
       });
     });
   }

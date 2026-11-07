@@ -4,7 +4,7 @@
    Os dados (Supabase) NUNCA são guardados aqui: só os arquivos do app.
    A cada versão nova, o nome do cache muda e o antigo é apagado.
    ===================================================================== */
-var VERSAO = 'cf-4.14.0';
+var VERSAO = 'cf-4.14.1';
 var ARQUIVOS = [
   './',
   'index.html',
@@ -31,6 +31,7 @@ var ARQUIVOS = [
   'js/agenda-google.js',
   'js/importar-eventos.js',
   'assets/fonts/poppins-regular.ttf',
+  'assets/fonts/codigo-cracha.woff',
   'assets/fonts/poppins-medium.ttf',
   'assets/fonts/poppins-bold.ttf',
   'vendor/xlsx.mini.min.js',
