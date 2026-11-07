@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Classificação Final · Projeto Gol Jovens Talentos</title>
+<meta name="description" content="Sistema de classificação dos processos seletivos do Projeto Gol Jovens Talentos · Kolping Estadual de São Paulo">
+<meta name="theme-color" content="#141111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Classificação">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- Tema aplicado antes de desenhar a página (evita piscar) -->
+<script src="js/tema.js"></script>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app"></div>
+<noscript><p style="padding:24px">Este sistema precisa do JavaScript ativado no navegador.</p></noscript>
+
+<!-- Ordem de carregamento: biblioteca → configuração → utilitários → dados → telas → controle -->
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/foto.js"></script>
+<script src="js/online.js"></script>
+<script src="js/dados.js"></script>
+<script src="js/calendario.js"></script>
+<script src="js/materiais.js"></script>
+<script src="js/documentos.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="js/pdf.js"></script>
+<script src="vendor/exceljs.min.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/drive.js"></script>
+<script src="js/agenda-google.js"></script>
+<script src="js/importar-eventos.js"></script>
+<script src="vendor/xlsx.mini.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="js/instalar.js"></script>
+<script src="js/erros.js"></script>
+<script src="js/offline.js"></script>
+<script src="vendor/jsqr.js"></script>
+<script src="js/avisos.js"></script>
+<script src="js/inatividade.js"></script>
+<script src="js/views/telas.js"></script>
+<script src="js/views/minha-conta.js"></script>
+<script src="js/views/cadastros.js"></script>
+<script src="js/views/banco.js"></script>
+<script src="js/views/configuracoes.js"></script>
+<script src="js/views/processos.js"></script>
+<script src="js/views/agenda.js"></script>
+<script src="js/views/jovens.js"></script>
+<script src="js/views/avaliar.js"></script>
+<script src="js/views/notas.js"></script>
+<script src="js/views/envios.js"></script>
+<script src="js/views/classificacao.js"></script>
+<script src="js/views/ficha.js"></script>
+<script src="js/views/portal.js"></script>
+<script src="js/views/turmas.js"></script>
+<script src="js/views/graficos.js"></script>
+<script src="js/views/historico.js"></script>
+<script src="js/views/permissoes.js"></script>
+<script src="js/permissoes.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

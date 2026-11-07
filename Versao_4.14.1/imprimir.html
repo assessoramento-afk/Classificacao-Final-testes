@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impressão · Classificação Final</title>
+<link rel="icon" href="assets/img/favicon.png">
+</head>
+<body>
+<p id="vazio" style="font-family:Arial;padding:24px">Nada para imprimir. Volte ao sistema e use o botão de impressão.</p>
+<script>
+  (function () {
+    var dados = null;
+    try { dados = JSON.parse(localStorage.getItem('cf_impressao') || 'null'); } catch (e) { dados = null; }
+    if (!dados || !dados.corpo) return;
+    document.title = dados.titulo || document.title;
+    var estilo = document.createElement('style'); estilo.textContent = dados.estilo || ''; document.head.appendChild(estilo);
+    document.body.innerHTML = dados.corpo;
+    var imprimir = function () { setTimeout(function () { window.print(); }, 250); };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(imprimir); else window.addEventListener('load', imprimir);
+  })();
+</script>
+</body>
+</html>
