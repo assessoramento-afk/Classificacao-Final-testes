@@ -562,13 +562,14 @@
             lista.map(function (a, i) {
               var corAtual = (lidas.filter(function (x) { return x.id === a.id; })[0] || {}).cor || 'azul', CA = window.CF.agendaG.CORES_AG;
               return '<div class="ag-li"><input type="checkbox" data-ag="' + i + '"' + (ids[a.id] ? ' checked' : '') + ' aria-label="Ler esta agenda"><div><b>' + esc(a.nome) + (a.principal ? ' (principal)' : '') + '</b><small>' + (/holiday|feriado/i.test(a.id + a.nome) ? 'agenda do Google · o sistema já tem os feriados' : (/contacts|anivers/i.test(a.id + a.nome) ? 'agenda automática do Google' : 'agenda da conta')) + '</small></div>' +
+                '<label class="ag-px" title="Mostrar os eventos desta agenda no cartão Próximas turmas (Gráficos)"><input type="checkbox" data-px="' + i + '"' + ((lidas.filter(function (x) { return x.id === a.id; })[0] || {}).proximas === false || /holiday|feriado/i.test(a.id + a.nome) ? '' : ' checked') + '> Próximas turmas</label>' +
                 '<span class="ag-cores" role="radiogroup" aria-label="Cor">' + Object.keys(CA).map(function (k) { return '<button type="button" class="ag-cor' + (k === corAtual ? ' on' : '') + '" data-cor="' + i + '|' + k + '" title="' + k + '" style="background:' + CA[k] + '"></button>'; }).join('') + '</span></div>';
             }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="btn btn-pri btn-p" id="ag-lidas-salvar">Salvar agendas lidas</button></div>';
           boxL.querySelectorAll('.ag-cor').forEach(function (bt) {
             bt.addEventListener('click', function () { var i = bt.getAttribute('data-cor').split('|')[0]; boxL.querySelectorAll('.ag-cor[data-cor^="' + i + '|"]').forEach(function (x) { x.classList.remove('on'); }); bt.classList.add('on'); });
           });
           boxL.querySelector('#ag-lidas-salvar').addEventListener('click', function (ev) {
-            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var i = +c.getAttribute('data-ag'), a = lista[i], on = boxL.querySelector('.ag-cor.on[data-cor^="' + i + '|"]'); sel.push({ id: a.id, nome: a.nome, cor: on ? on.getAttribute('data-cor').split('|')[1] : 'azul' }); } });
+            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var i = +c.getAttribute('data-ag'), a = lista[i], on = boxL.querySelector('.ag-cor.on[data-cor^="' + i + '|"]'); var px = boxL.querySelector('[data-px="' + i + '"]'); sel.push({ id: a.id, nome: a.nome, cor: on ? on.getAttribute('data-cor').split('|')[1] : 'azul', proximas: !!(px && px.checked) }); } });
             ui.executar(ev.currentTarget, 'Salvando…', async function () {
               try { var x = await window.CF.sb.rpc('agendas_lidas_salvar', { p: sel }); if (x.error) throw x.error; ui.toast('Agendas salvas. Atualizando…', 'ok'); await window.CF.agendaG.sincronizar(false); } catch (e) { erro(e); }
             });

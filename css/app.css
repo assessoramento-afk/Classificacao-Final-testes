@@ -1495,3 +1495,67 @@ html[data-tema="escuro"] .tb-ct.ok { background: #1f3a2a; color: #7fd6a2; border
 /* Nome no topo: não corta mais na borda (até 2 linhas; o nome completo aparece ao passar o mouse) */
 .usuario-txt { min-width: 0; max-width: 260px; }
 .usuario-txt b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+
+/* Gráficos · visual novo (estilo C) */
+.gf-g { background: linear-gradient(160deg, var(--cartao), color-mix(in srgb, var(--cartao) 88%, var(--fundo))); box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 10px 26px rgba(0,0,0,.10); }
+html[data-tema="escuro"] .gf-g { box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 12px 30px rgba(0,0,0,.35); }
+.gf-cab .btn { white-space: nowrap; }
+.gf-svg svg { width: 100%; height: auto; display: block; }
+.gc-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 6px; }
+.gc-k { border-radius: 12px; padding: 9px 4px; text-align: center; background: color-mix(in srgb, var(--texto) 4%, transparent); border: 1px solid var(--borda); }
+.gc-k b { display: block; font-size: 22px; line-height: 1.1; } .gc-k span { font-size: 11px; color: var(--texto-3); }
+.gc-k.gc-aprovado b { color: #3FA66B; } .gc-k.gc-backup b { color: #c99512; } .gc-k.gc-reprovado b { color: #D9534F; }
+html[data-tema="escuro"] .gc-k.gc-aprovado b { color: #7fe0a2; } html[data-tema="escuro"] .gc-k.gc-backup b { color: #f0c75e; } html[data-tema="escuro"] .gc-k.gc-reprovado b { color: #ff9a92; }
+.gc-lin { margin-top: 12px; } .gc-n { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; } .gc-n span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .gc-n small { color: var(--texto-3); white-space: nowrap; }
+.gc-bar { height: 16px; border-radius: 999px; overflow: hidden; display: flex; margin-top: 6px; background: color-mix(in srgb, var(--texto) 8%, transparent); }
+.gc-bar i { display: flex; align-items: center; justify-content: center; height: 100%; font: 700 10.5px Poppins, system-ui, sans-serif; color: #fff; font-style: normal; }
+.gc-aprovado { background: linear-gradient(90deg, #2f8f57, #7ee0a2); } .gc-backup { background: linear-gradient(90deg, #b88a1a, #f0c75e); }
+.gc-reprovado { background: linear-gradient(90deg, #b8443e, #ff8a80); } .gc-desistencia { background: linear-gradient(90deg, #6f6869, #a59d9e); }
+.gc-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 12px; color: var(--texto-2); }
+.gc-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.gc-k.gc-aprovado, .gc-k.gc-backup, .gc-k.gc-reprovado, .gc-k.gc-desistencia { background: color-mix(in srgb, var(--texto) 4%, transparent); }
+.gf-sep { display: none; }
+
+/* Próximas turmas · novo visual */
+.px-kp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 4px; }
+.px-kp div { border-radius: 12px; padding: 8px 4px; text-align: center; background: color-mix(in srgb, var(--texto) 4%, transparent); border: 1px solid var(--borda); }
+.px-kp b { display: block; font-size: 19px; line-height: 1.1; } .px-kp span { font-size: 11px; color: var(--texto-3); }
+.px-it { display: flex; gap: 12px; align-items: center; padding: 9px 12px; margin-top: 8px; border-radius: 14px; background: color-mix(in srgb, var(--texto) 3.5%, transparent); border: 1px solid var(--borda); box-shadow: inset 4px 0 0 var(--c); }
+.px-dt { min-width: 46px; text-align: center; border-radius: 10px; padding: 4px 0; background: color-mix(in srgb, var(--texto) 6%, transparent); flex: none; }
+.px-dt b { display: block; font-size: 17px; line-height: 1.1; } .px-dt span { font-size: 10px; color: var(--texto-3); text-transform: uppercase; }
+.px-dt.hoje { background: color-mix(in srgb, #ee7330 22%, transparent); } .px-dt.hoje b, .px-dt.hoje span { color: #ee7330; }
+.px-inf { flex: 1; min-width: 0; } .px-inf b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .px-inf small { display: block; font-size: 11.5px; color: var(--texto-3); margin-top: 1px; }
+.px-fer { margin-top: 8px; padding: 6px 12px; border-radius: 10px; font-size: 12px; color: var(--texto-2); background: color-mix(in srgb, #7d7577 16%, transparent); border: 1px dashed color-mix(in srgb, #7d7577 60%, transparent); }
+.ag-px { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--texto-2); white-space: nowrap; margin-right: 8px; } .ag-px input { width: 16px; height: 16px; accent-color: var(--laranja); }
+@media (max-width: 640px) { .ag-li { flex-wrap: wrap; } }
+
+/* ▦ Cartões | ☰ Lista */
+.vista-bar { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.vista-alt { display: inline-flex; border: 1px solid var(--borda); border-radius: 10px; overflow: hidden; background: var(--cartao); }
+.vista-alt button { border: 0; background: none; padding: 7px 12px; font: 700 12.5px Poppins, system-ui, sans-serif; color: var(--texto-2); cursor: pointer; }
+.vista-alt button[aria-pressed="true"] { background: var(--entrada); color: var(--texto); box-shadow: inset 0 -2px 0 var(--laranja); }
+.vista-cards { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+.vista-cards .tabela-rolar { overflow: visible !important; }
+.vista-cards table { display: block; width: 100%; }
+.vista-cards thead { display: none; }
+.vista-cards tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.vista-cards tbody tr { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 14px 18px !important; border-radius: 16px; border: 1px solid var(--borda);
+  background: linear-gradient(160deg, var(--cartao), color-mix(in srgb, var(--cartao) 90%, var(--fundo))); box-shadow: inset 5px 0 0 var(--c, var(--vc, var(--borda))), 0 8px 22px rgba(0,0,0,.08) !important; }
+html[data-tema="escuro"] .vista-cards tbody tr { box-shadow: inset 5px 0 0 var(--c, var(--vc, var(--borda))), 0 10px 26px rgba(0,0,0,.35) !important; }
+.vista-cards tbody td { display: flex; gap: 8px; align-items: baseline; border: 0 !important; padding: 0 !important; background: none !important; min-width: 0; text-align: left !important; white-space: normal; }
+.vista-cards tbody td[data-r]:not(:first-child):not(:last-child)::before { content: attr(data-r); font-size: 11px; font-weight: 700; color: var(--texto-3); text-transform: uppercase; letter-spacing: .04em; min-width: 92px; flex: none; }
+.vista-cards tbody td:first-child { font-size: 15px; }
+.vista-cards tbody td:last-child:not(:first-child) { margin-top: 6px; flex-wrap: wrap; gap: 6px; }
+.vista-cards tbody td:last-child:not(:first-child) > .btn { flex: 1 1 auto; justify-content: center; }
+.vista-cards tbody td:empty { display: none; }
+.vista-cards td.pt-barra, .vista-cards td.pt-pos { background: none !important; padding-left: 0 !important; }
+/* cartões: vale também no celular (sobrepõe o modo de tabela compacta) */
+.conteudo .vista-cards table tbody tr { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; text-align: left; }
+.conteudo .vista-cards table tbody td { display: flex; justify-content: flex-start; align-items: baseline; flex: none; width: auto; }
+.conteudo .vista-cards table tbody td:last-child:not(:first-child) { flex: none; display: flex; }
+@media (max-width: 640px) { .vista-cards tbody { grid-template-columns: 1fr; } .vista-cards tbody td[data-r]:not(:first-child):not(:last-child)::before { min-width: 78px; } }
+.vista-cards table tbody tr { flex-direction: column !important; flex-wrap: nowrap !important; align-items: stretch !important; justify-content: flex-start !important; text-align: left !important; }
+.vista-cards table tbody td { display: flex !important; justify-content: flex-start !important; align-items: baseline !important; flex: none !important; width: auto !important; gap: 8px; text-align: left !important; }
+.vista-cards table tbody td:last-child:not(:first-child) { flex-wrap: wrap !important; align-items: center !important; }
+.vista-cards table tbody td:first-child > * { text-align: left; }
+.vista-cards table tbody td[data-r]:not(:first-child):not(:last-child)::before { margin-right: 4px; }
