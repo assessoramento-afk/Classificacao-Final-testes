@@ -1559,3 +1559,47 @@ html[data-tema="escuro"] .vista-cards tbody tr { box-shadow: inset 5px 0 0 var(-
 .vista-cards table tbody td:last-child:not(:first-child) { flex-wrap: wrap !important; align-items: center !important; }
 .vista-cards table tbody td:first-child > * { text-align: left; }
 .vista-cards table tbody td[data-r]:not(:first-child):not(:last-child)::before { margin-right: 4px; }
+
+/* ===== Projeto Gol Testes · editor e motor (T1) ===== */
+.selo-tab { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: color-mix(in srgb, #3FA66B 15%, transparent); color: #2c8a54; border: 1px solid color-mix(in srgb, #3FA66B 40%, transparent); }
+html[data-tema="escuro"] .selo-tab { color: #7fe0a2; }
+.bt-onde { margin: 4px 0 12px; }
+.tt-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .tt-h small { font-weight: 500; }
+.tt-tab { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 700; } .tt-tab input { width: 18px; height: 18px; accent-color: var(--laranja); }
+.tt-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.tt-parte { border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; box-shadow: inset 5px 0 0 var(--c); background: color-mix(in srgb, var(--texto) 2.5%, transparent); }
+.tt-parte header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; } .tt-pa { margin-left: auto; display: flex; gap: 6px; }
+.tt-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+table.tt-tab { border-collapse: collapse; font-size: 12.5px; min-width: 100%; } .tt-tab th { text-align: left; font-size: 11px; color: var(--texto-3); padding: 6px 4px; white-space: nowrap; }
+.tt-tab td { padding: 3px 4px; border-top: 1px solid var(--borda-2, var(--borda)); } .tt-tab tr.tt-cp td { border-top: 0; }
+.tt-c { min-width: 70px; padding: 6px 8px !important; font-size: 12.5px !important; }
+.tt-modo { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13.5px; } .tt-modo input { accent-color: var(--laranja); }
+.tt-faixas { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.tt-fx { border-radius: 12px; padding: 8px; text-align: center; color: #fff; display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.tt-fx b { font-size: 22px; line-height: 1; } .tt-fx span, .tt-fx small { font-size: 11px; opacity: .9; } .tt-fx input { width: 100%; text-align: center; padding: 5px !important; }
+.tt-n5 { background: #3FA66B; } .tt-n4 { background: #7cb342; } .tt-n3 { background: #d29a00; } .tt-n2 { background: #ee7330; } .tt-n1 { background: #D9534F; } .tt-n0 { background: #8a8486; }
+.tt-ver { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--borda); font-size: 13.5px; } .tt-ver small { margin-left: auto; color: var(--texto-3); }
+@media (max-width: 760px) { .tt-faixas { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tb-pin { font: 800 34px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .25em; color: var(--laranja); text-align: center; margin: 14px 0; }
+/* motor (como o jovem vê) */
+.tm-topo { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 12px; } .tm-tempo { font: 800 20px ui-monospace, Menlo, monospace; color: #c0392b; }
+.tm-instr { background: var(--cartao); border: 1px solid var(--borda); border-left: 5px solid var(--laranja); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; margin-bottom: 12px; }
+.tm-parte h3 { font-size: 15px; margin: 6px 0 8px; } .tm-rolar { overflow-x: auto; }
+.tm-lado { border-collapse: collapse; min-width: 900px; width: 100%; font-size: 13px; }
+.tm-lado th { text-align: left; font-size: 11px; color: var(--texto-3); text-transform: uppercase; padding: 6px 5px; } .tm-lado th.cp { color: #2f6fd0; }
+.tm-lado td { padding: 8px 5px; border-top: 1px solid var(--borda); } .tm-lado .art { font-weight: 600; min-width: 160px; } .tm-lado .pq { font: 600 13px ui-monospace, Menlo, monospace; white-space: nowrap; }
+.tm-lado .sep { width: 10px; padding: 0; background: linear-gradient(var(--laranja), var(--laranja)) center/2px 100% no-repeat; border-top: 0; }
+.tm-lado .cpv { background: color-mix(in srgb, #2f6fd0 6%, transparent); } .tm-lado tr.atual td { background: color-mix(in srgb, var(--laranja) 10%, transparent); }
+.tm-ops { display: flex; gap: 4px; } .tm-ops button { min-width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--borda); background: var(--entrada); color: var(--texto); font: 800 14px Poppins, system-ui, sans-serif; cursor: pointer; }
+.tm-ops button.num { color: var(--laranja); } .tm-ops button.on { background: var(--laranja); border-color: var(--laranja); color: #1b1111; }
+.tm-bloco { border: 1px solid var(--borda); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; background: var(--cartao); } .tm-bloco h4 { margin: 0 0 8px; font-size: 12px; color: var(--texto-3); text-transform: uppercase; letter-spacing: .05em; }
+.tm-bl { display: grid; grid-template-columns: auto auto 1fr; gap: 14px; align-items: center; }
+.tm-cc { width: 250px; height: 156px; border-radius: 14px; padding: 14px 16px; color: #fff; position: relative; box-shadow: 0 6px 14px rgba(0,0,0,.18); background: linear-gradient(135deg, var(--bg), color-mix(in srgb, var(--bg) 70%, #000)); font-family: Poppins, system-ui, sans-serif; }
+.tm-cc .bc { font-weight: 800; font-size: 15px; } .tm-cc .bd { position: absolute; right: 14px; top: 12px; font-size: 12px; font-weight: 700; }
+.tm-cc .ch { width: 34px; height: 24px; border-radius: 5px; background: linear-gradient(135deg, #f7d98b, #c9a14a); margin: 12px 0 8px; }
+.tm-cc .nu { font: 700 16px ui-monospace, Menlo, monospace; letter-spacing: .06em; } .tm-cc .nm { font-size: 12.5px; margin-top: 4px; } .tm-cc .rod { display: flex; gap: 12px; font: 600 11.5px ui-monospace, Menlo, monospace; margin-top: 4px; }
+.tm-cc .tag { position: absolute; left: 12px; bottom: -11px; background: var(--cartao); color: var(--texto); border: 1px solid var(--borda); font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.tm-cc.copia { outline: 3px solid #2f6fd0; outline-offset: 3px; }
+.tm-campos { display: grid; gap: 6px; } .tm-cmp { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--entrada); font-size: 13px; font-weight: 600; }
+.tm-cmp button { width: 44px; height: 36px; border-radius: 9px; border: 2px solid var(--borda); background: var(--cartao); font: 800 18px Poppins, system-ui, sans-serif; color: var(--texto-2); cursor: pointer; } .tm-cmp button.on { background: var(--laranja); border-color: var(--laranja); color: #1b1111; }
+@media (max-width: 900px) { .tm-bl { grid-template-columns: 1fr; } .tm-cc { width: 100%; max-width: 300px; } }

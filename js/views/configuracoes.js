@@ -13,6 +13,7 @@
     'escolas-cks': '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
     feriados: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/>',
     'email-acomp': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    tablets: '<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
     integracoes: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
     permissoes: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.5"/>',
     empresas: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
@@ -53,6 +54,7 @@
     if (sub === 'integracoes') return paginaIntegracoes(area);
     if (sub === 'feriados') return paginaFeriados(area);
     if (sub === 'escolas-cks') return paginaEscolas(area);
+    if (sub === 'tablets') return window.CF.testesTablet.tablets(area);
     paginaInicial(area);
   };
 
@@ -100,6 +102,7 @@
         (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'perm', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
         (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
         card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
+        (window.CF.perm && window.CF.perm.pode && window.CF.perm.pode('banco_editar') ? card('tablets', 'integ', 'Tablets', 'Projeto Gol Testes · cadastro e situação dos tablets') : '') +
         card('saude', 'saude', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
