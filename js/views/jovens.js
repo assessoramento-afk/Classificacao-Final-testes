@@ -543,23 +543,26 @@
       var ps = parts.filter(function (x) { return x.jovem_id === j.id; });
       if (!ps.length) return { m: 'ainda', txt: 'Aguardando processo', cor: '#8a8486' };
       var abertos = ps.filter(function (x) { var pr = porId(ag.processos, x.processo_id) || {}; return !FIM[pr.situacao]; });
-      if (abertos.length) { var pr = porId(ag.processos, abertos[0].processo_id) || {}; return { m: 'ainda', txt: 'Em processo · ' + (pr.vaga || ''), cor: '#2f6fd0' }; }
+      if (abertos.length) { var pr = porId(ag.processos, abertos[0].processo_id) || {}; return { m: 'ainda', txt: 'Em processo · ' + ui.titulo(pr.vaga || ''), cor: '#2f6fd0' }; }
       var ult = ps.map(function (x) { return porId(ag.processos, x.processo_id) || {}; }).sort(function (a, b) { return String(b.criado_em || '').localeCompare(String(a.criado_em || '')); })[0];
-      return { m: 'passou', txt: 'Já passou · ' + (ult.vaga || ''), cor: '#3FA66B' };
+      return { m: 'passou', txt: 'Já passou · ' + ui.titulo(ult.vaga || ''), cor: '#3FA66B' };
     }
     var mom = {}; js.forEach(function (j) { mom[j.id] = momento(j); });
+    var nomes = {}; js.forEach(function (j) { var k = ui.normalizar(j.nome); nomes[k] = (nomes[k] || 0) + 1; });
+    function repetido(j) { return nomes[ui.normalizar(j.nome)] > 1; }
     function desenhar() {
-      var cont = { ainda: 0, passou: 0, todos: js.length }; js.forEach(function (j) { cont[mom[j.id].m]++; });
+      var cont = { ainda: 0, passou: 0, todos: js.length, repetidos: 0 }; js.forEach(function (j) { cont[mom[j.id].m]++; if (repetido(j)) cont.repetidos++; });
       var abas = area.querySelector('#tj-abas');
-      if (abas) abas.innerHTML = [['ainda', 'Ainda não passaram'], ['passou', 'Já passaram'], ['todos', 'Todos']].map(function (a) { return '<button type="button" class="pt-chip' + (aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + ' <span class="pt-n">' + cont[a[0]] + '</span></button>'; }).join('');
-      var itens = js.filter(function (j) { return (busca ? ui.normalizar(j.nome).indexOf(busca) >= 0 : (aba === 'todos' || mom[j.id].m === aba)); });
+      if (abas) abas.innerHTML = [['ainda', 'Ainda não passaram'], ['passou', 'Já passaram'], ['todos', 'Todos']].concat(cont.repetidos ? [['repetidos', '⚠ Possíveis repetidos']] : []).map(function (a) { return '<button type="button" class="pt-chip' + (aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + ' <span class="pt-n">' + cont[a[0]] + '</span></button>'; }).join('');
+      var itens = js.filter(function (j) { return (busca ? ui.normalizar(j.nome).indexOf(busca) >= 0 : (aba === 'todos' || (aba === 'repetidos' ? repetido(j) : mom[j.id].m === aba))); });
+      if (aba === 'repetidos') itens.sort(function (a, b) { return ui.normalizar(a.nome).localeCompare(ui.normalizar(b.nome)); });
       var box = area.querySelector('#tj');
       if (!itens.length) { box.innerHTML = '<div class="card vazio">' + (js.length ? 'Nenhum jovem encontrado.' : 'Nenhum jovem cadastrado ainda. Os jovens são cadastrados dentro de cada processo.') + '</div>'; return; }
-      box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Jovem</th><th>Nascimento</th><th>Processos</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
+      box.innerHTML = '<div class="card tabela-card"><table class="tabela jov-tab"><thead><tr><th>Jovem</th><th>Nascimento</th><th>Processos</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.slice(0, 300).map(function (j) {
           var n = parts.filter(function (x) { return x.jovem_id === j.id; }).length, i = idade(j.nascimento);
-          return '<tr><td><div class="cel-j">' + fotoHTML(j) + '<div><b>' + esc(j.nome) + '</b><small>' + esc(NOME_G[j.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '</small></div></div></td>' +
-            '<td>' + (j.nascimento ? D.completa(j.nascimento) : '—') + '</td><td class="num">' + n + '</td><td><span class="pill" style="background:color-mix(in srgb,' + mom[j.id].cor + ' 15%,transparent);color:' + mom[j.id].cor + '">' + esc(mom[j.id].txt) + '</span>' + (busca && aba !== 'todos' && mom[j.id].m !== aba ? ' <small class="dica">(' + (mom[j.id].m === 'passou' ? 'em Já passaram' : 'em Ainda não passaram') + ')</small>' : '') + '</td><td><div class="acoes"><button type="button" class="btn btn-p" data-ed="' + j.id + '">Editar</button><button type="button" class="btn btn-p" data-hist="' + j.id + '">Histórico</button>' + (window.CF.perm.pode('cadastros_historico') ? '<button type="button" class="btn btn-p" data-hpdf="' + j.id + '" title="Histórico deste jovem em PDF">⬇ PDF</button>' : '') + '</div></td></tr>';
+          return '<tr><td><div class="cel-j">' + fotoHTML(j) + '<div><b>' + esc(j.nome) + '</b>' + (repetido(j) ? '<span class="jov-rep" title="Existe outro cadastro com o mesmo nome">⚠ Possível repetido</span>' : '') + '<small>' + esc(NOME_G[j.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '<span class="jov-nasc">' + (j.nascimento ? ' · ' + String(j.nascimento).slice(8, 10) + '/' + String(j.nascimento).slice(5, 7) + '/' + String(j.nascimento).slice(0, 4) : '') + '</span></small></div></div></td>' +
+            '<td>' + (j.nascimento ? D.completa(j.nascimento) : '—') + '</td><td class="num">' + n + '</td><td><span class="pill" style="background:color-mix(in srgb,' + mom[j.id].cor + ' 15%,transparent);color:' + mom[j.id].cor + '">' + esc(ui.titulo(mom[j.id].txt)) + '</span>' + (busca && aba !== 'todos' && mom[j.id].m !== aba ? ' <small class="dica">(' + (mom[j.id].m === 'passou' ? 'em Já passaram' : 'em Ainda não passaram') + ')</small>' : '') + '</td><td><div class="acoes"><button type="button" class="btn btn-p" data-ed="' + j.id + '">Editar</button><button type="button" class="btn btn-p" data-hist="' + j.id + '">Histórico</button>' + (window.CF.perm.pode('cadastros_historico') ? '<button type="button" class="btn btn-p" data-hpdf="' + j.id + '" title="Histórico deste jovem em PDF">⬇ PDF</button>' : '') + '</div></td></tr>';
         }).join('') + '</tbody></table></div>' + (itens.length > 300 ? '<p class="dica">Mostrando os 300 primeiros. Use a busca para encontrar outros.</p>' : '');
       carregarFotos(box);
       box.querySelectorAll('[data-hist]').forEach(function (b) {

@@ -9,13 +9,15 @@
   var ui = window.CF.ui, api = window.CF.api, dados = window.CF.dados, esc = ui.esc;
   var SIT = { montagem: ['Em montagem', '#8b6fd6'], andamento: ['Em andamento', '#ee7330'], revisao: ['Em revisão', '#3557e0'], liberado: ['Liberado', '#3f8f9a'], cancelado: ['Cancelado', '#6f6869'] };
   function dataBR(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  var SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   function hojeISO() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function selo(s) { var x = SIT[s] || SIT.montagem; return '<span class="st" style="--sc:' + x[1] + '"><i></i>' + esc(x[0]) + '</span>'; }
 
   window.CF.telas = window.CF.telas || {};
-  window.CF.telas.turmasTodas = async function (area) {
+  window.CF.telas.turmasTodas = async function (area, modo) {
+    var SO_GOOGLE = modo === 'google';
     var st = { filtro: 'proximas', busca: '' }, ag, parts;
-    area.innerHTML = '<a class="voltar" href="#/cadastros">← Cadastros</a><div id="tt"><div class="girando" style="margin:30px auto"></div></div>';
+    area.innerHTML = (SO_GOOGLE ? '' : '<a class="voltar" href="#/cadastros">← Cadastros</a>') + '<div id="tt"><div class="girando" style="margin:30px auto"></div></div>';
     var box = area.querySelector('#tt');
     var G = window.CF.agendaG, gev = [], pend = [], coresAg = {}, oriT = null;
     async function carregar() {
@@ -48,6 +50,9 @@
         return st.filtro === 'encerradas' ? db.localeCompare(da) : da.localeCompare(db);
       });
       var gTodos = gev.filter(function (g) {
+        if (/feriado|holiday/i.test((g.agenda_nome || '') + ' ' + (g.agenda_id || '')) || /anivers/i.test(g.titulo || '')) return false;
+        if (SO_GOOGLE && st.filtro === 'proximas' && (g.data_fim || g.data_ini) < hoje) return false;
+        if (SO_GOOGLE) return !st.busca || ui.normalizar(g.titulo).indexOf(ui.normalizar(st.busca)) >= 0;
         if (st.filtro === 'proximas' && (g.data_fim || g.data_ini) < hoje) return false;
         if (st.filtro === 'encerradas' && (g.data_fim || g.data_ini) >= hoje) return false;
         if (st.busca && ui.normalizar(g.titulo).indexOf(ui.normalizar(st.busca)) < 0) return false;
@@ -66,7 +71,15 @@
         return '<section class="card ag-pend"><div><b>' + esc(x.t.nome + ' · ' + (x.e.nome_fantasia || '')) + ' foi alterada na Google Agenda</b><p>' + mud + '</p></div>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-pri btn-p" data-aplicar="' + tid + '">Aplicar no sistema</button><button type="button" class="btn btn-p" data-desfazer="' + tid + '">Desfazer no Google</button></div></section>';
       }).join('');
-      box.innerHTML = '<header class="cabecalho"><div><h1>Turmas</h1><p>Todas as turmas dos processos seletivos e os eventos da Google Agenda "Classificação Final · Turmas".</p></div>' +
+      box.innerHTML = SO_GOOGLE
+        ? '<div class="pt-filtros" style="margin-bottom:10px"><input class="entrada" id="tt-busca" type="search" placeholder="Buscar evento" value="' + esc(st.busca) + '">' + (G ? '<button type="button" class="btn btn-p" id="tt-sinc">⟳ Atualizar com o Google</button>' : '') + '</div>' + (gVis.length ? '<section class="card pt-tab"><h2 style="font-size:16px;margin:0 0 4px">Eventos da Google Agenda <span class="gtag">criados direto no Google</span></h2><p class="dica" style="margin:0 0 6px">Eventos da agenda "Classificação Final · Turmas" e das agendas escolhidas em Integrações (sem feriados e aniversários). Se um deles for uma turma, crie a turma a partir dele, sem digitar de novo.</p>' +
+          '<div class="tabela-rolar"><table class="pt-rk"><tbody>' + gVis.map(function (g, i) {
+            var periodo = g.data_fim && g.data_fim !== g.data_ini ? dataBR(g.data_ini).slice(0, 5) + ' a ' + dataBR(g.data_fim) : dataBR(g.data_ini);
+            var quando = '<span class="tt-d"><b>' + periodo + '</b><i>' + (g.dia_inteiro ? 'dia inteiro' : G.hora(g.inicio) + ' – ' + G.hora(g.fim)) + '</i></span>';
+            return '<tr style="--c:' + ((coresAg[g.agenda_id] || {}).cor || '#5b6b8c') + '"><td class="pt-nm pt-barra"><b>' + esc(g.titulo) + '</b><span class="gtag"' + (coresAg[g.agenda_id] ? ' style="background:' + coresAg[g.agenda_id].cor + ';color:' + G.textoSobre(coresAg[g.agenda_id].cor) + '"' : '') + '>' + esc(g.agenda_nome || 'na Google Agenda') + '</span></td><td>' + quando + '</td>' +
+              '<td style="text-align:right;white-space:nowrap">' + (window.CF.perm.pode('processos_editar') ? '<button type="button" class="btn btn-p btn-perigo tt-ex" data-gex="' + i + '">Excluir</button> <button type="button" class="btn btn-p" data-criar="' + i + '">Criar turma a partir deste evento</button>' : '') + '</td></tr>';
+          }).join('') + '</tbody></table></div>' + (gTodos.length > gVis.length ? '<div style="text-align:center;margin-top:8px"><button type="button" class="btn btn-p" id="tt-gmais">Mostrar mais 10 (' + (gTodos.length - gVis.length) + ' restantes)</button></div>' : '') + '</section>' : '') + (gVis.length ? '' : '<div class="card vazio">Nenhum evento da Google Agenda nos próximos dias.</div>')
+        : '<header class="cabecalho"><div><h1>Turmas</h1><p>Todas as turmas dos processos seletivos e do Profiling Escolas. Os eventos da Google Agenda ficam em Agenda › Eventos do Google.</p></div>' +
         (window.CF.novaTurma ? '<div class="botoes-topo" style="order:2"><button type="button" class="btn btn-pri" id="tt-nova">' + ui.icone('mais', 17) + 'Nova turma</button></div>' : '') +
         (G ? '<button type="button" class="btn btn-p" id="tt-sinc">⟳ Atualizar com o Google</button>' : '') + '</header>' + avisos +
         '<section class="card pt-tab"><div class="pt-filtros">' + [['proximas', 'Próximas e de hoje', cnt.proximas], ['encerradas', 'Encerradas', cnt.encerradas], ['todas', 'Todas', lista.length]].map(function (f) {
@@ -76,17 +89,11 @@
           vis.map(function (x) {
             var cor = x.momento === 'hoje' ? '#ee7330' : (x.momento === 'encerrada' ? '#8a8486' : '#3f8f9a');
             return '<tr style="--c:' + cor + '"><td class="pt-nm pt-barra"><b>' + esc(x.t.nome) + '</b><small>' + esc((x.e.nome_fantasia || x.e.razao_social || '') + ' · ' + (x.p.vaga || '')) + '</small></td>' +
-              '<td>' + (x.dd.length ? x.dd.map(function (d) { return dataBR(d.data) + '<small class="dica">' + hr(d) + '</small>'; }).join('<br>') : '<span class="dica">sem data</span>') + (x.momento === 'hoje' ? ' <span class="tt-hoje">hoje</span>' : '') + '</td>' +
+              '<td class="tt-datas">' + (x.dd.length ? x.dd.map(function (d) { return '<span class="tt-d"><b>' + SEMANA[new Date(String(d.data).slice(0, 10) + 'T12:00:00').getDay()] + ', ' + dataBR(d.data) + '</b>' + (hr(d) ? '<i>' + hr(d).trim() + '</i>' : '') + '</span>'; }).join('') : '<span class="dica">sem data</span>') + (x.momento === 'hoje' ? ' <span class="tt-hoje">hoje</span>' : '') + '</td>' +
               '<td><b>' + x.jovens + '</b>' + (x.t.vagas ? ' <span class="dica">de ' + x.t.vagas + '</span>' : '') + '</td>' +
               '<td>' + selo(x.p.situacao) + '</td>' +
               '<td style="text-align:right"><a class="btn btn-p" href="#/processos/' + x.p.id + '/jovens?turma=' + x.t.id + '">Abrir turma</a></td></tr>';
-          }).join('') + '</tbody></table></div>' : '<p class="dica" style="margin:6px 0 0">Nenhuma turma neste filtro.</p>') + '</section>' +
-        (gVis.length ? '<section class="card pt-tab"><h2 style="font-size:16px;margin:0 0 4px">Na Google Agenda <span class="gtag">criados direto no Google</span></h2><p class="dica" style="margin:0 0 6px">Eventos da agenda "Classificação Final · Turmas" e das agendas escolhidas em Integrações. Só aparecem: não travam dias. Se um deles for uma turma, crie a turma a partir dele, sem digitar de novo.</p>' +
-          '<div class="tabela-rolar"><table class="pt-rk"><tbody>' + gVis.map(function (g, i) {
-            var quando = g.dia_inteiro ? dataBR(g.data_ini) + (g.data_fim && g.data_fim !== g.data_ini ? ' a ' + dataBR(g.data_fim) : '') + ' <small class="dica">dia inteiro</small>' : G.dia(g.inicio) + ' <small class="dica">' + G.hora(g.inicio) + ' – ' + G.hora(g.fim) + '</small>' + (g.data_fim !== g.data_ini ? ' a ' + dataBR(g.data_fim) : '');
-            return '<tr style="--c:' + ((coresAg[g.agenda_id] || {}).cor || '#5b6b8c') + '"><td class="pt-nm pt-barra"><b>' + esc(g.titulo) + '</b><span class="gtag"' + (coresAg[g.agenda_id] ? ' style="background:' + coresAg[g.agenda_id].cor + ';color:' + G.textoSobre(coresAg[g.agenda_id].cor) + '"' : '') + '>' + esc(g.agenda_nome || 'na Google Agenda') + '</span></td><td>' + quando + '</td>' +
-              '<td style="text-align:right;white-space:nowrap">' + (window.CF.perm.pode('processos_editar') ? '<button type="button" class="btn btn-p btn-perigo" data-gex="' + i + '">Excluir</button> <button type="button" class="btn btn-p" data-criar="' + i + '">Criar turma a partir deste evento</button>' : '') + '</td></tr>';
-          }).join('') + '</tbody></table></div>' + (gTodos.length > gVis.length ? '<div style="text-align:center;margin-top:8px"><button type="button" class="btn btn-p" id="tt-gmais">Mostrar mais 10 (' + (gTodos.length - gVis.length) + ' restantes)</button></div>' : '') + '</section>' : '');
+          }).join('') + '</tbody></table></div>' : '<p class="dica" style="margin:6px 0 0">Nenhuma turma neste filtro.</p>') + '</section>';;
       box.querySelectorAll('[data-f]').forEach(function (b) { b.addEventListener('click', function () { st.filtro = b.getAttribute('data-f'); desenhar(); }); });
       var bnt = box.querySelector('#tt-nova'); if (bnt) bnt.addEventListener('click', function () { window.CF.novaTurma({}); });
       var bs = box.querySelector('#tt-sinc');

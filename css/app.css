@@ -1645,3 +1645,40 @@ table.tt-tab { border-collapse: collapse; font-size: 12.5px; min-width: 100%; } 
 .btn-empresa:hover, .btn-aval:hover, .btn-area:hover, .btn-teste:hover, .btn-comp:hover, .btn-mat:hover { background: #f5833f !important; color: #1b1111 !important; }
 .ic-l { display: inline-flex; margin-right: 6px; vertical-align: -3px; } .selo-tab .ic-l { margin-right: 4px; }
 .pt-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; } .pt-n { display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--texto) 8%, transparent); font-size: 11.5px; font-weight: 700; }
+
+/* 4.17.1 · datas e horários um por linha (Turmas e Eventos do Google) */
+.tt-datas { display: flex !important; flex-direction: column; gap: 5px; align-items: stretch !important; }
+.tt-d { display: flex; gap: 10px; align-items: center; padding: 5px 10px; border-radius: 10px; background: var(--entrada); font-size: 13px; width: max-content; max-width: 100%; }
+.tt-d b { white-space: nowrap; } .tt-d i { font-style: normal; color: var(--texto-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vista-cards .tt-datas::before { align-self: flex-start; }
+.btn.tt-ex { color: var(--erro) !important; }
+/* Cartões | Lista na mesma linha da busca/filtros; busca mais larga (4.17.1) */
+.vista-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+h2.vista-linha { justify-content: flex-start; }
+.vista-inline { margin-left: auto; display: flex; align-items: center; }
+.pt-filtros input[type="search"], .barra .busca { flex: 1 1 360px; min-width: min(360px, 100%); max-width: 560px; }
+.pt-filtros input[type="search"] { margin-left: auto; }
+.pt-filtros input[type="search"] + .vista-inline, .barra .busca + .vista-inline { margin-left: 0; }
+@media (max-width: 640px) { .pt-filtros input[type="search"], .barra .busca { flex-basis: 100%; max-width: none; } }
+/* Configurações / Cadastros · cartões compactos, mesma altura, título sem quebrar a palavra (4.17.1) */
+.cards-cfg { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+.cfg { padding: 16px 16px 16px 18px; min-height: 96px; align-items: center; }
+.cfg b { hyphens: none !important; -webkit-hyphens: none !important; overflow-wrap: normal; word-break: normal; font-size: 16px; line-height: 1.25; }
+.cfg small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 3px; line-height: 1.35; }
+/* Cartões: largura certa (4+ por linha em telas largas) */
+.vista-cards table.tabela, .vista-cards table.pt-rk { min-width: 0 !important; width: 100% !important; table-layout: auto; }
+.vista-cards tbody { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important; }
+.vista-cards tbody tr { min-width: 0; }
+.vista-cards tbody td { white-space: normal !important; }
+/* Jovens em cartões: nascimento junto do nome, situação sem sair do cartão */
+.jov-nasc { display: none; } .vista-cards .jov-tab .jov-nasc { display: inline; }
+.vista-cards .jov-tab td:nth-child(2), .vista-cards .jov-tab td:nth-child(3) { display: none !important; }
+.vista-cards .jov-tab td:nth-child(4)::before { display: none !important; }
+.vista-cards .jov-tab td:nth-child(4) .pill { white-space: normal; line-height: 1.3; max-width: 100%; }
+/* nada passa da largura da tela (sem rolagem para o lado) */
+html, body { overflow-x: hidden; }
+.conteudo { min-width: 0; }
+.jov-rep { display: inline-block; margin: 2px 0; padding: 1px 8px; border-radius: 999px; background: #fff4dc; color: #8a6200; font-size: 11px; font-weight: 700; }
+html[data-tema="escuro"] .jov-rep { background: #3a2f12; color: #f0c75e; }
+.vista-cards .acomp-tab .tb-st { display: inline-block !important; }
+.vista-cards .acomp-tab .tb-st b { display: inline; }

@@ -33,6 +33,19 @@
       }
     });
     var caixa = tab.closest('.tabela-card') || tab.closest('.card') || tab.parentElement;
+    if (caixa.getAttribute('data-vista-ok')) return;
+    caixa.setAttribute('data-vista-ok', '1');
+    // o botão vai na mesma linha dos filtros/busca (ou do título da seção), quando houver
+    function procurar(el) { var p = el.previousElementSibling; while (p && !p.matches('.barra, .pt-filtros, .barra-filtros')) { if (p.matches('header, .cabecalho, section, .card, .tabela-card')) return null; p = p.previousElementSibling; } return p; }
+    var linha = caixa.querySelector('.pt-filtros') || procurar(caixa) || (caixa.parentElement && !caixa.previousElementSibling ? procurar(caixa.parentElement) : null) || caixa.querySelector('h2');
+    if (linha) {
+      var bar2 = document.createElement('div'); bar2.className = 'vista-inline';
+      bar2.innerHTML = '<div class="vista-alt" role="group" aria-label="Como mostrar a lista"><button type="button" data-v="cards">▦ Cartões</button><button type="button" data-v="lista">☰ Lista</button></div>';
+      linha.appendChild(bar2); linha.classList.add('vista-linha');
+      bar2.addEventListener('click', function (e) { var b = e.target.closest('[data-v]'); if (!b) return; gravar(i, b.getAttribute('data-v')); aplicar(caixa, bar2, b.getAttribute('data-v')); });
+      aplicar(caixa, bar2, ler(i));
+      return;
+    }
     if (!caixa.previousElementSibling || !caixa.previousElementSibling.classList.contains('vista-bar')) {
       var bar = document.createElement('div'); bar.className = 'vista-bar';
       bar.innerHTML = '<div class="vista-alt" role="group" aria-label="Como mostrar a lista"><button type="button" data-v="cards">▦ Cartões</button><button type="button" data-v="lista">☰ Lista</button></div>';
