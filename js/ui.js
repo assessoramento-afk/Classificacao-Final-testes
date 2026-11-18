@@ -224,8 +224,23 @@
     try { el.setSelectionRange(i, f); } catch (e) { /* alguns tipos não aceitam */ }
   }
   document.addEventListener('input', function (e) { if (!compondo) maiusculo(e.target); }, true);
+  // Escrita normal para mostrar nomes de empresa, cidade e contato (os dados continuam salvos como estão)
+  var SIGLAS = { SP: 1, RJ: 1, MG: 1, PR: 1, SC: 1, RS: 1, BA: 1, GO: 1, DF: 1, ES: 1, CK: 1, CKS: 1, EE: 1, EMEF: 1, ETEC: 1, CNPJ: 1, CPF: 1, ME: 1, EPP: 1, EIRELI: 1, 'S/A': 1, SA: 1, TI: 1, RH: 1, CEP: 1, ONG: 1, 'S.A.': 1, II: 1, III: 1, IV: 1 };
+  var MINUS = { de: 1, da: 1, do: 1, das: 1, dos: 1, e: 1, em: 1, a: 1, o: 1, para: 1, com: 1 };
+  function titulo(t) {
+    if (t == null) return t;
+    var txt = String(t);
+    if (txt !== txt.toLocaleUpperCase('pt-BR')) return txt;   // já tem minúsculas: respeita como foi digitado
+    return txt.toLocaleLowerCase('pt-BR').replace(/[^\s·/,()-]+/g, function (w, i) {
+      var up = w.toLocaleUpperCase('pt-BR');
+      if (SIGLAS[up]) return up === 'SA' ? 'S.A.' : up;
+      if (i > 0 && MINUS[w]) return w;
+      if (w === 'ltda' || w === 'ltda.') return 'Ltda';
+      return w.charAt(0).toLocaleUpperCase('pt-BR') + w.slice(1);
+    });
+  }
   function maiusculas(t) { return t == null ? t : String(t).toLocaleUpperCase('pt-BR'); }
 
-  window.CF.ui = { maiusculas: maiusculas, pill: pill, normalizar: normalizar, soNumeros: soNumeros, formatarCNPJ: formatarCNPJ, cnpjValido: cnpjValido,
+  window.CF.ui = { maiusculas: maiusculas, titulo: titulo, pill: pill, normalizar: normalizar, soNumeros: soNumeros, formatarCNPJ: formatarCNPJ, cnpjValido: cnpjValido,
     formatarTelefone: formatarTelefone, executar: executar, logo: logo, esc: esc, icone: icone, toast: toast, janela: janela, confirmar: confirmar, ligarVerSenha: ligarVerSenha, campoSenha: campoSenha, iniciais: iniciais };
 })();

@@ -91,7 +91,7 @@
       return ordem.map(function (k) {
         return '<section class="card pcard"><h3>' + esc(k) + '</h3>' + porProc[k].map(function (t) {
           var g = guardadas[t.id], di = t.dias.indexOf(h);
-          return '<div class="tlin"><div class="tlin-tx"><b>' + esc(t.nome) + ' · ' + (di >= 0 ? 'dia ' + (di + 1) + ' de ' + t.dias.length : esc(D.listaDias(t.dias))) + '</b><small>' + (t.horario ? esc(t.horario.toLowerCase()) : '') +
+          return '<div class="tlin"><div class="tlin-tx"><b>' + esc(t.nome) + ' · ' + (di >= 0 ? 'dia ' + (di + 1) + ' de ' + t.dias.length : esc(D.listaDias(t.dias))) + '</b><small>' + (t.horario ? esc(D.horario(t.horario).toLowerCase()) : '') +
             (g ? (t.horario ? ' · ' : '') + '<span class="baixado">✓ disponível sem internet · ' + (g.baixado_em.slice(0, 10) === h ? 'atualizado às ' + hora(g.baixado_em) : 'atualizado em ' + D.curta(g.baixado_em.slice(0, 10))) + '</span>' : '') + '</small></div>' +
             '<div class="acoes"><a class="btn ' + (hojeSec ? 'btn-pri' : '') + ' btn-p" href="#/avaliar/' + t.id + '">' + (hojeSec ? 'Abrir turma' : 'Abrir') + '</a>' +
             (!g && navigator.onLine ? '<button type="button" class="btn btn-p" data-baixar="' + t.id + '" title="Baixar para usar sem internet">⬇ Baixar</button>' : '') + '</div></div>';

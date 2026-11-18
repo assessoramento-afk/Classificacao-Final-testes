@@ -84,7 +84,7 @@
     return '<div class="gc-kpis">' + keys.map(function (k) { return '<div class="gc-k gc-' + k + '"><b>' + tot[k] + '</b><span>' + NOMES[k].toLowerCase() + '</span></div>'; }).join('') + '</div>' +
       procs.map(function (p) {
         var n = keys.reduce(function (a, k) { return a + (p.cont[k] || 0); }, 0);
-        return '<div class="gc-lin"><div class="gc-n"><span>' + esc(p.empresa + ' · ' + p.vaga) + '</span><small>' + n + ' jove' + (n === 1 ? 'm' : 'ns') + '</small></div><div class="gc-bar">' +
+        return '<div class="gc-lin"><div class="gc-n"><span>' + esc(ui.titulo(p.empresa) + ' · ' + ui.titulo(p.vaga)) + '</span><small>' + n + ' jove' + (n === 1 ? 'm' : 'ns') + '</small></div><div class="gc-bar">' +
           keys.map(function (k) { var v = p.cont[k] || 0; return v && n ? '<i class="gc-' + k + '" style="width:' + (100 * v / n).toFixed(2) + '%" title="' + NOMES[k] + ': ' + v + '">' + (v / n > .08 ? v : '') + '</i>' : ''; }).join('') + '</div></div>';
       }).join('') +
       '<div class="gc-leg">' + keys.map(function (k) { return '<span><i class="gc-' + k + '"></i>' + NOMES[k] + '</span>'; }).join('') + '</div>';
@@ -232,7 +232,7 @@
       // eventos criados direto na Google Agenda também aparecem (marcados)
       var coresG = base.coresG || {}; if (!st.empresa) (base.gev || []).forEach(function (g) { var nm = ((coresG[g.agenda_id] || {}).nome || g.agenda_nome || '').toLowerCase(); if (/assessoramento|feriado|holiday/i.test(nm + ' ' + (g.agenda_id || ''))) return; if (((coresG[g.agenda_id] || {}).proximas) === false) return; if (/anivers/i.test(g.titulo || '')) return; if ((g.data_fim || g.data_ini) >= h) proximas.push({ g: g, ds: g.data_fim && g.data_fim !== g.data_ini ? [g.data_ini, g.data_fim] : [g.data_ini] }); });
       proximas.sort(function (a, b) { return a.ds[0].localeCompare(b.ds[0]); });
-      var em15 = proximas.filter(function (x) { return !x.g && x.ds[0] <= limISO; });
+      var em15 = proximas.filter(function (x) { return x.ds[0] <= limISO; });   // turmas do sistema e da agenda (as mesmas da lista Próximas turmas)
       return {
         sit: { andamento: ps.filter(function (x) { return x.situacao === 'andamento'; }).length, montagem: ps.filter(function (x) { return x.situacao === 'montagem'; }).length, revisao: ps.filter(function (x) { return x.situacao === 'revisao'; }).length },
         em15: em15, proximas: proximas.slice(0, 10), avaliados: avaliados, nProcPeriodo: noPeriodo.length, tot: tot, totAll: totAll,
@@ -254,10 +254,10 @@
         var x = it.x;
         if (x.g) {
           var c = cores[x.g.agenda_id] || {}, cor = c.cor || '#2f6fd0', nome = c.nome || x.g.agenda_nome || 'Google'; usadas[nome] = cor;
-          return '<div class="px-it" style="--c:' + cor + '">' + dia(x.ds[0]) + '<div class="px-inf"><b>' + esc(x.g.titulo) + '</b><small>' + esc(quando(x.ds) + (x.g.dia_inteiro ? 'dia inteiro' : window.CF.agendaG.hora(x.g.inicio) + '–' + window.CF.agendaG.hora(x.g.fim)) + ' · ' + nome) + '</small></div></div>';
+          return '<div class="px-it" style="--c:' + cor + '">' + dia(x.ds[0]) + '<div class="px-inf"><b>' + esc(x.g.titulo) + '</b><small>' + esc(quando(x.ds) + (x.g.dia_inteiro ? 'dia inteiro' : window.CF.agendaG.hora(x.g.inicio) + ' – ' + window.CF.agendaG.hora(x.g.fim)) + ' · ' + nome) + '</small></div></div>';
         }
         usadas['Turmas do sistema'] = '#2f6fd0';
-        return '<div class="px-it" style="--c:#2f6fd0">' + dia(x.ds[0]) + '<div class="px-inf"><b>' + esc(x.t.nome) + '</b><small>' + esc(quando(x.ds) + (x.p.tipo === 'escola' ? '🎓 ' : '') + nomeEmp(x.p.empresa_id, x.p.id) + ' · ' + x.p.vaga) + '</small></div></div>';
+        return '<div class="px-it" style="--c:#2f6fd0">' + dia(x.ds[0]) + '<div class="px-inf"><b>' + esc(x.t.nome) + '</b><small>' + esc(quando(x.ds) + ui.titulo(nomeEmp(x.p.empresa_id, x.p.id)) + ' · ' + ui.titulo(x.p.vaga)) + '</small></div></div>';
       }).join('');
       if (fer.length) usadas['Feriado'] = '#7d7577';
       return '<section class="card gf-g"><div class="gf-cab"><div><h2>Próximas turmas</h2><p>Turmas do sistema e agendas escolhidas em Integrações</p></div><a class="btn btn-p" href="#/cadastros/turmas">Ver todas</a></div>' +

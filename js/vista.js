@@ -45,8 +45,23 @@
     caixa.classList.toggle('vista-cards', v === 'cards');
     bar.querySelectorAll('[data-v]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === v)); });
   }
+  /* Ícones de linha no lugar dos emojis dos botões (revisão visual 4.17) */
+  var P = { '⬇': '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', '⬆': '<path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>', '📱': '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+    '👁': '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', '🖨': '<path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7"/>',
+    '⟳': '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>', '📄': '<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>', '🔄': '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>' };
+  var RX = /^\s*(⬇|⬆|📱|👁|🖨|⟳|📄|🔄)\uFE0F?\s*/;
+  function icones(raiz) {
+    raiz.querySelectorAll('.btn:not([data-ic]), .selo-tab:not([data-ic])').forEach(function (b) {
+      b.setAttribute('data-ic', '1');
+      var n = b.firstChild; while (n && n.nodeType !== 3 && n.nodeName !== 'SVG') n = n.nextSibling;
+      if (!n || n.nodeType !== 3) return; var m = n.nodeValue.match(RX); if (!m) return;
+      n.nodeValue = n.nodeValue.replace(RX, '');
+      var sp = document.createElement('span'); sp.className = 'ic-l'; sp.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + P[m[1]] + '</svg>';
+      b.insertBefore(sp, n);
+    });
+  }
   var pend = null;
-  function varrer() { pend = null; document.querySelectorAll(SEL).forEach(function (t, i) { preparar(t, i); }); }
+  function varrer() { pend = null; document.querySelectorAll(SEL).forEach(function (t, i) { preparar(t, i); }); icones(document); }
   var obs = new MutationObserver(function () { if (!pend) pend = setTimeout(varrer, 60); });
   function iniciar() { var c = document.body; if (c) obs.observe(c, { childList: true, subtree: true }); varrer(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();

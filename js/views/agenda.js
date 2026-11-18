@@ -120,7 +120,7 @@
       var tx = (x.hora ? '<b>' + esc(x.hora) + '</b> ' : '') + esc(x.titulo);
       if (x.tipo === 'esp') return '<span class="ag-it ag-esp" style="background:' + G.TIPOS_ESP[x.esp.tipo].cor + '" title="' + esc(x.titulo + ' · ' + x.sub) + '">' + esc(x.titulo) + '<small>' + esc(x.sub) + '</small></span>';
       return x.tipo === 'turma'
-        ? '<a class="ag-it ag-turma" href="' + x.link + '" title="' + esc(x.titulo + ' · ' + x.sub + (x.hora ? ' · ' + x.hora + '–' + x.fim : '')) + '">' + tx + '<small>' + esc(x.sub) + '</small></a>'
+        ? '<a class="ag-it ag-turma" href="' + x.link + '" title="' + esc(x.titulo + ' · ' + x.sub + (x.hora ? ' · ' + x.hora + ' – ' + x.fim : '')) + '">' + tx + '<small>' + esc(x.sub) + '</small></a>'
         : '<button type="button" class="ag-it ag-google" style="' + corG(x.g) + '" data-g="' + ds + '|' + i + '" title="' + esc(x.titulo + ' · na Google Agenda') + '">' + tx + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>';
     }
     function desenhar() {
@@ -152,7 +152,7 @@
           var pr = b.getAttribute('data-g').split('|'), x = itensDoDia(pr[0])[+pr[1]], g = x.g;
           var podeEx = window.CF.perm && window.CF.perm.pode('processos_editar');
           var jg = ui.janela({ titulo: g.titulo, confirmarDescarte: false,
-            corpo: '<p style="margin:0 0 6px"><span class="gtag" style="margin:0">' + esc(g.agenda_nome || 'na Google Agenda') + '</span></p><p style="margin:0">' + (g.dia_inteiro ? D.longa(g.data_ini) + (g.data_fim !== g.data_ini ? ' a ' + D.longa(g.data_fim) : '') + ' · dia inteiro' : G.dia(g.inicio) + ' · ' + G.hora(g.inicio) + '–' + G.hora(g.fim)) + '</p>' +
+            corpo: '<p style="margin:0 0 6px"><span class="gtag" style="margin:0">' + esc(g.agenda_nome || 'na Google Agenda') + '</span></p><p style="margin:0">' + (g.dia_inteiro ? D.longa(g.data_ini) + (g.data_fim !== g.data_ini ? ' a ' + D.longa(g.data_fim) : '') + ' · dia inteiro' : G.dia(g.inicio) + ' · ' + G.hora(g.inicio) + ' – ' + G.hora(g.fim)) + '</p>' +
               '<p class="dica">Criado direto no Google. Se for uma turma, use "Criar turma a partir deste evento" em Cadastros › Turmas.</p>',
             botoes: (podeEx ? [{ texto: 'Excluir evento', aoClicar: async function () { if (await G.excluirEvento(g)) { carregar(); return true; } return false; } }] : []).concat([{ texto: 'Fechar', acao: 'fechar' }, { texto: 'Ir para Turmas', principal: true, aoClicar: function () { window.location.hash = '#/cadastros/turmas'; return true; } }]) });
         });

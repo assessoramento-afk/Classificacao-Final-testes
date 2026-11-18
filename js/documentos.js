@@ -127,7 +127,7 @@
         paginas.push('<section class="pg paisagem"><div class="faixa"></div>' +
           '<div class="pr-cab"><img class="logo-k" src="assets/img/kolping_light.png" alt="Kolping Estadual de São Paulo"><h2>Lista de presença</h2>' + logo + '</div>' +
           '<div class="pr-tit"><div><h1>' + esc(info.empresa + ' · ' + info.vaga + ' · ' + turma.nome) + '</h1><div class="sub">' + esc(info.processo) + ' · ' + itens.length + ' jove' + (itens.length === 1 ? 'm' : 'ns') + '</div></div>' +
-            '<div class="pr-dia"><b>Dia ' + (di + 1) + ' de ' + dias.length + '</b><div>' + semana + ', ' + D.completa(dia) + (turma.horario ? ' · ' + esc(turma.horario.toLowerCase()) : '') + '</div></div></div>' +
+            '<div class="pr-dia"><b>Dia ' + (di + 1) + ' de ' + dias.length + '</b><div>' + semana + ', ' + D.completa(dia) + (turma.horario ? ' · ' + esc(window.CF.datas.horario(turma.horario).toLowerCase()) : '') + '</div></div></div>' +
           '<table class="pr"><thead><tr><th class="n">Nº</th><th>Nome</th><th class="c">Código</th><th class="t">Telefone</th><th class="a">Assinatura</th></tr></thead><tbody>' +
             g.map(function (j, i) { return '<tr><td class="n">' + (gi * 20 + i + 1) + '</td><td class="nm">' + esc(j.nome) + '</td><td class="c">' + esc(j.codigo || '') + '</td><td class="t"></td><td class="a"></td></tr>'; }).join('') + '</tbody></table>' +
           '<div class="rod"><div class="l"><span>Documento com dados pessoais · guardar em local seguro</span><span>Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' · Dia ' + (di + 1) + ' de ' + dias.length + (grupos.length > 1 ? ' · Folha ' + (gi + 1) + ' de ' + grupos.length : '') + '</span></div><div class="k">' + RODAPE_INST + '</div></div></section>');

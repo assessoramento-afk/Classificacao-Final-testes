@@ -175,7 +175,7 @@ html[data-tema="claro"] .segmentos button[aria-pressed="true"], html[data-tema="
 .usuario-txt small { font-size: 12px; color: var(--texto-3); }
 
 .conteudo > .tela { display: contents; }   /* espaço de cada tela: não muda o layout */
-.conteudo { padding: 28px 28px 48px; max-width: 1200px; width: 100%; display: flex; flex-direction: column; gap: 22px; }
+.conteudo { padding: 28px 32px 48px; max-width: 1760px; width: 100%; display: flex; flex-direction: column; gap: 22px; }
 .cabecalho { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
 .cabecalho h1 { font-size: 28px; font-weight: 700; }
 .cabecalho p { margin: 6px 0 0; color: var(--texto-2); font-size: 14px; }
@@ -1603,3 +1603,45 @@ table.tt-tab { border-collapse: collapse; font-size: 12.5px; min-width: 100%; } 
 .tm-campos { display: grid; gap: 6px; } .tm-cmp { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 1px solid var(--borda); border-radius: 10px; background: var(--entrada); font-size: 13px; font-weight: 600; }
 .tm-cmp button { width: 44px; height: 36px; border-radius: 9px; border: 2px solid var(--borda); background: var(--cartao); font: 800 18px Poppins, system-ui, sans-serif; color: var(--texto-2); cursor: pointer; } .tm-cmp button.on { background: var(--laranja); border-color: var(--laranja); color: #1b1111; }
 @media (max-width: 900px) { .tm-bl { grid-template-columns: 1fr; } .tm-cc { width: 100%; max-width: 300px; } }
+
+/* tela inteira aproveitada (4.17): mais cartões por linha e textos longos em coluna confortável */
+@media (min-width: 1500px) { .vista-cards tbody { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); } }
+.conteudo .card.bloco .campo textarea, .conteudo .texto-longo { max-width: 1000px; }
+
+/* Acompanhamento em cartões (4.17): nome inteiro em cima, situação uma vez só, régua compacta */
+.vista-cards .acomp-tab td.pt-nm { display: block !important; }
+.vista-cards .acomp-tab td.pt-nm b { display: block; font-size: 15.5px; }
+.vista-cards .acomp-tab td.pt-nm small { display: block; margin-top: 2px; }
+.vista-cards .acomp-tab td:nth-child(4) { display: none !important; }
+.vista-cards .acomp-tab td:nth-child(3) { display: block !important; }
+.vista-cards .acomp-tab td:nth-child(3)::before { display: none !important; }
+.vista-cards .acomp-tab .tb-st { display: inline-flex; padding: 4px 12px; border-radius: 999px; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); font-size: 12.5px; margin-bottom: 8px; }
+.vista-cards .acomp-tab .tb-barra { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+.vista-cards .acomp-tab .tb-barra i { flex: 1; min-width: 0; }
+.vista-cards .acomp-tab .tb-ct { flex: none; white-space: nowrap; }
+.vista-cards .acomp-tab .tb-m { display: none; }
+.vista-cards .acomp-tab .tb-rot span::after { content: " m"; }
+.vista-cards .acomp-tab .tb-rot span.tb-esp::after { content: ""; }
+.vista-cards .acomp-tab .ak-bts { display: flex; gap: 6px; width: 100%; } .vista-cards .acomp-tab .ak-bts .btn { flex: 1; justify-content: center; }
+
+/* Janela em etapas (nova turma) */
+.et-pass { display: flex; gap: 6px; padding: 0 20px 10px; border-bottom: 1px solid var(--borda); }
+.et-pass div { flex: 1; text-align: center; font-size: 11px; color: var(--texto-3); min-width: 0; }
+.et-pass i { display: block; height: 5px; border-radius: 9px; background: var(--borda); margin-bottom: 5px; }
+.et-pass .ok { color: #2c8a54; } .et-pass .ok i { background: #3FA66B; }
+.et-pass .on { color: var(--texto); font-weight: 800; } .et-pass .on i { background: var(--laranja); }
+.et-pass span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.et-cab { margin-bottom: 12px; } .et-cab b { display: block; font-size: 16px; } .et-cab small { color: var(--texto-3); }
+.et-res > div { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--borda); font-size: 14px; }
+.et-res span { min-width: 110px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-3); }
+.et-res p { margin: 0; flex: 1; } .et-res a { color: var(--laranja); font-weight: 700; font-size: 12.5px; }
+@media (max-width: 600px) { .et-pass span { font-size: 9.5px; } .et-res > div { flex-wrap: wrap; } }
+
+.nt-op { display: flex; gap: 14px; align-items: center; width: 100%; text-align: left; padding: 14px; margin-bottom: 10px; border-radius: 14px; border: 1px solid var(--borda); background: var(--cartao); box-shadow: inset 5px 0 0 var(--c); cursor: pointer; color: var(--texto); font: inherit; }
+.nt-op.on { outline: 2px solid var(--laranja); outline-offset: 1px; } .nt-op .nt-ic { font-size: 26px; } .nt-op b { display: block; font-size: 15px; } .nt-op small { color: var(--texto-3); font-size: 12.5px; }
+
+/* Revisão visual (4.17): todo botão principal é laranja; as cores ficam só para situação */
+.btn-empresa, .btn-aval, .btn-area, .btn-teste, .btn-comp, .btn-mat { background: var(--laranja) !important; border-color: var(--laranja) !important; color: #1b1111 !important; font-weight: 700; box-shadow: 0 6px 16px rgba(238,115,48,.28); }
+.btn-empresa:hover, .btn-aval:hover, .btn-area:hover, .btn-teste:hover, .btn-comp:hover, .btn-mat:hover { background: #f5833f !important; color: #1b1111 !important; }
+.ic-l { display: inline-flex; margin-right: 6px; vertical-align: -3px; } .selo-tab .ic-l { margin-right: 4px; }
+.pt-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; } .pt-n { display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--texto) 8%, transparent); font-size: 11.5px; font-weight: 700; }

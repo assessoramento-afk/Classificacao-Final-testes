@@ -85,9 +85,9 @@
       if (!itens.length) { box.innerHTML = vazio(lista.length ? 'Nenhuma empresa encontrada.' : 'Nenhuma empresa cadastrada ainda. Use "Nova empresa".'); return; }
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Empresa</th><th>CNPJ</th><th>Contato</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (e) {
-          var contato = [e.responsavel, e.telefone_responsavel || e.telefone, e.cidade ? e.cidade + (e.uf ? '/' + e.uf : '') : null].filter(Boolean).join(' · ') || '—';
+          var contato = [ui.titulo(e.responsavel), e.telefone_responsavel || e.telefone, e.cidade ? ui.titulo(e.cidade) + (e.uf ? '/' + e.uf : '') : null].filter(Boolean).join(' · ') || '—';
           return '<tr><td><div class="cel-empresa"><span class="logo-mini" data-logo="' + esc(e.logo_path || '') + '">' + (e.logo_path ? '' : 'SEM LOGO') + '</span>' +
-            '<div><b>' + esc(e.nome_fantasia) + '</b><small>' + esc(e.razao_social) + '</small></div></div></td>' +
+            '<div><b>' + esc(ui.titulo(e.nome_fantasia)) + '</b><small>' + esc(ui.titulo(e.razao_social)) + '</small></div></div></td>' +
             '<td class="num">' + esc(ui.formatarCNPJ(e.cnpj)) + '</td><td>' + esc(contato) + '</td>' +
             '<td>' + ui.pill(e.ativa ? 'Ativa' : 'Inativa', e.ativa ? 'sim' : 'nao') + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + e.id + '">Editar</button></div></td></tr>';
