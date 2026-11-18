@@ -1682,3 +1682,8 @@ html, body { overflow-x: hidden; }
 html[data-tema="escuro"] .jov-rep { background: #3a2f12; color: #f0c75e; }
 .vista-cards .acomp-tab .tb-st { display: inline-block !important; }
 .vista-cards .acomp-tab .tb-st b { display: inline; }
+/* Tablets: instalação e PIN (T2) */
+.tb-duas { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+.tb-qr { display: flex; gap: 16px; align-items: flex-start; } .tb-qrimg { width: 150px; flex: none; background: #fff; padding: 6px; border-radius: 12px; border: 1px solid var(--borda); } .tb-qrimg svg { width: 100%; height: auto; display: block; }
+.tb-qr ol { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; } .tb-qr code { word-break: break-all; font-size: 12px; }
+@media (max-width: 900px) { .tb-duas { grid-template-columns: 1fr; } .tb-qr { flex-direction: column; } }

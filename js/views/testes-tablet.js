@@ -223,9 +223,69 @@
   async function tablets(area) {
     area.innerHTML = '<a class="voltar" href="#/config">← Configurações</a><header class="cabecalho"><div><h1>Tablets</h1><p>Tablets do Projeto Gol Testes · cada um tem nome, etiqueta e chave própria</p></div>' +
       '<div class="botoes-topo"><button type="button" class="btn btn-pri" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar tablet</button></div></header><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div>' +
-      '<p class="dica">Se um tablet sumir, use "Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p>';
+      '<p class="dica">Se um tablet sumir, use "Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p>' +
+      '<div class="tb-duas"><section class="card bloco" id="tb-inst"></section><section class="card bloco" id="tb-pin"></section></div>' +
+      '<section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section>';
     var lista = [];
-    async function carregar() { try { lista = await q(sb.from('tablets').select('*').order('nome')); desenhar(); } catch (e) { area.querySelector('#tb-lista').innerHTML = '<div class="aviso aviso-erro">' + esc(api.traduzErro(e)) + '</div>'; } }
+    // Instalação no tablet: link e QR Code do app (mesma publicação, pasta testes/)
+    var urlApp = location.origin + location.pathname.replace(/[^/]*$/, '') + 'testes/';
+    function qrSVG(t) { if (typeof window.qrcode !== 'function') return ''; var qq = window.qrcode(0, 'M'); qq.addData(t); qq.make(); return qq.createSvgTag({ cellSize: 5, margin: 2, scalable: true }); }
+    area.querySelector('#tb-inst').innerHTML = '<h2 style="margin:0 0 8px">Instalar o app nos tablets</h2><div class="tb-qr"><div class="tb-qrimg">' + qrSVG(urlApp) + '</div><ol>' +
+      '<li>No tablet, abra o <b>Chrome</b> e leia este QR Code com a câmera, ou digite o endereço: <code>' + esc(urlApp) + '</code></li>' +
+      '<li>Toque em <b>⋮ › Instalar app</b>. O ícone <b>Gol Testes</b> aparece na tela inicial.</li>' +
+      '<li>Abra o app e digite o <b>código de 6 números</b> do tablet (botão "Novo código" no cartão dele).</li>' +
+      '<li>Ligue a <b>Fixação de tela</b> do Android (Configurações › Segurança › Fixar app) para o jovem não sair do app.</li>' +
+      '<li>Deixe o <b>Chrome atualizado</b> e a <b>economia de bateria desligada</b> para o app.</li></ol></div>' +
+      '<p class="dica" style="margin:8px 0 0">Para abrir o modo avaliador no tablet: segure o logo do topo por 3 segundos e digite o PIN.</p>';
+    async function pinBox() {
+      var cfg = {}; try { cfg = (await q(sb.from('configuracoes').select('tablet_pin_hash').limit(1)))[0] || {}; } catch (e) {}
+      var b = area.querySelector('#tb-pin');
+      b.innerHTML = '<h2 style="margin:0 0 8px">PIN do avaliador</h2><p class="dica" style="margin:0 0 10px">Um PIN de 4 números para o modo avaliador de todos os tablets. ' + (cfg.tablet_pin_hash ? '<b>Já está definido.</b> Para trocar, digite um novo.' : '<b>Ainda não foi definido.</b>') + ' O tablet guarda só uma versão protegida do PIN.</p>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><input class="entrada" id="tb-pin-v" type="password" inputmode="numeric" maxlength="4" placeholder="4 números" style="max-width:160px"><button type="button" class="btn btn-pri" id="tb-pin-s">Salvar PIN</button></div>' +
+        '<p class="dica" style="margin:8px 0 0">Depois de trocar, os tablets recebem o PIN novo na próxima atualização (com internet).</p>';
+      b.querySelector('#tb-pin-s').addEventListener('click', async function () {
+        var v = b.querySelector('#tb-pin-v').value.trim();
+        if (!/^\d{4}$/.test(v)) { ui.toast('O PIN precisa ter 4 números.', 'erro'); return; }
+        try { var r = await sb.rpc('tablet_pin_definir', { p_pin: v }); if (r.error) throw r.error; ui.toast('PIN salvo.', 'ok'); pinBox(); } catch (e) { ui.toast(api.traduzErro(e), 'erro'); }
+      });
+    }
+    pinBox();
+    // Resultados recebidos (últimos 200) com "Ver respostas"
+    async function resultados() {
+      var box = area.querySelector('#tb-res'), rs = [];
+      try {
+        rs = await q(sb.from('tablet_resultados').select('id,participacao_id,teste_id,tablet_id,pontos,total,nota,inicio,fim,tempo_seg,por_tempo,situacao,motivo,recebido_em,respostas,versao,saidas').order('recebido_em', { ascending: false }).limit(200));
+      } catch (e) { box.innerHTML = '<h2>Resultados recebidos dos tablets</h2><p class="dica">Ainda não há resultados (ou falta rodar o SQL da T2).</p>'; return; }
+      if (!rs.length) { box.innerHTML = '<h2>Resultados recebidos dos tablets</h2><p class="dica">Nenhum resultado recebido ainda. Eles aparecem aqui assim que os tablets enviam.</p>'; return; }
+      var pids = rs.map(function (r) { return r.participacao_id; }).filter(Boolean), tids = rs.map(function (r) { return r.teste_id; }).filter(Boolean);
+      var parts = [], tests = [], tvs = [];
+      try { parts = await q(sb.from('participacoes').select('id,codigo,jovem_id,jovens(nome)').in('id', pids)); } catch (e) {}
+      try { tests = await q(sb.from('testes').select('id,nome').in('id', tids)); } catch (e) {}
+      try { tvs = await q(sb.from('teste_tablet_versoes').select('teste_id,versao,estrutura').in('teste_id', tids)); } catch (e) {}
+      function nm(r) { var p = parts.filter(function (x) { return x.id === r.participacao_id; })[0]; return p ? ((p.jovens && p.jovens.nome) || '') + ' · ' + (p.codigo || '') : '—'; }
+      function tn(id) { var t = tests.filter(function (x) { return x.id === id; })[0]; return t ? t.nome : '—'; }
+      function tbn(id) { var t = lista.filter(function (x) { return x.id === id; })[0]; return t ? t.nome : '—'; }
+      var COR = { gravado: '#3FA66B', repetido: '#e0a100', recusado: '#D9534F' }, NOME = { gravado: 'Nota lançada', repetido: 'Repetido', recusado: 'Não lançado' };
+      box.innerHTML = '<h2>Resultados recebidos dos tablets</h2><p class="dica" style="margin:0 0 8px">A nota de cada teste entra sozinha no teste do jovem (Avaliar). "Repetido": o jovem já tinha feito o teste, vale o primeiro.</p><div class="tabela-rolar"><table class="tabela"><thead><tr><th>Jovem</th><th>Teste</th><th>Nota</th><th>Pontos</th><th>Tempo</th><th>Situação</th><th>Tablet</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
+        rs.map(function (r, i) {
+          return '<tr style="--c:' + (COR[r.situacao] || '#8a8486') + '"><td>' + esc(nm(r)) + '</td><td>' + esc(tn(r.teste_id)) + '</td><td class="num"><b>' + (r.nota == null ? '—' : r.nota) + '</b></td><td class="num">' + (r.pontos == null ? '—' : r.pontos + ' de ' + r.total) + '</td>' +
+            '<td>' + (r.tempo_seg != null ? Math.floor(r.tempo_seg / 60) + ' min ' + (r.tempo_seg % 60) + ' s' : '—') + (r.por_tempo ? ' · <small>terminou por tempo</small>' : '') + '</td>' +
+            '<td><span class="pill" style="background:color-mix(in srgb,' + (COR[r.situacao] || '#8a8486') + ' 15%,transparent);color:' + (COR[r.situacao] || '#8a8486') + '">' + (NOME[r.situacao] || r.situacao) + '</span>' + (r.motivo ? '<br><small class="dica">' + esc(r.motivo) + '</small>' : '') + '</td>' +
+            '<td>' + esc(tbn(r.tablet_id)) + '<br><small class="dica">' + (r.fim ? new Date(r.fim).toLocaleString('pt-BR') : '') + '</small></td><td><button type="button" class="btn btn-p" data-vr="' + i + '">Ver respostas</button></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      box.querySelectorAll('[data-vr]').forEach(function (b) { b.addEventListener('click', function () {
+        var r = rs[+b.getAttribute('data-vr')], v = tvs.filter(function (x) { return x.teste_id === r.teste_id && x.versao === r.versao; })[0], est = (v && v.estrutura) || { partes: [] }, M = window.CF.testesMotor;
+        var h = '<p style="margin:0 0 10px"><b>' + esc(nm(r)) + '</b> · ' + esc(tn(r.teste_id)) + ' · versão ' + (r.versao || '?') + '<br>Nota <b>' + r.nota + '</b> · ' + r.pontos + ' de ' + r.total + ' pontos · início ' + (r.inicio ? new Date(r.inicio).toLocaleTimeString('pt-BR') : '—') + ' · fim ' + (r.fim ? new Date(r.fim).toLocaleTimeString('pt-BR') : '—') + '</p>' +
+          ((r.saidas || []).length ? '<div class="aviso">🚩 Saiu do app ' + r.saidas.length + ' vez(es) durante o teste.</div>' : '');
+        (est.partes || []).forEach(function (p, pi) {
+          var rr = (r.respostas || {})[pi] || {};
+          if (p.tipo === 'contar') h += '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Linha</th><th>Resposta</th><th>Gabarito</th><th></th></tr></thead><tbody>' + (p.linhas || []).map(function (l, k) { var x = rr[k], ok = x != null && String(x).trim().toUpperCase() === String(l.gabarito).trim().toUpperCase(); return '<tr><td>' + (k + 1) + ' · ' + esc((l.original || [])[0] || '') + '</td><td>' + (x == null ? '<span class="dica">em branco</span>' : esc(x)) + '</td><td>' + esc(l.gabarito) + '</td><td>' + (ok ? '✓' : '✗') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+          else if (p.tipo === 'marcar') h += '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Bloco</th><th>Marcou</th><th>Diferenças certas</th></tr></thead><tbody>' + (p.blocos || []).map(function (bl, k) { var m = Object.keys(rr[k] || {}).filter(function (c) { return rr[k][c]; }); return '<tr><td>' + (k + 1) + '</td><td>' + (m.join(', ') || '<span class="dica">nada</span>') + '</td><td>' + (M ? M.diferencas(bl).join(', ') : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+        });
+        ui.janela({ titulo: 'Respostas do tablet', largura: 760, corpo: h, botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
+      }); });
+    }
+    async function carregar() { try { lista = await q(sb.from('tablets').select('*').order('nome')); desenhar(); resultados(); } catch (e) { area.querySelector('#tb-lista').innerHTML = '<div class="aviso aviso-erro">' + esc(api.traduzErro(e)) + '</div>'; } }
     function situacao(x) {
       if (!x.ativo) return ['Desativado', 'nao', '#8a8486'];
       if (!x.ligado_em) return ['Aguardando ligar', 'neu', '#e0a100'];
