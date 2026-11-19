@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.0.0';
+  var VERSAO_APP = '1.1.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -28,8 +28,11 @@
       .then(function (r) { clearTimeout(t); return r.json().then(function (j) { if (!r.ok) throw new Error((j && (j.message || j.hint)) || 'Falha ao falar com o servidor.'); return j; }); });
   }
 
+  /* ---------- Modo de testes (dados fictícios; nada é enviado) ---------- */
+  var DEMO = {"gerado_em": "demo", "tablet": {"id": "demo", "nome": "MODO DE TESTES", "etiqueta": "dados fictícios"}, "pin_hash": "9aea0edb57b7c45b4bea33f8d027328456a22039999eaaa61bc4844bb04e6630", "turmas": [{"id": "tu-demo", "nome": "TURMA DE TESTE", "processo_id": "p-demo", "vaga": "Demonstração", "empresa": "Projeto Gol", "dias": [], "testes": ["t-conf", "t-cart"]}], "testes": [{"id": "t-conf", "nome": "Conferência de Mercadoria (exemplo)", "codigo": "DEMO1", "versao": 1, "estrutura": {"tempo_min": 5, "orientacao": "paisagem", "modo_nota": "pontos", "instrucoes": "Compare a Cópia com o Original e informe, em cada linha, quantos erros a cópia tem. Se não houver erro, marque \"–\".", "faixas": [{"min": 5, "nota": 5}, {"min": 4, "nota": 4}, {"min": 3, "nota": 3}, {"min": 2, "nota": 2}, {"min": 0, "nota": 1}], "explicacao": {"passos": [["Leia a linha do Original", "À esquerda está o produto como ele deve estar."], ["Compare com a Cópia", "Confira letra por letra e número por número."], ["Conte os erros da linha", "Toque em 1, 2, 3 ou 4. Se estiver igual, toque em –."]], "exemplo": "Original 224878 × Cópia 214878: 1 erro.", "dica": "Atenção a letras parecidas (coro × couro)."}, "partes": [{"tipo": "contar", "colunas": ["Artigo", "Tamanho", "Nº", "Entrega"], "linhas": [{"original": ["Camisa xadrez", "P-GG", "451203", "imediata"], "copia": ["Camisa xadrez", "P-GG", "451203", "imediata"], "gabarito": "-"}, {"original": ["Bota de couro", "35-40", "880214", "3 dias"], "copia": ["Bota de coro", "35-40", "880241", "3 dias"], "gabarito": "2"}, {"original": ["Jaqueta jeans", "M-G", "120987", "2 dias"], "copia": ["Jaqueta jeans", "M-G", "120987", "5 dias"], "gabarito": "1"}, {"original": ["Meia esportiva", "único", "300456", "imediata"], "copia": ["Meia esportiva", "único", "300456", "imediata"], "gabarito": "-"}, {"original": ["Boné aba reta", "único", "771100", "4 dias"], "copia": ["Boné aba curva", "58", "771100", "4 dias"], "gabarito": "2"}]}]}}, {"id": "t-cart", "nome": "Cartões de Crédito (exemplo)", "codigo": "DEMO2", "versao": 1, "estrutura": {"tempo_min": 5, "orientacao": "paisagem", "modo_nota": "percentual", "instrucoes": "Compare a Cópia com o Original e marque X nos campos que estão diferentes.", "faixas": [{"min": 80, "nota": 5}, {"min": 60, "nota": 4}, {"min": 40, "nota": 3}, {"min": 20, "nota": 2}, {"min": 0, "nota": 1}], "partes": [{"tipo": "marcar", "blocos": [{"original": {"banco": "NUBANK", "bandeira": "MASTERCARD", "numero": "5432 1098 7654 3210", "nome": "MARIA DA SILVA", "validade": "08/29", "agencia": "0001", "cvv": "123"}, "copia": {"banco": "NUBANK", "bandeira": "MASTERCARD", "numero": "5432 1098 7654 3201", "nome": "MARIA DA SILVA", "validade": "08/29", "agencia": "0001", "cvv": "132"}}, {"original": {"banco": "ITAÚ", "bandeira": "VISA", "numero": "4111 2222 3333 4444", "nome": "JOÃO PEREIRA", "validade": "11/27", "agencia": "1234", "cvv": "456"}, "copia": {"banco": "ITAÚ", "bandeira": "VISA", "numero": "4111 2222 3333 4444", "nome": "JOÃO PEREIRA", "validade": "11/27", "agencia": "1234", "cvv": "456"}}, {"original": {"banco": "CAIXA", "bandeira": "ELO", "numero": "6362 9700 0000 1122", "nome": "ANA SOUZA", "validade": "03/30", "agencia": "0456", "cvv": "789"}, "copia": {"banco": "CAIXA", "bandeira": "ELO", "numero": "6362 9700 0000 1122", "nome": "ANA SOUSA", "validade": "03/31", "agencia": "0456", "cvv": "789"}}]}]}}], "jovens": [{"codigo": "TEST-01", "participacao_id": "demo-1", "nome": "JOVEM DE TESTE UM", "turma_id": "tu-demo"}, {"codigo": "TEST-02", "participacao_id": "demo-2", "nome": "JOVEM DE TESTE DOIS", "turma_id": "tu-demo"}], "feitos": []};
+
   /* ---------- Estado ---------- */
-  var E = { chave: null, pacote: null, jovem: null, ultimaSinc: null, enviando: false, baixando: false };
+  var E = { chave: null, pacote: null, jovem: null, ultimaSinc: null, enviando: false, baixando: false, demo: false, demoFeitos: [] };
   function online() { return navigator.onLine !== false; }
   function aviso(txt, tipo) { var d = document.createElement('div'); d.textContent = txt; if (tipo) d.className = tipo; document.getElementById('avisos').appendChild(d); setTimeout(function () { d.remove(); }, 3600); }
   function uid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10) + '-' + Math.random().toString(36).slice(2, 10); }
@@ -43,7 +46,7 @@
 
   /* ---------- Sincronização ---------- */
   async function baixar(silencioso) {
-    if (!E.chave || E.baixando || !online()) return false;
+    if (E.demo || !E.chave || E.baixando || !online()) return false;
     E.baixando = true;
     try {
       var p = await rpc('tablet_baixar', { p_chave: E.chave, p_versao_app: VERSAO_APP });
@@ -58,7 +61,7 @@
     } finally { E.baixando = false; }
   }
   async function enviar() {
-    if (!E.chave || E.enviando || !online()) return;
+    if (E.demo || !E.chave || E.enviando || !online()) return;
     var lista = await fila.todos(); if (!lista.length) { atualizarStatus(); return; }
     E.enviando = true;
     try {
@@ -73,6 +76,7 @@
   window.addEventListener('offline', atualizarStatus);
   async function atualizarStatus() {
     var el = document.getElementById('st'); if (!el) return;
+    if (E.demo) { el.className = 'pil av'; el.textContent = 'MODO DE TESTES · nada é enviado'; return; }
     var n = (await fila.todos()).length;
     el.className = 'pil ' + (!online() ? 'av' : n ? 'av' : 'ok');
     el.textContent = !online() ? 'Sem internet' + (n ? ' · ' + n + ' a enviar' : '') : (n ? n + ' a enviar' : 'Tudo enviado');
@@ -81,6 +85,7 @@
   /* ---------- Feitos (no banco + neste tablet) ---------- */
   async function feitos(pid) {
     var f = {};
+    if (E.demo) { E.demoFeitos.forEach(function (x) { if (x.participacao_id === pid) f[x.teste_id] = x; }); return f; }
     ((E.pacote && E.pacote.feitos) || []).forEach(function (x) { if (x.participacao_id === pid) f[x.teste_id] = x; });
     (await fila.todos()).forEach(function (x) { if (x.participacao_id === pid) f[x.teste_id] = { fim: x.fim, tablet: 'este tablet' }; });
     ((await kv.ler('feitosLocal')) || []).forEach(function (x) { if (x.participacao_id === pid && !f[x.teste_id]) f[x.teste_id] = x; });
@@ -140,8 +145,51 @@
     }, ui: ui };
   }
 
-  // 1) Ligar o tablet
-  function telaLigar(msg) {
+  // 1) Ligar o tablet: QR Code do pedido (o administrador lê no celular e libera) ou código de 6 números
+  async function infoAparelho() {
+    var ua = navigator.userAgent, ap = '', so = '', nav = '';
+    var m = ua.match(/Android ([\d.]+);\s*([^;)]+)/); if (m) { so = 'Android ' + m[1]; ap = m[2].replace(/Build.*/, '').trim(); }
+    else if (/iPad|iPhone/.test(ua)) { ap = /iPad/.test(ua) ? 'iPad' : 'iPhone'; var v = ua.match(/OS (\d+)_/); so = 'iOS ' + (v ? v[1] : ''); }
+    else { so = /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : ''; ap = 'Computador'; }
+    try { if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) { var h = await navigator.userAgentData.getHighEntropyValues(['model', 'platformVersion']); if (h.model) ap = h.model; } } catch (e) {}
+    var c = ua.match(/(Chrome|CriOS|Firefox|Edg|SamsungBrowser)\/([\d]+)/); nav = c ? ({ CriOS: 'Chrome', Edg: 'Edge', SamsungBrowser: 'Samsung Internet' }[c[1]] || c[1]) + ' ' + c[2] : 'Navegador';
+    return { aparelho: (ap || 'Aparelho').slice(0, 120), sistema: so, navegador: nav };
+  }
+  var pollPedido = null;
+  async function telaLigar(msg) {
+    clearInterval(pollPedido);
+    var seg = await kv.ler('pedidoSegredo');
+    if (!seg) { var b = new Uint8Array(24); crypto.getRandomValues(b); seg = [].map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); await kv.gravar('pedidoSegredo', seg); }
+    app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Ligar este tablet</h1><p class="sub">' + esc(msg || '') + '</p><div id="ped" class="bx" style="text-align:center;min-width:min(420px,100%)"><div class="girando"></div><p>Preparando o pedido…</p></div>' +
+      '<p style="margin-top:14px;color:var(--texto-3);font-size:13px">Sem celular por perto? <button type="button" class="bsec" id="usar-cod" style="padding:7px 12px;margin-left:6px">Usar o código de 6 números</button></p></div>';
+    document.getElementById('usar-cod').addEventListener('click', function () { clearInterval(pollPedido); telaCodigo(); });
+    var box = document.getElementById('ped');
+    if (!online()) { box.innerHTML = '<p><b>Sem internet.</b><br>Para ligar o tablet é preciso internet (Wi-Fi, roteador 4G ou o celular).</p><button type="button" class="bpri" id="tenta">Tentar de novo</button>'; document.getElementById('tenta').addEventListener('click', function () { telaLigar(msg); }); return; }
+    try {
+      var inf = await infoAparelho();
+      var r = await rpc('tablet_pedir', { p_segredo: seg, p_aparelho: inf.aparelho, p_sistema: inf.sistema, p_navegador: inf.navegador });
+      if (r.situacao === 'rejeitado') { await kv.apagar('pedidoSegredo'); box.innerHTML = '<p><b>O pedido deste tablet foi rejeitado.</b></p><button type="button" class="bpri" id="denovo">Fazer um novo pedido</button>'; document.getElementById('denovo').addEventListener('click', function () { telaLigar(); }); return; }
+      var qr = ''; try { var q = window.qrcode(0, 'M'); q.addData('GOLT-PEDIDO:' + r.codigo); q.make(); qr = q.createSvgTag({ cellSize: 6, margin: 1, scalable: true }); } catch (e) {}
+      box.innerHTML = '<p style="margin:0 0 10px">Peça a um administrador para ler este QR Code na Classificação Final › Configurações › Tablets › <b>Ler QR do tablet</b>.</p>' +
+        '<div style="display:inline-block;background:#fff;padding:10px;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.12);width:min(240px,60vw)">' + qr.replace('<svg ', '<svg style="width:100%;height:auto;display:block" ') + '</div>' +
+        '<div style="font:800 22px ui-monospace,monospace;letter-spacing:.2em;color:var(--laranja);margin:10px 0 4px">PEDIDO ' + r.codigo.slice(0, 3) + '-' + r.codigo.slice(3) + '</div>' +
+        '<div style="display:inline-flex;gap:8px;margin-top:6px;padding:7px 14px;border-radius:999px;background:#fff4dc;color:#8a6200;font-weight:700;font-size:13px" id="ped-st">⏳ Aguardando liberação…</div>' +
+        '<p style="margin:10px 0 0;font-size:12.5px;color:var(--texto-3)">' + esc(inf.aparelho + ' · ' + inf.sistema + ' · ' + inf.navegador) + '</p>';
+      pollPedido = setInterval(async function () {
+        if (!online()) return;
+        try {
+          var s = await rpc('tablet_pedido_status', { p_segredo: seg });
+          if (s.situacao === 'liberado' && s.chave) {
+            clearInterval(pollPedido); E.chave = s.chave; await kv.gravar('chave', s.chave); await kv.gravar('tablet', s.tablet); await kv.apagar('pedidoSegredo');
+            var st = document.getElementById('ped-st'); if (st) { st.style.background = 'rgba(63,166,107,.2)'; st.style.color = '#1f6b40'; st.textContent = '✓ Tablet liberado: ' + ((s.tablet && s.tablet.nome) || ''); }
+            await baixar(true); setTimeout(telaEntrada, 1200);
+          } else if (s.situacao === 'rejeitado') { clearInterval(pollPedido); telaLigar(); }
+          else if (s.situacao === 'inexistente') { clearInterval(pollPedido); await kv.apagar('pedidoSegredo'); telaLigar(); }
+        } catch (e) {}
+      }, 4000);
+    } catch (e) { box.innerHTML = '<p><b>Não foi possível criar o pedido.</b><br>' + esc(e.message) + '</p><button type="button" class="bpri" id="tenta">Tentar de novo</button>'; document.getElementById('tenta').addEventListener('click', function () { telaLigar(msg); }); }
+  }
+  function telaCodigo(msg) {
     var c = cofre({ tam: 6, numeros: true, aoCompletar: async function (cod, ui) {
       ui.lendo();
       if (!online()) { ui.erro('SEM INTERNET'); aviso('Para ligar o tablet é preciso internet (Wi-Fi, roteador 4G ou celular).', 'erro'); return; }
@@ -152,8 +200,8 @@
         setTimeout(function () { telaEntrada(); }, 900);
       } catch (e) { ui.erro('CÓDIGO INVÁLIDO'); aviso(e.message, 'erro'); }
     } });
-    app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Ligar este tablet</h1><p class="sub">' + esc(msg || 'Na Classificação Final, abra Configurações › Tablets, toque em "Novo código" e digite aqui os 6 números.') + '</p>' + c.html + '</div>';
-    c.ligar();
+    app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Ligar este tablet</h1><p class="sub">' + esc(msg || 'Na Classificação Final, abra Configurações › Tablets, toque em "Novo código" e digite aqui os 6 números.') + '</p>' + c.html + '<p><button type="button" class="bsec" id="usar-qr">Voltar para o QR Code</button></p></div>';
+    c.ligar(); document.getElementById('usar-qr').addEventListener('click', function () { telaLigar(); });
   }
   async function desligar(msg) { E.chave = null; E.pacote = null; await kv.apagar('chave'); await kv.apagar('pacote'); telaLigar(msg); }
 
@@ -172,7 +220,7 @@
       }, 900);
     } });
     app.innerHTML = topo('Projeto Gol Testes', (tb.nome || 'Tablet') + (tb.etiqueta ? ' · ' + tb.etiqueta : '')) +
-      '<div class="entrada"><h1>Olá! Digite o código do seu crachá</h1><p class="sub">São 6 caracteres, como no exemplo K7O1-08. Toque nas letras e nos números.</p>' + c.html +
+      '<div class="entrada"><h1>Olá! Digite o código do seu crachá</h1><p class="sub">' + (E.demo ? '<b style="color:#a54c12">MODO DE TESTES · use TEST-01 ou TEST-02</b>' : 'São 6 caracteres, como no exemplo K7O1-08. Toque nas letras e nos números.') + '</p>' + c.html +
       ('BarcodeDetector' in window && navigator.mediaDevices ? '<div class="qr"><button type="button" class="bsec" id="bqr">📷 Ler o QR Code do crachá</button></div><video class="qr-vid" id="qv" playsinline muted style="display:none"></video>' : '') + '</div>';
     c.ligar(); atualizarStatus();
     var bq = document.getElementById('bqr');
@@ -280,9 +328,12 @@
       var c = ctl.corrigir(), fim = new Date();
       var res = { uid: uid(), participacao_id: E.jovem.participacao_id, teste_id: t.id, versao: t.versao, respostas: ctl.respostas(), pontos: c.pontos, total: c.total, nota: c.nota,
         inicio: inicio.toISOString(), fim: fim.toISOString(), tempo_seg: Math.round((fim - inicio) / 1000), por_tempo: !!porTempo, saidas: saidas };
-      await fila.por(res);
-      var fl = (await kv.ler('feitosLocal')) || []; fl.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'este tablet' }); await kv.gravar('feitosLocal', fl.slice(-500));
-      enviar();
+      if (E.demo) { E.demoFeitos.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'modo de testes', nota: res.nota, pontos: res.pontos, total: res.total }); }
+      else {
+        await fila.por(res);
+        var fl = (await kv.ler('feitosLocal')) || []; fl.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'este tablet' }); await kv.gravar('feitosLocal', fl.slice(-500));
+        enviar();
+      }
       setTimeout(function () { tr.remove(); document.body.classList.remove('pede-paisagem', 'grande'); try { screen.orientation.unlock(); } catch (e) {} telaConclusao(t, res, respondidas(), itens.length); }, porTempo ? 1600 : 400);
     }
   }
@@ -293,13 +344,14 @@
     if (!porT) for (var i = 0; i < 26; i++) conf += '<i class="conf" style="left:' + (4 + Math.random() * 92) + '%;background:' + ['#ee7330', '#f4f1ef', '#ffb27f', '#3FA66B'][i % 4] + ';animation-delay:' + (1.2 + Math.random() * .8) + 's"></i>';
     app.innerHTML = '<div class="fim-t">' + conf + '<div class="an"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="70" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="8"/><circle class="pg" cx="90" cy="90" r="70" fill="none" stroke="' + (porT ? '#ffc861' : '#ee7330') + '" stroke-width="8" stroke-linecap="round" transform="rotate(-90 90 90)"/>' +
       (porT ? '<g fill="none" stroke="#ffc861" stroke-width="7" stroke-linecap="round"><path class="mc" d="M90 52v40l24 14"/></g>' : '<path class="mc" d="M58 92l22 22 44-48" fill="none" stroke="#f4f1ef" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>') + '</svg></div>' +
-      '<h1>' + (porT ? 'Tempo encerrado' : 'Teste concluído!') + '</h1><p>' + (porT ? 'O teste foi finalizado com o que você respondeu. ' : 'Parabéns, <b>' + esc(String(E.jovem.nome || '').split(' ')[0]) + '</b>! ') + 'Suas respostas foram salvas neste tablet e vão para a Classificação Final.</p>' +
+      '<h1>' + (porT ? 'Tempo encerrado' : 'Teste concluído!') + '</h1><p>' + (porT ? 'O teste foi finalizado com o que você respondeu. ' : 'Parabéns, <b>' + esc(String(E.jovem.nome || '').split(' ')[0]) + '</b>! ') + (E.demo ? 'Modo de testes: as respostas não são enviadas.' : 'Suas respostas foram salvas neste tablet e vão para a Classificação Final.') + '</p>' +
       '<div class="chips"><div class="chip"><b>' + mmss(res.tempo_seg) + '</b><span>tempo usado</span></div><div class="chip"><b>' + resp + ' de ' + tot + '</b><span>respondidas</span></div></div>' +
       '<span class="est" id="est2" style="background:rgba(63,166,107,.2);color:#9fe9bc">' + (online() ? 'Enviando…' : 'Será enviado quando houver internet') + '</span>' +
       '<div class="bs"><button type="button" class="bpri" id="outro">Fazer outro teste</button><button type="button" class="bsec" id="sair2">Sair</button></div><div class="volta">Voltando para a entrada em 20 s<i></i></div></div>';
     var vt = setTimeout(telaEntrada, 22000);
     document.getElementById('outro').addEventListener('click', function () { clearTimeout(vt); telaTestes(); });
     document.getElementById('sair2').addEventListener('click', function () { clearTimeout(vt); telaEntrada(); });
+    if (E.demo) { var e0 = document.getElementById('est2'); if (e0) { e0.textContent = 'Modo de testes · nota ' + res.nota + ' (' + res.pontos + ' de ' + res.total + ' pontos) · nada foi enviado'; e0.style.background = '#fff4dc'; e0.style.color = '#8a6200'; } return; }
     setTimeout(async function () { var n = (await fila.todos()).filter(function (x) { return x.uid === res.uid; }).length; var e = document.getElementById('est2'); if (e) e.textContent = n ? 'Será enviado quando houver internet' : '✓ Enviado para a Classificação Final'; }, 4000);
   }
 
@@ -337,6 +389,11 @@
   (async function () {
     if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch (e) {} }
     try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+    if (/[?&]teste\b/.test(location.search)) {
+      var lig = false; try { lig = await rpc('tablet_modo_testes_ler', {}); } catch (e) {}
+      if (lig === true) { E.demo = true; E.chave = 'demo'; E.pacote = DEMO; telaEntrada(); aviso('Modo de testes: use TEST-01 ou TEST-02. PIN do avaliador: 1234.'); return; }
+      app.innerHTML = '<div class="entrada"><h1>Modo de testes desligado</h1><p class="sub">O modo de testes do app está desligado em Configurações › Tablets' + (online() ? '' : ' (ou o aparelho está sem internet)') + '.</p></div>'; return;
+    }
     E.chave = await kv.ler('chave'); E.pacote = (await kv.ler('pacote')) || null; E.ultimaSinc = await kv.ler('ultimaSinc');
     if (!E.chave) { telaLigar(); return; }
     telaEntrada(); baixar(true).then(function (ok) { if (ok && !emTeste && !E.jovem) telaEntrada(); }); enviar();

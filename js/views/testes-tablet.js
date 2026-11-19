@@ -222,10 +222,11 @@
   /* =================== Configurações › Tablets =================== */
   async function tablets(area) {
     area.innerHTML = '<a class="voltar" href="#/config">← Configurações</a><header class="cabecalho"><div><h1>Tablets</h1><p>Tablets do Projeto Gol Testes · cada um tem nome, etiqueta e chave própria</p></div>' +
-      '<div class="botoes-topo"><button type="button" class="btn btn-pri" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar tablet</button></div></header><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div>' +
+      '<div class="botoes-topo"><button type="button" class="btn btn-pri" id="tb-qr">📷 Ler QR do tablet</button><button type="button" class="btn" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar com código</button></div></header><section class="card pt-tab" id="tb-ped"></section><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div>' +
       '<p class="dica">Se um tablet sumir, use "Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p>' +
-      '<div class="tb-duas"><section class="card bloco" id="tb-inst"></section><section class="card bloco" id="tb-pin"></section></div>' +
-      '<section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section>';
+      '<div class="tb-duas"><section class="card bloco" id="tb-inst"></section><div style="display:flex;flex-direction:column;gap:16px"><section class="card bloco" id="tb-pin"></section><section class="card bloco" id="tb-modo"></section></div></div>' +
+      '<section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section>' +
+      '<section class="card pt-tab" id="tb-hist"></section>';
     var lista = [];
     // Instalação no tablet: link e QR Code do app (mesma publicação, pasta testes/)
     var urlApp = location.origin + location.pathname.replace(/[^/]*$/, '') + 'testes/';
@@ -250,6 +251,78 @@
       });
     }
     pinBox();
+    /* ---------- Pedidos de liberação (QR Code do tablet) ---------- */
+    async function pedidos() {
+      var b = area.querySelector('#tb-ped'), ps = [];
+      try { ps = await q(sb.from('tablet_pedidos').select('id,codigo,aparelho,sistema,navegador,situacao,criado_em,decidido_em,tablet_id').order('criado_em', { ascending: false }).limit(60)); }
+      catch (e) { b.innerHTML = '<h2>Pedidos de liberação</h2><p class="dica">Falta rodar o SQL da versão 4.19.0.</p>'; return; }
+      var pend = ps.filter(function (x) { return x.situacao === 'pendente'; }), dec = ps.filter(function (x) { return x.situacao !== 'pendente'; }).slice(0, 15);
+      var COR = { pendente: '#e0a100', liberado: '#3FA66B', rejeitado: '#D9534F' };
+      function lin(x) { return '<tr style="--c:' + COR[x.situacao] + '"><td><b>' + esc(x.codigo.slice(0, 3) + '-' + x.codigo.slice(3)) + '</b></td><td>' + esc([x.aparelho, x.sistema, x.navegador].filter(Boolean).join(' · ')) + '</td><td>' + new Date(x.criado_em).toLocaleString('pt-BR') + '</td>' +
+        '<td><span class="pill" style="background:color-mix(in srgb,' + COR[x.situacao] + ' 15%,transparent);color:' + COR[x.situacao] + '">' + x.situacao + '</span>' + (x.decidido_em ? '<br><small class="dica">' + new Date(x.decidido_em).toLocaleString('pt-BR') + '</small>' : '') + '</td>' +
+        '<td>' + (x.situacao === 'pendente' ? '<button type="button" class="btn btn-p" data-ped="' + x.codigo + '">Ver pedido</button>' : '') + '</td></tr>'; }
+      b.innerHTML = '<h2>Pedidos de liberação ' + (pend.length ? '<span class="pill" style="background:#fff4dc;color:#8a6200">' + pend.length + ' pendente' + (pend.length > 1 ? 's' : '') + '</span>' : '') + '</h2>' +
+        '<p class="dica" style="margin:0 0 8px">Tablets novos mostram um QR Code de pedido. Leia com "📷 Ler QR do tablet" ou abra o pedido aqui. O tablet só entra depois que você liberar.</p>' +
+        (ps.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Pedido</th><th>Aparelho</th><th>Pedido em</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' + pend.concat(dec).map(lin).join('') + '</tbody></table></div>' : '<p class="dica">Nenhum pedido ainda.</p>');
+      b.querySelectorAll('[data-ped]').forEach(function (x) { x.addEventListener('click', function () { abrirPedido(x.getAttribute('data-ped')); }); });
+    }
+    async function abrirPedido(codigo) {
+      codigo = String(codigo || '').toUpperCase().replace(/^GOLT-PEDIDO:/, '').replace(/[^A-Z0-9]/g, '');
+      var p = null; try { p = (await q(sb.from('tablet_pedidos').select('id,codigo,aparelho,sistema,navegador,situacao,criado_em').eq('codigo', codigo)))[0]; } catch (e) {}
+      if (!p) { ui.toast('Pedido não encontrado. Confira o QR Code do tablet.', 'erro'); return; }
+      if (p.situacao !== 'pendente') { ui.toast('Este pedido já foi ' + p.situacao + '.', 'erro'); return; }
+      var prox = 'TABLET ' + ('0' + (lista.length + 1)).slice(-2);
+      ui.janela({ titulo: '📱 Pedido de liberação de tablet', largura: 480,
+        corpo: '<div class="et-res"><div><span>Pedido</span><p><b>' + esc(p.codigo.slice(0, 3) + '-' + p.codigo.slice(3)) + '</b></p></div><div><span>Aparelho</span><p>' + esc(p.aparelho || '—') + (p.sistema ? ' · ' + esc(p.sistema) : '') + '</p></div><div><span>Navegador</span><p>' + esc(p.navegador || '—') + '</p></div><div><span>Pedido feito</span><p>' + new Date(p.criado_em).toLocaleString('pt-BR') + '</p></div></div>' +
+          '<label class="campo" style="margin-top:12px"><span>Nome do tablet</span><input class="entrada" id="pd-nome" value="' + esc(prox) + '"></label><label class="campo"><span>Etiqueta</span><input class="entrada" id="pd-et" value="' + esc(prox.replace(/\D/g, '')) + '"></label>' +
+          '<p class="dica">Fica registrado: quem decidiu, quando, aparelho e navegador.</p>',
+        botoes: [{ texto: 'Rejeitar', aoClicar: async function () { try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: false }); if (r.error) throw r.error; ui.toast('Pedido rejeitado.', 'ok'); carregar(); pedidos(); historico(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } },
+          { texto: 'Liberar tablet', principal: true, aoClicar: async function (f) {
+            try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: true, p_nome: f.querySelector('#pd-nome').value, p_etiqueta: f.querySelector('#pd-et').value }); if (r.error) throw r.error;
+              ui.toast('Tablet liberado. Ele entra sozinho em alguns segundos.', 'ok'); carregar(); pedidos(); historico(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } }] });
+    }
+    function lerQR() {
+      var ativo = true, stream = null;
+      var j = ui.janela({ titulo: '📷 Ler QR do tablet', largura: 520, corpo: '<p class="dica" style="margin:0 0 8px">Aponte a câmera para o QR Code que aparece na tela "Ligar este tablet".</p><video id="qv" playsinline muted style="width:100%;border-radius:14px;background:#000"></video><canvas id="qc" style="display:none"></canvas>' +
+        '<label class="campo" style="margin-top:10px"><span>Ou digite o pedido</span><input class="entrada" id="qd" placeholder="ex.: 4F7-K2Q" style="text-transform:uppercase"></label>',
+        botoes: [{ texto: 'Fechar', acao: 'fechar' }, { texto: 'Abrir pedido', principal: true, aoClicar: function (f) { var v = f.querySelector('#qd').value; if (!v.trim()) { ui.toast('Digite o pedido ou leia o QR.', 'erro'); return false; } parar(); setTimeout(function () { abrirPedido(v); }, 30); return true; } }],
+        aoFechar: function () { parar(); } });
+      function parar() { ativo = false; if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); }
+      var el = j.elemento, video = el.querySelector('#qv'), canvas = el.querySelector('#qc'), c2 = canvas.getContext('2d'), det = ('BarcodeDetector' in window) ? new window.BarcodeDetector({ formats: ['qr_code'] }) : null;
+      function achou(txt) { if (!/GOLT-PEDIDO:/i.test(txt)) return; parar(); j.fechar(true); abrirPedido(txt); }
+      async function quadro() {
+        if (!ativo || !document.body.contains(video)) { parar(); return; }
+        try {
+          if (video.readyState >= 2) {
+            if (det) { var cs = await det.detect(video); if (cs[0]) { achou(cs[0].rawValue); return; } }
+            else if (window.jsQR) { var w = video.videoWidth, h = video.videoHeight, k = Math.min(1, 640 / w); canvas.width = Math.round(w * k); canvas.height = Math.round(h * k); c2.drawImage(video, 0, 0, canvas.width, canvas.height); var img = c2.getImageData(0, 0, canvas.width, canvas.height), r = window.jsQR(img.data, img.width, img.height); if (r && r.data) { achou(r.data); return; } }
+          }
+        } catch (e) {}
+        setTimeout(quadro, 200);
+      }
+      (async function () { try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); video.srcObject = stream; await video.play(); quadro(); } catch (e) { el.querySelector('.dica').textContent = 'Não foi possível abrir a câmera. Digite o pedido que aparece no tablet.'; } })();
+    }
+    /* ---------- Modo de testes do app ---------- */
+    async function modoBox() {
+      var b = area.querySelector('#tb-modo'), lig = false;
+      try { lig = (await q(sb.from('configuracoes').select('modo_testes_app').limit(1)))[0].modo_testes_app; } catch (e) {}
+      b.innerHTML = '<h2 style="margin:0 0 8px">Modo de testes do app</h2><p class="dica" style="margin:0 0 10px">Com ele ligado, qualquer computador ou celular abre <code>' + esc(urlApp) + '?teste</code> e vê a tela do crachá e os testes com <b>dados fictícios</b> (TEST-01 e TEST-02). Nada é enviado e nenhum dado real aparece.</p>' +
+        '<label style="display:flex;gap:10px;align-items:center;font-weight:700"><input type="checkbox" id="tb-modo-v"' + (lig ? ' checked' : '') + '> Modo de testes ' + (lig ? 'ligado' : 'desligado') + '</label>';
+      b.querySelector('#tb-modo-v').addEventListener('change', async function (e) { try { var r = await sb.rpc('tablet_modo_testes', { p_ligado: e.target.checked }); if (r.error) throw r.error; ui.toast(e.target.checked ? 'Modo de testes ligado.' : 'Modo de testes desligado.', 'ok'); modoBox(); historico(); } catch (er) { ui.toast(api.traduzErro(er), 'erro'); modoBox(); } });
+    }
+    /* ---------- Histórico ---------- */
+    async function historico() {
+      var b = area.querySelector('#tb-hist'), hs = [], pessoas = [];
+      try { hs = await q(sb.from('tablet_historico').select('*').order('em', { ascending: false }).limit(40)); } catch (e) { b.innerHTML = ''; return; }
+      try { pessoas = await q(sb.from('perfis').select('id,nome')); } catch (e) {}
+      function pn(id) { var x = pessoas.filter(function (p) { return p.id === id; })[0]; return x ? x.nome : (id ? '—' : 'o próprio tablet'); }
+      function tn(id) { var t = lista.filter(function (x) { return x.id === id; })[0]; return t ? t.nome : ''; }
+      b.innerHTML = '<h2>Histórico dos tablets</h2>' + (hs.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Quando</th><th>O quê</th><th>Tablet</th><th>Quem</th></tr></thead><tbody>' +
+        hs.map(function (h) { return '<tr><td>' + new Date(h.em).toLocaleString('pt-BR') + '</td><td><b>' + esc(h.acao) + '</b>' + (h.detalhe ? '<br><small class="dica">' + esc(h.detalhe) + '</small>' : '') + '</td><td>' + esc(tn(h.tablet_id)) + '</td><td>' + esc(pn(h.por)) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="dica">Nada registrado ainda.</p>');
+    }
+    area.querySelector('#tb-qr').addEventListener('click', lerQR);
+    modoBox(); pedidos();
+    var pedTimer = setInterval(function () { if (!document.body.contains(area.querySelector('#tb-ped'))) { clearInterval(pedTimer); return; } pedidos(); }, 20000);
     // Resultados recebidos (últimos 200) com "Ver respostas"
     async function resultados() {
       var box = area.querySelector('#tb-res'), rs = [];
@@ -285,7 +358,7 @@
         ui.janela({ titulo: 'Respostas do tablet', largura: 760, corpo: h, botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
       }); });
     }
-    async function carregar() { try { lista = await q(sb.from('tablets').select('*').order('nome')); desenhar(); resultados(); } catch (e) { area.querySelector('#tb-lista').innerHTML = '<div class="aviso aviso-erro">' + esc(api.traduzErro(e)) + '</div>'; } }
+    async function carregar() { try { lista = await q(sb.from('tablets').select('*').order('nome')); desenhar(); resultados(); historico(); } catch (e) { area.querySelector('#tb-lista').innerHTML = '<div class="aviso aviso-erro">' + esc(api.traduzErro(e)) + '</div>'; } }
     function situacao(x) {
       if (!x.ativo) return ['Desativado', 'nao', '#8a8486'];
       if (!x.ligado_em) return ['Aguardando ligar', 'neu', '#e0a100'];

@@ -143,3 +143,5 @@ button { font-family: inherit; }
 .tm-cmp button { width: 44px; height: 36px; border-radius: 9px; border: 2px solid var(--borda); background: var(--cartao); font: 800 18px Poppins, system-ui, sans-serif; color: var(--texto-2); cursor: pointer; } .tm-cmp button.on { background: var(--laranja); border-color: var(--laranja); color: #1b1111; }
 @media (max-width: 900px) { .tm-bl { grid-template-columns: 1fr; } .tm-cc { width: 100%; max-width: 300px; } }
 #mi .tm-geral { display: none; }
+
+.girando { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--borda); border-top-color: var(--laranja); animation: gira 1s linear infinite; margin: 10px auto; }
