@@ -18,11 +18,13 @@
   function totalParte(p) {
     if (p.tipo === 'contar') return (p.linhas || []).reduce(function (a, l) { return a + num(l.pontos == null ? 1 : l.pontos); }, 0);
     if (p.tipo === 'marcar') return (p.blocos || []).reduce(function (a, b) { return a + diferencas(b).length; }, 0);
+    if (p.tipo === 'escolha') return (p.questoes || []).reduce(function (a, q) { return a + num(q.pontos == null ? 1 : q.pontos); }, 0);
     return 0;
   }
   function corrigirParte(p, r) {   // r = respostas desta parte
     r = r || {};
     if (p.tipo === 'contar') return (p.linhas || []).reduce(function (a, l, i) { return a + (r[i] != null && norm(r[i]) === norm(l.gabarito) ? num(l.pontos == null ? 1 : l.pontos) : 0); }, 0);
+    if (p.tipo === 'escolha') return (p.questoes || []).reduce(function (a, q, i) { return a + (r[i] != null && +r[i] === +q.correta ? num(q.pontos == null ? 1 : q.pontos) : 0); }, 0);
     if (p.tipo === 'marcar') {
       var ac = 0, er = 0;
       (p.blocos || []).forEach(function (b, i) { var dif = diferencas(b); CAMPOS_CARTAO.forEach(function (c) { if ((r[i] || {})[c[0]]) { if (dif.indexOf(c[0]) >= 0) ac++; else er++; } }); });
@@ -88,6 +90,29 @@
     return linhas;
   }
   function chaveOrig(b) { var d = b.original || {}; return b.orig != null && b.orig !== '' ? 'n' + b.orig : 'c' + ['banco', 'bandeira', 'numero', 'nome', 'validade', 'agencia', 'cvv'].map(function (c) { return norm(d[c]); }).join('|'); }
+  /* ---------- Múltipla escolha (com figura e com texto de apoio) ---------- */
+  var LETRAS = 'ABCDEFGH';
+  function escolhaHTML(p) {
+    var h = '', sec = null, tx = undefined, n = 0, aberto = false, textos = p.textos || [];
+    function fecha() { if (aberto) { h += '</div></div>'; aberto = false; } }
+    (p.questoes || []).forEach(function (q, k) {
+      if ((q.secao || null) !== sec) { fecha(); sec = q.secao || null; if (sec) h += '<h3 class="tm-sec">' + esc(sec) + '</h3>'; tx = undefined; }
+      var t = q.texto == null ? null : q.texto;
+      if (t !== tx) {
+        fecha(); tx = t;
+        var T = t == null ? null : textos.filter(function (x) { return x.id === t; })[0];
+        if (T) { h += '<div class="tm-port"><aside class="tm-apoio"><small>' + esc(T.titulo || 'TEXTO') + '</small><p>' + esc(T.texto) + '</p>' + (T.autor ? '<em>— ' + esc(T.autor) + '</em>' : '') + '</aside><div class="tm-qs">'; aberto = true; }
+      }
+      n++;
+      var letras = !!q.so_letras, img = q.imagem ? '<div class="tm-fig"><img src="' + esc(q.imagem) + '" alt="Figura do exercício ' + n + '" data-zoom="1"></div>' : '';
+      var alts = '<div class="tm-alts' + (letras ? ' tm-letras' : '') + '" data-q="' + k + '">' + (q.alternativas || []).map(function (a, j) {
+        return '<button type="button" class="tm-alt" data-a="' + j + '"><b>' + LETRAS[j] + '</b>' + (letras ? '' : '<span>' + esc(a) + '</span>') + '</button>'; }).join('') + '</div>';
+      h += '<div class="tm-q" data-item="' + k + '" data-qk="' + k + '"><h4><em>' + n + '.</em><span>' + esc(q.enunciado) + '</span>' + (q.pontos && +q.pontos !== 1 ? '<i class="tm-pt">' + q.pontos + ' pts</i>' : '') + '</h4>' +
+        (img ? '<div class="tm-qimg">' + img + alts + '</div>' : alts) + '</div>';
+    });
+    fecha();
+    return h;
+  }
   function parteHTML(p, i) {
     var h = '<section class="tm-parte" data-parte="' + i + '">' + (p.titulo ? '<h3>' + esc(p.titulo) + '</h3>' : '') + (p.instrucoes ? '<div class="tm-instr">' + esc(p.instrucoes) + '</div>' : '');
     if (p.tipo === 'contar') {
@@ -99,6 +124,8 @@
             cols.map(function (c, j) { return '<td class="cpv' + (j ? ' pq' : ' art') + '">' + esc((l.copia || [])[j]) + '</td>'; }).join('') +
             '<td><div class="tm-ops" data-k="' + k + '">' + ops.map(function (o) { return '<button type="button" data-v="' + esc(o === '–' ? '-' : o) + '"' + (/\d/.test(o) ? ' class="num"' : '') + '>' + esc(o) + '</button>'; }).join('') + '</div></td></tr>';
         }).join('') + '</tbody></table></div>';
+    } else if (p.tipo === 'escolha') {
+      return '<section class="tm-parte tm-escolha" data-parte="' + i + '">' + escolhaHTML(p) + '</section>';
     } else if (p.tipo === 'marcar') {
       // como no papel: originais em ordem à esquerda; cada cópia na linha mais distante possível do seu original; linhas alinhadas
       var L = linhasCartoes(p), n = 0;
@@ -127,6 +154,17 @@
         caixa.querySelectorAll('[data-parte="' + pi + '"] tr[data-l]').forEach(function (tr) { tr.classList.toggle('atual', tr.getAttribute('data-l') === k); });
         return;
       }
+      var al = e.target.closest('.tm-alt');
+      if (al) {
+        var pa = al.closest('[data-parte]').getAttribute('data-parte'), gq = al.parentNode, qk = gq.getAttribute('data-q');
+        gq.querySelectorAll('.tm-alt').forEach(function (y) { y.classList.toggle('on', y === al); });
+        resp[pa] = resp[pa] || {}; resp[pa][qk] = +al.getAttribute('data-a');
+        var qe = al.closest('.tm-q'); if (qe) qe.classList.add('feito');
+        caixa.querySelectorAll('.tm-q.atual').forEach(function (y) { y.classList.remove('atual'); }); if (qe) qe.classList.add('atual');
+        return;
+      }
+      var zi = e.target.closest('img[data-zoom]');
+      if (zi) { var f = document.createElement('div'); f.className = 'tm-zoom'; f.innerHTML = '<img src="' + zi.getAttribute('src') + '" alt=""><span>Toque para fechar</span>'; f.addEventListener('click', function () { f.remove(); }); document.body.appendChild(f); return; }
       var x = e.target.closest('.tm-cmp button');
       if (x) {
         var pj = x.closest('[data-parte]').getAttribute('data-parte'), bl = x.getAttribute('data-b'), c = x.getAttribute('data-c');
@@ -140,11 +178,14 @@
         var sec = caixa.querySelector('[data-parte="' + pi + '"]'); if (!sec) return; var x = resp[pi] || {};
         Object.keys(x).forEach(function (k) {
           if (typeof x[k] === 'object' && x[k]) Object.keys(x[k]).forEach(function (c) { var b = sec.querySelector('.tm-cmp button[data-b="' + k + '"][data-c="' + c + '"]'); if (b) b.classList.toggle('on', !!x[k][c]); });
+          else if (typeof x[k] === 'number') { var gq = sec.querySelector('.tm-alts[data-q="' + k + '"]'); if (gq) { gq.querySelectorAll('.tm-alt').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-a') === x[k]); }); var qe = gq.closest('.tm-q'); if (qe) qe.classList.add('feito'); } }
           else { var g = sec.querySelector('.tm-ops[data-k="' + k + '"]'); if (g) g.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === x[k]); }); }
         });
       });
     }
-    return { respostas: function () { return resp; }, corrigir: function () { return corrigir(est, resp); }, restaurar: restaurar };
+    // contagem genérica (para os tipos novos): itens marcados com data-item e a classe "feito"
+    function contagem() { var its = caixa.querySelectorAll('[data-item]'); return { total: its.length, feitas: caixa.querySelectorAll('[data-item].feito').length }; }
+    return { respostas: function () { return resp; }, corrigir: function () { return corrigir(est, resp); }, restaurar: restaurar, contagem: contagem };
   }
 
   window.CF = window.CF || {};

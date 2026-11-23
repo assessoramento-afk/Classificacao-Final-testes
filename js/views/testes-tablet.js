@@ -14,6 +14,7 @@
   var TIPOS = [
     ['contar', 'Contar diferenças', '#ee7330', 'Original × cópia; o jovem diz quantos erros há na linha', true],
     ['marcar', 'Marcar o que mudou', '#2f6fd0', 'Cartão original × cópia; marca X nos campos diferentes', true],
+    ['escolha', 'Múltipla escolha', '#8b6fd6', 'Pergunta com alternativas, com figura ou texto de apoio', true],
     ['tabela', 'Preencher tabela', '#3FA66B', 'Texto, número, data ou valor por célula', false],
     ['associar', 'Associar à imagem', '#8b6fd6', 'Liga código ou nome à imagem certa', false],
     ['ordem', 'Colocar em ordem', '#e0a100', 'O jovem define a ordem dos itens', false],
@@ -47,6 +48,7 @@
         '<section class="card bloco"><h2 class="tt-h">Dados do teste <label class="tt-tab"><input type="checkbox" id="tt-ativo"' + (tablet ? ' checked' : '') + '> 📱 Aplicado no tablet</label></h2>' +
           '<div class="tt-grade"><label class="campo"><span>Tempo do teste (minutos)</span><input class="entrada" id="tt-tempo" inputmode="numeric" value="' + esc(est.tempo_min) + '"></label></div>' +
           '<label class="campo"><span>Instruções para o jovem</span><textarea class="entrada" id="tt-instr" rows="3">' + esc(est.instrucoes || '') + '</textarea></label></section>' +
+        explicacaoEd() +
         '<section class="card bloco"><h2 class="tt-h">Partes do teste <small class="dica">total possível: ' + String(total).replace('.', ',') + ' pontos</small></h2><div id="tt-partes">' +
           (est.partes.length ? est.partes.map(parteEd).join('') : '<p class="dica">Nenhuma parte ainda. Escolha um tipo abaixo ou importe da planilha.</p>') + '</div>' +
           '<div class="tt-add"><span class="dica">+ Parte:</span>' + TIPOS.map(function (x) { return '<button type="button" class="btn btn-p" data-add="' + x[0] + '"' + (x[4] ? '' : ' disabled title="Entra na etapa T3"') + '>' + esc(x[1]) + (x[4] ? '' : ' · T3') + '</button>'; }).join('') + '</div></section>' +
@@ -58,6 +60,14 @@
           return '<div class="tt-ver"><b>v' + v.versao + '</b>' + ui.pill(i === 0 ? 'Nos tablets' : 'Anterior', i === 0 ? 'ok' : 'neu') + '<span>' + esc(v.nota || '—') + '</span><small>' + dataHora(v.publicada_em) + '</small></div>'; }).join('') : '<p class="dica">Nenhuma versão publicada ainda.</p>') +
           '<p class="dica">Ao publicar, os tablets baixam a versão nova na próxima conexão. Turmas que já começaram este teste continuam na versão em que começaram.</p></section>';
       ligar();
+    }
+    function explicacaoEd() {
+      var ex = est.explicacao || {}, ps = (ex.passos && ex.passos.length ? ex.passos : [['', ''], ['', ''], ['', '']]);
+      return '<section class="card bloco"><h2 class="tt-h">Explicação antes do teste <small class="dica">tela "Como fazer este teste", que o jovem vê antes de iniciar</small></h2><div id="tt-exp">' +
+        ps.map(function (x, i) { return '<div class="tt-passo"><b>' + (i + 1) + '</b><input class="entrada" data-ept="' + i + '" value="' + esc(x[0] || '') + '" placeholder="Título do passo"><input class="entrada" data-epx="' + i + '" value="' + esc(x[1] || '') + '" placeholder="Explicação do passo"></div>'; }).join('') +
+        '</div><div class="tt-add"><button type="button" class="btn btn-p" id="tt-exp-mais">+ Passo</button></div>' +
+        '<div class="tt-grade"><label class="campo"><span>Exemplo resolvido</span><textarea class="entrada" id="tt-ex" rows="2">' + esc(ex.exemplo || '') + '</textarea></label>' +
+        '<label class="campo"><span>Dica (erros comuns)</span><textarea class="entrada" id="tt-dica" rows="2">' + esc(ex.dica || '') + '</textarea></label></div></section>';
     }
     function inp(v, a) { return '<input class="entrada tt-c" value="' + esc(v == null ? '' : v) + '"' + (a || '') + '>'; }
     function parteEd(p, i) {
@@ -74,6 +84,21 @@
             return '<tr data-l="' + k + '"><td>' + (k + 1) + '</td>' + cols.map(function (c, j) { return '<td>' + inp((l.original || [])[j], ' data-o="' + j + '"') + '</td>'; }).join('') + cols.map(function (c, j) { return '<td>' + inp((l.copia || [])[j], ' data-cp="' + j + '"') + '</td>'; }).join('') +
               '<td>' + inp(l.gabarito, ' data-g style="width:56px"') + '</td><td>' + inp(l.pontos == null ? 1 : l.pontos, ' data-pts style="width:56px"') + '</td><td><button type="button" class="ico perigo" data-rl="' + k + '" aria-label="Remover linha">×</button></td></tr>';
           }).join('') + '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-linha="' + i + '">+ Linha</button><button type="button" class="btn btn-p" data-auto="' + i + '" title="Conta quantas colunas da cópia estão diferentes do original">Calcular gabarito pelas diferenças</button></div>';
+      } else if (p.tipo === 'escolha') {
+        var tx = p.textos || [], L = 'ABCDEFGH';
+        h += '<details class="tt-txs"' + (tx.length ? ' open' : '') + '><summary>Textos de apoio (' + tx.length + ')</summary>' + tx.map(function (t2, ti) {
+            return '<div class="tt-tx" data-tx="' + ti + '"><input class="entrada" data-txt="titulo" value="' + esc(t2.titulo || '') + '" placeholder="TEXTO I"><textarea class="entrada" data-txt="texto" rows="2">' + esc(t2.texto || '') + '</textarea><input class="entrada" data-txt="autor" value="' + esc(t2.autor || '') + '" placeholder="Autor / fonte"><button type="button" class="ico perigo" data-rtx="' + ti + '" aria-label="Remover texto">×</button></div>';
+          }).join('') + '<button type="button" class="btn btn-p" data-ntx="' + i + '">+ Texto de apoio</button></details>' +
+          '<div class="tt-qs">' + (p.questoes || []).map(function (q, k) {
+            return '<div class="tt-q" data-q="' + k + '"><div class="tt-qh"><b>' + (k + 1) + '</b><textarea class="entrada" data-qe rows="2" placeholder="Enunciado da pergunta">' + esc(q.enunciado || '') + '</textarea><button type="button" class="ico perigo" data-rq="' + k + '" aria-label="Remover pergunta">×</button></div>' +
+              '<div class="tt-qm"><div class="tt-qimg">' + (q.imagem ? '<img src="' + esc(q.imagem) + '" alt="">' : '<span class="dica">sem figura</span>') + '<label class="btn btn-p">' + (q.imagem ? 'Trocar figura' : '+ Figura') + '<input type="file" accept="image/*" data-qimg hidden></label>' + (q.imagem ? '<button type="button" class="btn btn-p" data-qsem>Tirar figura</button>' : '') + '</div>' +
+              '<div class="tt-qa">' + (q.alternativas || []).map(function (a, j) { return '<label class="tt-alt"><input type="radio" name="tt-c-' + i + '-' + k + '" data-qc="' + j + '"' + (+q.correta === j ? ' checked' : '') + ' title="Alternativa correta"><b>' + L[j] + '</b><input class="entrada" data-qa value="' + esc(a) + '"' + (q.so_letras ? ' placeholder="(só a letra)"' : '') + '></label>'; }).join('') +
+                '<div class="tt-qx"><button type="button" class="btn btn-p" data-qmais>+ alternativa</button><button type="button" class="btn btn-p" data-qmenos>− alternativa</button>' +
+                '<label><input type="checkbox" data-qso' + (q.so_letras ? ' checked' : '') + '> só letras (opções estão na figura)</label>' +
+                '<label>Vale <input class="entrada" data-qp value="' + esc(q.pontos == null ? 1 : q.pontos) + '" style="width:56px"> pt</label>' +
+                '<label>Texto <select class="entrada" data-qt><option value="">—</option>' + tx.map(function (t2, ti) { return '<option value="' + ti + '"' + (q.texto === ti || q.texto === t2.id ? ' selected' : '') + '>' + esc(t2.titulo || 'Texto ' + (ti + 1)) + '</option>'; }).join('') + '</select></label>' +
+                '<label>Seção <input class="entrada" data-qs value="' + esc(q.secao || '') + '" placeholder="opcional" style="width:150px"></label></div></div></div></div>';
+          }).join('') + '</div><div class="tt-add"><button type="button" class="btn btn-p" data-nq="' + i + '">+ Pergunta</button><span class="dica">Marque o círculo da alternativa correta.</span></div>';
       } else if (p.tipo === 'marcar') {
         var C = [['banco', 'Banco'], ['bandeira', 'Bandeira'], ['numero', 'Número'], ['nome', 'Nome'], ['validade', 'Validade'], ['agencia', 'Agência'], ['cvv', 'CVV']];
         h += '<p class="dica">O gabarito sai sozinho: cada campo diferente entre o original e a cópia é uma diferença. Pontuação = acertos − marcações sem diferença (mínimo 0).</p>' +
@@ -92,6 +117,8 @@
     function ler() {
       est.tempo_min = parseInt(area.querySelector('#tt-tempo').value, 10) || 10;
       est.instrucoes = area.querySelector('#tt-instr').value.trim();
+      est.explicacao = { passos: [].map.call(area.querySelectorAll('[data-ept]'), function (x) { var i = x.getAttribute('data-ept'); return [x.value.trim(), area.querySelector('[data-epx="' + i + '"]').value.trim()]; }).filter(function (x) { return x[0] || x[1]; }),
+        exemplo: area.querySelector('#tt-ex').value.trim(), dica: area.querySelector('#tt-dica').value.trim() };
       tablet = area.querySelector('#tt-ativo').checked;
       var m = area.querySelector('input[name="tt-modo"]:checked'); est.modo_nota = m ? m.value : 'pontos';
       est.faixas = [].map.call(area.querySelectorAll('[data-fx]'), function (x) { return { nota: Number(x.getAttribute('data-fx')), min: parseFloat(x.value.replace(',', '.')) || 0 }; });
@@ -105,6 +132,16 @@
           return { original: [].map.call(tr.querySelectorAll('[data-o]'), function (x) { return x.value.trim(); }), copia: [].map.call(tr.querySelectorAll('[data-cp]'), function (x) { return x.value.trim(); }),
             gabarito: tr.querySelector('[data-g]').value.trim() || '-', pontos: parseFloat(tr.querySelector('[data-pts]').value.replace(',', '.')) || 0 };
         });
+        if (p.tipo === 'escolha') {
+          p.textos = [].map.call(el.querySelectorAll('[data-tx]'), function (d, ti) { return { id: ti, titulo: d.querySelector('[data-txt="titulo"]').value.trim(), texto: d.querySelector('[data-txt="texto"]').value.trim(), autor: d.querySelector('[data-txt="autor"]').value.trim() }; });
+          var antes = p.questoes || [];
+          p.questoes = [].map.call(el.querySelectorAll('.tt-q'), function (d) {
+            var k = +d.getAttribute('data-q'), o = antes[k] || {}, c = d.querySelector('[data-qc]:checked'), tv = d.querySelector('[data-qt]').value;
+            return { enunciado: d.querySelector('[data-qe]').value.trim(), imagem: o.imagem || null, alternativas: [].map.call(d.querySelectorAll('[data-qa]'), function (x) { return x.value.trim(); }),
+              correta: c ? +c.getAttribute('data-qc') : 0, pontos: parseFloat(d.querySelector('[data-qp]').value.replace(',', '.')) || 0, so_letras: d.querySelector('[data-qso]').checked,
+              texto: tv === '' ? null : +tv, secao: d.querySelector('[data-qs]').value.trim() || null };
+          });
+        }
         if (p.tipo === 'marcar') {
           var bl = [];
           el.querySelectorAll('tbody tr[data-b]').forEach(function (tr) {
@@ -123,6 +160,7 @@
       area.querySelectorAll('[data-add]').forEach(function (b) { b.addEventListener('click', function () {
         ler(); var t2 = b.getAttribute('data-add');
         est.partes.push(t2 === 'contar' ? { tipo: 'contar', colunas: ['Artigo', 'Tamanho', 'Nº', 'Entrega'], opcoes: ['–', '1', '2', '3', '4'], linhas: [{ original: [], copia: [], gabarito: '-', pontos: 1 }] }
+          : t2 === 'escolha' ? { tipo: 'escolha', textos: [], questoes: [{ enunciado: '', alternativas: ['', '', '', ''], correta: 0, pontos: 1 }] }
           : { tipo: 'marcar', blocos: [{ original: {}, copia: {} }] });
         mudou = true; desenhar();
       }); });
@@ -132,15 +170,31 @@
       area.querySelectorAll('[data-bloco]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-bloco')].blocos.push({ original: {}, copia: {} }); redesenhar(); }); });
       area.querySelectorAll('[data-rl]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.closest('.tt-parte').getAttribute('data-p')]; p.linhas.splice(+b.getAttribute('data-rl'), 1); redesenhar(); }); });
       area.querySelectorAll('[data-rb]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.closest('.tt-parte').getAttribute('data-p')]; p.blocos.splice(+b.getAttribute('data-rb'), 1); redesenhar(); }); });
+      function pe(b) { return est.partes[+b.closest('.tt-parte').getAttribute('data-p')]; }
+      function qi(b) { return +b.closest('.tt-q').getAttribute('data-q'); }
+      area.querySelectorAll('[data-nq]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-nq')].questoes.push({ enunciado: '', alternativas: ['', '', '', ''], correta: 0, pontos: 1 }); redesenhar(); }); });
+      area.querySelectorAll('[data-rq]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).questoes.splice(+b.getAttribute('data-rq'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-ntx]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.getAttribute('data-ntx')]; p.textos = p.textos || []; p.textos.push({ id: p.textos.length, titulo: 'TEXTO ' + ['I', 'II', 'III', 'IV', 'V', 'VI'][p.textos.length] || '', texto: '', autor: '' }); redesenhar(); }); });
+      area.querySelectorAll('[data-rtx]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = pe(b), ti = +b.getAttribute('data-rtx'); p.textos.splice(ti, 1); p.textos.forEach(function (t2, n) { t2.id = n; }); p.questoes.forEach(function (q) { if (q.texto === ti) q.texto = null; else if (q.texto > ti) q.texto--; }); redesenhar(); }); });
+      area.querySelectorAll('[data-qmais]').forEach(function (b) { b.addEventListener('click', function () { ler(); var q = pe(b).questoes[qi(b)]; if (q.alternativas.length < 8) q.alternativas.push(''); redesenhar(); }); });
+      area.querySelectorAll('[data-qmenos]').forEach(function (b) { b.addEventListener('click', function () { ler(); var q = pe(b).questoes[qi(b)]; if (q.alternativas.length > 2) { q.alternativas.pop(); if (q.correta >= q.alternativas.length) q.correta = 0; } redesenhar(); }); });
+      area.querySelectorAll('[data-qsem]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).questoes[qi(b)].imagem = null; redesenhar(); }); });
+      area.querySelectorAll('[data-qimg]').forEach(function (inpF) { inpF.addEventListener('change', function () {
+        var f = inpF.files[0]; if (!f) return; var fr = new FileReader();
+        fr.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, 640 / im.width, 420 / im.height), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+          ler(); pe(inpF).questoes[qi(inpF)].imagem = cv.toDataURL('image/jpeg', .78); redesenhar(); }; im.src = fr.result; };
+        fr.readAsDataURL(f);
+      }); });
       area.querySelectorAll('[data-auto]').forEach(function (b) { b.addEventListener('click', function () {
         ler(); var p = est.partes[+b.getAttribute('data-auto')];
         p.linhas.forEach(function (l) { var n = 0; (l.original || []).forEach(function (v, j) { if (String(v).trim().toUpperCase() !== String((l.copia || [])[j] || '').trim().toUpperCase()) n++; }); l.gabarito = n ? String(n) : '-'; });
         redesenhar(); ui.toast('Gabarito calculado. Confira as linhas antes de publicar.', 'ok');
       }); });
+      area.querySelector('#tt-exp-mais').addEventListener('click', function () { ler(); est.explicacao.passos.push(['', '']); redesenhar(); });
       area.querySelector('#tt-sal').addEventListener('click', function () { salvar(this); });
       area.querySelector('#tt-pub').addEventListener('click', function () { publicar(this); });
       area.querySelector('#tt-prev').addEventListener('click', function () { ler(); previa(est, t); });
-      area.querySelector('#tt-imp').addEventListener('click', function () { importar(function (novo) { ler(); est.partes = est.partes.concat(novo.partes); if (novo.faixas) { est.faixas = novo.faixas; est.modo_nota = novo.modo_nota; } if (novo.tempo_min) est.tempo_min = novo.tempo_min; if (novo.instrucoes && !est.instrucoes) est.instrucoes = novo.instrucoes; mudou = true; desenhar(); }); });
+      area.querySelector('#tt-imp').addEventListener('click', function () { importar(function (novo) { ler(); est.partes = est.partes.concat(novo.partes); if (novo.faixas) { est.faixas = novo.faixas; est.modo_nota = novo.modo_nota; } if (novo.tempo_min) est.tempo_min = novo.tempo_min; if (novo.instrucoes && !est.instrucoes) est.instrucoes = novo.instrucoes; if (novo.explicacao && !(est.explicacao && est.explicacao.passos && est.explicacao.passos.length)) est.explicacao = novo.explicacao; mudou = true; desenhar(); }); });
     }
     async function salvar(bt) {
       ler(); bt.disabled = true;
@@ -180,8 +234,8 @@
       var f = this.files[0]; if (!f) return; res.innerHTML = '<div class="girando"></div>';
       try {
         var wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' });
-        achado = lerCartoes(wb) || lerConferencia(wb);
-        if (!achado) { res.innerHTML = '<div class="aviso aviso-erro">Não reconheci esta planilha. Por enquanto o sistema lê a Conferência de Mercadoria e os Cartões de Crédito; os outros modelos entram na etapa T3.</div>'; return; }
+        achado = lerCartoes(wb) || (await lerModeloT31(wb)) || lerConferencia(wb);
+        if (!achado) { res.innerHTML = '<div class="aviso aviso-erro">Não reconheci esta planilha. Por enquanto o sistema lê a Conferência de Mercadoria, os Cartões de Crédito, o Raciocínio Lógico, os Conhecimentos Gerais e o Português; os outros modelos entram nas próximas partes da T3.</div>'; return; }
         res.innerHTML = '<table class="tabela mini"><tbody>' + achado.resumo.map(function (r) { return '<tr><td>' + (r[2] ? '⚠️' : '✅') + '</td><td><b>' + esc(r[0]) + '</b></td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</tbody></table>';
       } catch (e) { console.error(e); res.innerHTML = '<div class="aviso aviso-erro">Não foi possível ler a planilha.</div>'; }
     });
@@ -203,6 +257,18 @@
     return { partes: [p], modo_nota: 'percentual', faixas: faixasPadrao('percentual'), tempo_min: 10,
       instrucoes: 'Para cada cópia (2ª coluna), encontre o cartão original na 1ª coluna e marque X nos campos que estão diferentes. Se estiver igual, não marque.',
       resumo: [['Tipo', 'Marcar o que mudou (blocos de cartões)'], ['Dados', blocos.length + ' blocos (original e cópia)'], ['Gabarito', dif + ' diferenças, calculadas comparando original e cópia'], ['Faixas da nota', '% do total: 0 → 1, 20 → 2, 40 → 3, 60 → 4, 80 → 5'], ['Tempo', 'não está na planilha · usei 10 min; ajuste no editor', true]] };
+  }
+  // Raciocínio Lógico, Conhecimentos Gerais e Português: reconhece a planilha e usa o modelo pronto (questões, gabarito, faixas e figuras recortadas)
+  async function lerModeloT31(wb) {
+    var nomes = wb.SheetNames.join('|'), cod = /Racioc[ií]nio/i.test(nomes) ? 'RL' : /PORT/i.test(nomes) ? 'LP' : null;
+    if (!cod && wb.Sheets['Teste'] && /CONHECIMENTOS/i.test(String(cel(wb.Sheets['Teste'], 'A1')))) cod = 'CG';
+    if (!cod) return null;
+    var r = await fetch('assets/modelos/t31.json', { cache: 'no-cache' }); if (!r.ok) throw new Error('modelo');
+    var m = (await r.json())[cod], qs = m.partes[0].questoes, tot = M.total(m);
+    var NOME = { RL: 'Raciocínio Lógico', CG: 'Conhecimentos Gerais', LP: 'Língua Portuguesa' }[cod];
+    return { partes: m.partes, modo_nota: m.modo_nota, faixas: m.faixas, tempo_min: m.tempo_min, instrucoes: m.instrucoes, explicacao: m.explicacao,
+      resumo: [['Teste', NOME], ['Tipo', 'Múltipla escolha' + (cod === 'RL' ? ' com figura (figuras recortadas de cada exercício)' : cod === 'LP' ? ' com textos de apoio' : '')], ['Perguntas', qs.length + ' · total ' + tot + ' pontos'],
+        ['Gabarito', 'lido da aba de correção da planilha'], ['Faixas da nota', m.faixas.map(function (f) { return f.nota + ': ' + f.min; }).join(' · ')], ['Tempo', m.tempo_min + ' minutos'], ['Explicação', 'rascunho dos passos, exemplo e dica incluído (revise)']] };
   }
   function lerConferencia(wb) {
     var ws = wb.Sheets[wb.SheetNames[0]], cor = wb.Sheets[wb.SheetNames[1]]; if (!ws || !cor) return null;

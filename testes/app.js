@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.1.2';
+  var VERSAO_APP = '1.2.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -326,10 +326,10 @@
     if (ret) { ctl.restaurar(ret.resp); aviso('Teste retomado de onde parou. O tempo continuou contando.'); }
     function guardar() { if (acabou) return; kv.gravar('andamento', { demo: E.demo, jovem: E.jovem, teste_id: t.id, versao: t.versao, inicio: inicio.toISOString(), fimTs: fimTs, saidas: saidas, resp: ctl.respostas(), salvoEm: new Date().toISOString() }).catch(function () {}); }
     guardar(); var guarda = setInterval(guardar, 15000);
-    var itens = [].slice.call(app.querySelectorAll('#mi tr[data-l], #mi .tm-bloco'));
+    var itens = [].slice.call(app.querySelectorAll('#mi tr[data-l], #mi .tm-bloco, #mi [data-item]'));
     function respondidas() {
       var r = ctl.respostas(), n = 0;
-      (est.partes || []).forEach(function (p, i) { var x = r[i] || {}; if (p.tipo === 'contar') n += Object.keys(x).length; else if (p.tipo === 'marcar') n += Object.keys(x).filter(function (k) { return Object.keys(x[k]).some(function (c) { return x[k][c]; }); }).length; });
+      (est.partes || []).forEach(function (p, i) { var x = r[i] || {}; if (p.tipo === 'contar' || p.tipo === 'escolha') n += Object.keys(x).length; else if (p.tipo === 'marcar') n += Object.keys(x).filter(function (k) { return Object.keys(x[k]).some(function (c) { return x[k][c]; }); }).length; });
       return n;
     }
     function contar() {
@@ -338,12 +338,12 @@
       document.getElementById('barra').style.width = Math.min(100, n / tot * 100) + '%';
       var nav = document.getElementById('nav'); if (!nav.childNodes.length) nav.innerHTML = itens.map(function (x, i) { return '<button type="button" data-n="' + i + '">' + (i + 1) + '</button>'; }).join('');
       var r = ctl.respostas();
-      itens.forEach(function (x, i) { var feito = x.matches('tr') ? x.querySelector('.tm-ops .on') : x.querySelector('.tm-cmp .on'); var b = nav.querySelector('[data-n="' + i + '"]'); if (b) b.classList.toggle('ok', !!feito); });
+      itens.forEach(function (x, i) { var feito = x.hasAttribute('data-item') ? x.classList.contains('feito') : x.matches('tr') ? x.querySelector('.tm-ops .on') : x.querySelector('.tm-cmp .on'); var b = nav.querySelector('[data-n="' + i + '"]'); if (b) b.classList.toggle('ok', !!feito); });
     }
     document.getElementById('mi').addEventListener('click', function () { setTimeout(function () { contar(); guardar(); }, 0); });
     document.getElementById('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-n]'); if (b) itens[+b.getAttribute('data-n')].scrollIntoView({ behavior: 'smooth', block: 'center' }); });
     document.getElementById('maior').addEventListener('click', function () { document.body.classList.toggle('grande'); });
-    document.getElementById('ouvir').addEventListener('click', function () { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(est.instrucoes || t.nome); u.lang = 'pt-BR'; speechSynthesis.speak(u); } catch (e) {} });
+    document.getElementById('ouvir').addEventListener('click', function () { try { speechSynthesis.cancel(); var qe = document.querySelector('#mi .tm-q.atual') || document.querySelector('#mi .tm-q:not(.feito)'); var txt = qe ? qe.innerText.replace(/\n+/g, '. ') : (est.instrucoes || t.nome); var u = new SpeechSynthesisUtterance(txt); u.lang = 'pt-BR'; speechSynthesis.speak(u); } catch (e) {} });
     contar();
     // tempo: relógio (não pausa ao fechar o app)
     var tick = setInterval(function () {
