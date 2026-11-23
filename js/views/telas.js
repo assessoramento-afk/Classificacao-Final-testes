@@ -46,6 +46,10 @@
   };
 
   // Cadastros: jovens e turmas (Fase 2). Endereços antigos de cadastros vão para Configurações.
+  window.CF.telas.tablets = function (area) {
+    if (!(window.CF.perm && window.CF.perm.pode && window.CF.perm.pode('banco_editar'))) { area.innerHTML = '<div class="card vazio">Sem permissão para ver os tablets.</div>'; return; }
+    window.CF.testesTablet.tablets(area);
+  };
   window.CF.telas.cadastros = function (area) {
     var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);
     if (m && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias'].indexOf(m[1]) >= 0) { window.location.replace('#/config/' + m[1]); return; }

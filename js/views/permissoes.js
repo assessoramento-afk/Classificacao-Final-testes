@@ -13,7 +13,7 @@
 
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.permissoes = async function (area) {
-    var st = { secao: '', busca: '', sensiveis: false, verExcecoes: false }, base, alter = {};
+    var st = { secao: '', busca: '', sensiveis: false, verExcecoes: false, canal: 0 }, base, alter = {}, funcsAtual = [], colsAtual = [], MS = {};
     area.innerHTML = '<a class="voltar" href="#/config">← Configurações</a><div id="pm"><div class="girando" style="margin:30px auto"></div></div>';
     var box = area.querySelector('#pm');
     async function carregar() {
@@ -72,6 +72,64 @@
           ' data-f="' + f.chave + '" data-a="' + esc(alvo) + '" data-sens="' + (f.sensivel ? 1 : 0) + '" aria-pressed="' + v + '">' + (v ? 'SIM' : 'NÃO') + '</button>' +
           (exc ? '<span class="pm-exc-t">exceção</span>' : '') + '</td>';
       }
+      /* ---------- Mesa de controle (cada pessoa é um canal) ---------- */
+      function travado(c, f) { return (c.tipo === 'p' && String(c.p.email).toLowerCase() === 'coordenacao@kolping-sp.org.br') || f.chave === 'permissoes'; }
+      function vDe(c, f) { return c.tipo === 'emp' ? valor(f, EMP) : valor(f, c.p); }
+      function ehVer(f) { return !f.sensivel && (/(^|_)ver($|_)|visualizar|consultar/i.test(f.chave) || /^ver\b/i.test(f.nome)); }
+      function nivelDe(c, fs) {
+        var liv = fs.filter(function (f) { return !travado(c, f); }); if (!liv.length) return fs.some(function (f) { return vDe(c, f); }) ? 3 : 0;
+        var on = liv.filter(function (f) { return vDe(c, f); });
+        if (!on.length) return 0;
+        if (on.length === liv.length) return 3;
+        var naoSens = liv.filter(function (f) { return !f.sensivel; });
+        if (on.length === naoSens.length && on.every(function (f) { return !f.sensivel; })) return 2;
+        var ver = liv.filter(ehVer);
+        if (ver.length && on.length === ver.length && on.every(ehVer)) return 1;
+        return -1;   // ajuste fino (personalizado)
+      }
+      function mesa(fs, cs) {
+        var secs = []; fs.forEach(function (f) { if (secs.indexOf(f.secao) < 0) secs.push(f.secao); });
+        var porSec = secs.map(function (sc) { return fs.filter(function (f) { return f.secao === sc; }); });
+        var rot = '<div class="ms-rot"><div class="ms-cab"><b>PERMISSÕES</b><small>MESA DE CONTROLE</small></div>' + secs.map(function (sc, si) {
+          return '<div class="ms-sec">' + esc(sc) + '</div>' + porSec[si].map(function (f) { return '<div class="ms-fn" title="' + esc(f.descricao || f.nome) + '"><span>' + esc(f.nome) + '</span>' + (f.sensivel ? '<em>SENSÍVEL</em>' : '') + '</div>'; }).join('') + '<div class="ms-fadr">nível rápido</div>';
+        }).join('') + '</div>';
+        var tot = base.funcoes.filter(function (f) { return f.chave !== 'permissoes'; });
+        var canais = cs.map(function (c, ci) {
+          var nome = c.tipo === 'emp' ? 'Empresas (todas)' : c.p.nome, sub = c.tipo === 'emp' ? 'perfil · todas as empresas' : c.tipo === 'pe' ? (c.p.empresa || 'empresa') : (c.p.perfil === 'admin' ? 'Administrador' : 'Equipe');
+          var ini = c.tipo === 'emp' ? 'EM' : ui.iniciais(c.p.nome), on = tot.filter(function (f) { return vDe(c, f); }).length, nv = Math.round(on / Math.max(1, tot.length) * 10), vu = '';
+          for (var k = 0; k < 10; k++) vu += '<i class="' + (k < nv ? 'l' + (k >= 8 ? ' r' : k >= 6 ? ' a' : '') : '') + '"></i>';
+          var h = '<div class="ms-ch' + (c.tipo !== 'p' ? ' ms-emp' : '') + '" data-canal="' + ci + '"><div class="ms-scr"><span class="ms-av">' + esc(ini) + '</span><b title="' + esc(nome) + '">' + esc(nome) + '</b><small>' + esc(sub) + '</small><div class="ms-vu" title="' + on + ' de ' + tot.length + ' funções">' + vu + '</div>' +
+            (c.tipo === 'emp' ? '<button type="button" class="ms-exc" id="pm-exc">' + (st.verExcecoes ? 'Ocultar exceções' : 'Exceções por empresa') + '</button>' : '') + '</div>';
+          secs.forEach(function (sc, si) {
+            h += '<div class="ms-secsp"></div>' + porSec[si].map(function (f) {
+              var alvo = c.tipo === 'emp' ? EMP : c.p.id, tr = travado(c, f), v = vDe(c, f), orig = c.tipo === 'emp' ? original(f, EMP) : original(f, c.p);
+              var exc = c.tipo === 'pe' && marcado(f.chave, c.p.id) != null;
+              return '<div class="ms-b"><button type="button" class="pm-sw ms-bt ' + (v ? 'on' : 'off') + (f.sensivel ? ' sens' : '') + (v !== orig ? ' alt' : '') + (tr ? ' fixo' : '') + '"' + (tr ? ' disabled title="' + (f.chave === 'permissoes' ? 'Só o responsável' : 'O responsável tem acesso a tudo') + '"' : ' title="' + esc(f.nome) + '"') +
+                ' data-f="' + f.chave + '" data-a="' + esc(alvo) + '" data-sens="' + (f.sensivel ? 1 : 0) + '" aria-pressed="' + v + '">' + (v ? 'ON' : 'OFF') + '</button>' + (exc ? '<span class="ms-x" title="Exceção desta pessoa">EXC</span>' : '') + '</div>';
+            }).join('');
+            var nl = nivelDe(c, porSec[si]), fix = porSec[si].every(function (f) { return travado(c, f); });
+            h += '<div class="ms-f' + (fix ? ' fixo' : '') + '"><div class="ms-tr"><span class="ms-kn" style="top:' + (nl < 0 ? 33 : [66, 44, 22, 0][nl]) + 'px"></span></div><div class="ms-esc">' +
+              [3, 2, 1, 0].map(function (n) { return '<button type="button"' + (fix ? ' disabled' : '') + ' data-niv="' + n + '" data-canal="' + ci + '" data-msec="' + si + '" class="' + (nl === n ? 'on' : '') + '">' + ['Nada', 'Ver', 'Editar', 'Tudo'][n] + '</button>'; }).join('') + '</div>' + (nl < 0 ? '<small class="ms-pers">ajuste fino</small>' : '') + '</div>';
+          });
+          return h + '</div>';
+        }).join('');
+        var nAlt2 = Object.keys(alter).length;
+        return '<div class="ms-cel"><label>Canal</label><select class="entrada" id="ms-canal">' + cs.map(function (c, ci) { return '<option value="' + ci + '"' + (ci === (st.canal || 0) ? ' selected' : '') + '>' + esc(c.tipo === 'emp' ? 'Empresas (todas)' : c.p.nome) + '</option>'; }).join('') + '</select></div>' +
+          '<div class="ms-palco"><div class="ms-mesa" data-ativo="' + (st.canal || 0) + '" style="--n:' + cs.length + '">' + rot + '<div class="ms-canais">' + canais + '</div></div></div>' +
+          '<div class="ms-leg"><span><i style="background:#ee7330"></i>ligado</span><span><i style="background:#e2483c"></i>sensível ligado</span><span><i style="background:#3a3232"></i>desligado</span><span>Toque no botão para ligar/desligar · use o fader para mudar a seção inteira</span></div>';
+      }
+      function aplicarNivel(ci, si, n) {
+        var cs = colsAtual, c = cs[ci]; if (!c) return;
+        var secs = []; funcsAtual.forEach(function (f) { if (secs.indexOf(f.secao) < 0) secs.push(f.secao); });
+        var fs = funcsAtual.filter(function (f) { return f.secao === secs[si] && !travado(c, f); });
+        var alvoObj = c.tipo === 'emp' ? EMP : c.p, alvoId = c.tipo === 'emp' ? EMP : c.p.id;
+        fs.forEach(function (f) {
+          var quer = n === 3 ? true : n === 2 ? !f.sensivel : n === 1 ? ehVer(f) : false;
+          var k = f.chave + '|' + alvoId; if (original(f, alvoObj) === quer) delete alter[k]; else alter[k] = quer;
+        });
+        desenhar();
+      }
+      funcsAtual = funcs; colsAtual = cols; MS = { aplicarNivel: aplicarNivel, travado: travado, vDe: vDe };
       var linhas = '', ult = null;
       funcs.forEach(function (f) {
         if (f.secao !== ult) { linhas += '<tr class="pm-mod"><td colspan="' + (cols.length + 1) + '">' + esc(f.secao) + '</td></tr>'; ult = f.secao; }
@@ -91,7 +149,7 @@
         '<div class="pt-filtros">' + [''].concat(secoes).map(function (s) { return '<button type="button" class="pt-chip' + (st.secao === s && !st.sensiveis ? ' on' : '') + '" data-sec="' + esc(s) + '">' + (s || 'Todas as seções') + '</button>'; }).join('') +
           '<button type="button" class="pt-chip' + (st.sensiveis ? ' on' : '') + '" id="pm-sens">Só sensíveis</button>' +
           '<input class="entrada" id="pm-busca" type="search" placeholder="Buscar função" value="' + esc(st.busca) + '"></div>' +
-        '<section class="card pm-tab"><div class="tabela-rolar"><table class="pm"><thead><tr><th class="pm-f">Função</th>' + cols.map(cab).join('') + '</tr></thead><tbody>' + linhas + '</tbody></table></div></section>' +
+        mesa(funcs, cols) +
         '<p class="dica">Ligar uma função sensível pede confirmação. A coluna Empresas vale para todas as empresas; em "Exceções por empresa" dá para mudar só para uma pessoa. Pessoas liberadas na equipe começam sem nenhuma permissão.</p>' +
         (nAlt ? '<div class="pm-barra"><b>' + nAlt + ' alteraç' + (nAlt === 1 ? 'ão' : 'ões') + ' não salva' + (nAlt === 1 ? '' : 's') + '</b><button type="button" class="btn" id="pm-desc">Descartar</button><button type="button" class="btn btn-pri" id="pm-salvar">Salvar alterações</button></div>' : '');
       ligar();
@@ -102,6 +160,20 @@
       var bus = box.querySelector('#pm-busca');
       bus.addEventListener('input', function () { st.busca = bus.value; var pos = bus.selectionStart; desenhar(); var n = box.querySelector('#pm-busca'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { /* ok */ } });
       var ex = box.querySelector('#pm-exc'); if (ex) ex.addEventListener('click', function () { st.verExcecoes = !st.verExcecoes; desenhar(); });
+      box.querySelectorAll('[data-niv]:not([disabled])').forEach(function (b) {
+        b.addEventListener('click', async function () {
+          var n = +b.getAttribute('data-niv');
+          if (n === 3) {
+            var c = colsAtual[+b.getAttribute('data-canal')], secs = []; funcsAtual.forEach(function (f) { if (secs.indexOf(f.secao) < 0) secs.push(f.secao); });
+            var temSens = funcsAtual.some(function (f) { return f.secao === secs[+b.getAttribute('data-msec')] && f.sensivel && !MS.travado(c, f) && !MS.vDe(c, f); });
+            if (temSens && !(await ui.confirmar('Ligar tudo nesta seção', 'Inclui funções sensíveis. Liberar para ' + (c.tipo === 'emp' ? 'todas as empresas' : c.p.nome) + '?', 'Ligar tudo', 'Cancelar'))) return;
+          }
+          MS.aplicarNivel(+b.getAttribute('data-canal'), +b.getAttribute('data-msec'), n);
+        });
+      });
+      function marcarAtivo() { box.querySelectorAll('.ms-ch').forEach(function (c) { c.classList.toggle('ativo', +c.getAttribute('data-canal') === (st.canal || 0)); }); }
+      marcarAtivo();
+      var mc = box.querySelector('#ms-canal'); if (mc) mc.addEventListener('change', function () { st.canal = +mc.value; marcarAtivo(); });
       box.querySelectorAll('.pm-sw:not([disabled])').forEach(function (b) {
         b.addEventListener('click', async function () {
           var f = b.getAttribute('data-f'), a = b.getAttribute('data-a'), novo = b.getAttribute('aria-pressed') !== 'true';

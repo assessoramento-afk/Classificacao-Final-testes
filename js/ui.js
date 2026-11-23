@@ -22,6 +22,7 @@
     banco: '<path d="M3 9.5 12 4l9 5.5"/><path d="M4.5 10v8M9 10v8M15 10v8M19.5 10v8"/><path d="M3 20h18"/>',
     config: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
     graficos: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    tablet: '<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
     acomp: '<path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/>',
     portal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 20V9"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',

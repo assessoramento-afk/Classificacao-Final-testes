@@ -222,7 +222,7 @@
           campo('fk-desc', 'O que observar (descrição neste teste)', c.descricao, { largo: true, area: true }) +
           '<label class="campo" for="fk-entrada"><span>Como o avaliador lança</span><select class="entrada" id="fk-entrada"><option value="nota"' + (c.entrada === 'nota' ? ' selected' : '') + '>Nota de 1 a 5</option><option value="pontuacao"' + (c.entrada === 'pontuacao' ? ' selected' : '') + '>Pontuação (convertida)</option></select></label>' +
           (t.tem_nivel ? '<label class="campo" for="fk-nivel"><span>Nível</span><select class="entrada" id="fk-nivel"><option value="">Todos</option><option value="iniciante"' + (c.nivel === 'iniciante' ? ' selected' : '') + '>Iniciante</option><option value="jovem_aprendiz"' + (c.nivel === 'jovem_aprendiz' ? ' selected' : '') + '>Jovem Aprendiz</option></select></label>' : '') +
-          '<div class="largo">' + marcar('fk-conta', 'Conta na nota', c.conta_na_nota, 'Desmarque só para critérios apenas informativos') + '</div></div>',
+          '<div class="largo">' + marcar('fk-conta', 'Conta na nota', c.conta_na_nota, 'Desmarque apenas para critérios informativos') + '</div></div>',
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Adicionar' : 'Salvar', principal: true, aoClicar: async function (f) {
           var sel = f.querySelector('#fk-comp').value, exib = limpo(f.querySelector('#fk-nome').value);
           var nv = f.querySelector('#fk-nivel');

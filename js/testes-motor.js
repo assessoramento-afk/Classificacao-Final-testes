@@ -43,11 +43,51 @@
   }
 
   /* ---------- Desenho ---------- */
-  function cartao(d, copia) {
+  function cartao(d, copia, rotulo) {
     d = d || {}; var bc = norm(d.banco), cor = CORES_BANCO[bc] || '#4a4444', claro = bc === 'BANCO DO BRASIL';
     return '<div class="tm-cc' + (copia ? ' copia' : '') + '" style="--bg:' + cor + ';' + (claro ? 'color:#1b2a6b' : '') + '"><span class="bc">' + esc(d.banco) + '</span><span class="bd">' + esc(d.bandeira) + '</span><div class="ch"></div>' +
-      '<div class="nu">' + esc(d.numero) + '</div><div class="nm">' + esc(d.nome) + '</div><div class="rod"><span>Val ' + esc(d.validade) + '</span><span>Ag ' + esc(d.agencia) + '</span><span>CVV ' + esc(d.cvv) + '</span></div><span class="tag">' + (copia ? 'Cópia' : 'Original') + '</span></div>';
+      '<div class="nu">' + esc(d.numero) + '</div><div class="nm">' + esc(d.nome) + '</div><div class="rod"><span>Val ' + esc(d.validade) + '</span><span>Ag ' + esc(d.agencia) + '</span><span>CVV ' + esc(d.cvv) + '</span></div><span class="tag">' + esc(rotulo || (copia ? 'Cópia' : 'Original')) + '</span></div>';
   }
+  function letra(k) { var s = ''; k++; while (k > 0) { var r = (k - 1) % 26; s = String.fromCharCode(65 + r) + s; k = Math.floor((k - 1) / 26); } return s; }
+  // originais sem repetição: pelo nº da planilha (b.orig); sem nº, pela ordem em que aparecem
+  function originais(p) {
+    var vistos = {}, lista = [];
+    (p.blocos || []).forEach(function (b) {
+      var d = b.original || {}, tem = b.orig != null && b.orig !== '', ch = chaveOrig(b);
+      if (!vistos[ch]) { vistos[ch] = 1; lista.push({ n: tem ? Number(b.orig) : null, d: d, ch: ch }); }
+    });
+    if (lista.every(function (o) { return o.n != null; })) lista.sort(function (a, b) { return a.n - b.n; });
+    lista.forEach(function (o, i) { if (o.n == null) o.n = i + 1; });
+    return lista;
+  }
+  // linhas da tela: original i na linha i; cada cópia vai para uma linha longe do seu original, numa ordem misturada (sem padrão).
+  // A mistura é sempre a mesma para o mesmo teste (sorteio com semente tirada dos próprios cartões), então todos os jovens veem igual.
+  function linhasCartoes(p) {
+    var os = originais(p), bls = p.blocos || [], R = Math.max(os.length, bls.length), linhas = [], i;
+    for (i = 0; i < R; i++) linhas.push({ o: os[i] || null, k: null });
+    var cps = bls.map(function (b, k) { var ch = chaveOrig(b), pos = 0; os.forEach(function (o, j) { if (o.ch === ch) pos = j; }); return { k: k, pos: pos }; });
+    if (!R) return linhas;
+    var sem = 2166136261; JSON.stringify(bls.map(function (b) { return b.copia; })).split('').forEach(function (c) { sem = Math.imul(sem ^ c.charCodeAt(0), 16777619); });
+    function rnd() { sem = (sem + 0x6D2B79F5) | 0; var t = Math.imul(sem ^ (sem >>> 15), 1 | sem); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+    function embaralha(a) { a = a.slice(); for (var j = a.length - 1; j > 0; j--) { var r = Math.floor(rnd() * (j + 1)), x = a[j]; a[j] = a[r]; a[r] = x; } return a; }
+    function tenta(D) {
+      var livre = []; for (var j = 0; j < R; j++) livre.push(j);
+      var res = {}, ordem = embaralha(cps).sort(function (a, b) { return Math.abs(R / 2 - a.pos) > Math.abs(R / 2 - b.pos) ? -1 : 1; });   // pontas primeiro (têm menos opções)
+      for (var q = 0; q < ordem.length; q++) {
+        var c = ordem[q], ops = livre.filter(function (r) { return Math.abs(r - c.pos) >= D; });
+        if (!ops.length) return null;
+        var r = ops[Math.floor(rnd() * ops.length)]; res[r] = c; livre.splice(livre.indexOf(r), 1);
+      }
+      return res;
+    }
+    function misturado(res) { var d = {}, n = 0; Object.keys(res).forEach(function (r) { var x = r - res[r].pos; if (!d[x]) { d[x] = 1; n++; } }); return n >= Math.min(cps.length, Math.ceil(R / 2)); }
+    var melhor = null;
+    for (var D = Math.floor(R / 2); D >= 1 && !melhor; D--) for (var t = 0; t < 400; t++) { var res = tenta(D); if (res && (R < 4 || misturado(res))) { melhor = res; break; } }
+    if (!melhor) { melhor = {}; cps.forEach(function (c, j) { melhor[j] = c; }); }
+    Object.keys(melhor).forEach(function (r) { linhas[r].k = melhor[r].k; });
+    return linhas;
+  }
+  function chaveOrig(b) { var d = b.original || {}; return b.orig != null && b.orig !== '' ? 'n' + b.orig : 'c' + ['banco', 'bandeira', 'numero', 'nome', 'validade', 'agencia', 'cvv'].map(function (c) { return norm(d[c]); }).join('|'); }
   function parteHTML(p, i) {
     var h = '<section class="tm-parte" data-parte="' + i + '">' + (p.titulo ? '<h3>' + esc(p.titulo) + '</h3>' : '') + (p.instrucoes ? '<div class="tm-instr">' + esc(p.instrucoes) + '</div>' : '');
     if (p.tipo === 'contar') {
@@ -60,10 +100,15 @@
             '<td><div class="tm-ops" data-k="' + k + '">' + ops.map(function (o) { return '<button type="button" data-v="' + esc(o === '–' ? '-' : o) + '"' + (/\d/.test(o) ? ' class="num"' : '') + '>' + esc(o) + '</button>'; }).join('') + '</div></td></tr>';
         }).join('') + '</tbody></table></div>';
     } else if (p.tipo === 'marcar') {
-      h += (p.blocos || []).map(function (b, k) {
-        return '<div class="tm-bloco"><h4>Bloco ' + (k + 1) + '</h4><div class="tm-bl">' + cartao(b.original, false) + cartao(b.copia, true) + '<div class="tm-campos">' +
-          CAMPOS_CARTAO.map(function (c) { return '<div class="tm-cmp"><span>' + c[1] + '</span><button type="button" data-b="' + k + '" data-c="' + c[0] + '" aria-label="Marcar ' + c[1] + ' do bloco ' + (k + 1) + ' como diferente">X</button></div>'; }).join('') + '</div></div></div>';
-      }).join('');
+      // como no papel: originais em ordem à esquerda; cada cópia na linha mais distante possível do seu original; linhas alinhadas
+      var L = linhasCartoes(p), n = 0;
+      h += '<div class="tm-2col"><h4>Originais</h4><h4 class="cp">Cópias</h4>' + L.map(function (r) {
+        var o = r.o ? '<div class="tm-o">' + cartao(r.o.d, false, 'Original ' + r.o.n) + '</div>' : '<div class="tm-o vazio"></div>';
+        if (r.k == null) return o + '<div></div>';
+        var b = p.blocos[r.k], l = letra(n++);
+        return o + '<div class="tm-bloco tm-cpb"><div class="tm-bl">' + cartao(b.copia, true, 'Cópia ' + l) + '<div class="tm-campos">' +
+          CAMPOS_CARTAO.map(function (c) { return '<div class="tm-cmp"><span>' + c[1] + '</span><button type="button" data-b="' + r.k + '" data-c="' + c[0] + '" aria-label="Marcar ' + c[1] + ' da cópia ' + l + ' como diferente">X</button></div>'; }).join('') + '</div></div></div>';
+      }).join('') + '</div>';
     } else {
       h += '<div class="tm-instr">Este tipo de questão entra na etapa T3.</div>';
     }
@@ -88,7 +133,18 @@
         x.classList.toggle('on'); resp[pj] = resp[pj] || {}; resp[pj][bl] = resp[pj][bl] || {}; resp[pj][bl][c] = x.classList.contains('on');
       }
     });
-    return { respostas: function () { return resp; }, corrigir: function () { return corrigir(est, resp); } };
+    // devolve as respostas salvas para a tela (retomar um teste interrompido)
+    function restaurar(r) {
+      resp = JSON.parse(JSON.stringify(r || {}));
+      Object.keys(resp).forEach(function (pi) {
+        var sec = caixa.querySelector('[data-parte="' + pi + '"]'); if (!sec) return; var x = resp[pi] || {};
+        Object.keys(x).forEach(function (k) {
+          if (typeof x[k] === 'object' && x[k]) Object.keys(x[k]).forEach(function (c) { var b = sec.querySelector('.tm-cmp button[data-b="' + k + '"][data-c="' + c + '"]'); if (b) b.classList.toggle('on', !!x[k][c]); });
+          else { var g = sec.querySelector('.tm-ops[data-k="' + k + '"]'); if (g) g.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === x[k]); }); }
+        });
+      });
+    }
+    return { respostas: function () { return resp; }, corrigir: function () { return corrigir(est, resp); }, restaurar: restaurar };
   }
 
   window.CF = window.CF || {};

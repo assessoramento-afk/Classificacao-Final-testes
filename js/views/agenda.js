@@ -78,7 +78,7 @@
     var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     var SEM = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
     area.innerHTML = '<header class="cabecalho"><div><h1>Agenda</h1><p>Turmas do sistema e eventos da Google Agenda "Classificação Final · Turmas"</p></div>' +
-      '<div class="botoes-topo">' + (window.CF.perm && window.CF.perm.pode('config_modelos') ? '<button type="button" class="btn" id="ag-pdf">⬆ Importar eventos (PDF)</button>' : '') + '<button type="button" class="btn" id="ag-sinc">⟳ Atualizar com o Google</button><a class="btn" id="ag-google" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/">Abrir no Google Agenda</a></div></header>' +
+      '<div class="botoes-topo">' + (window.CF.perm && window.CF.perm.pode('config_modelos') ? '<button type="button" class="btn" id="ag-pdf">⬆ Importar eventos (PDF)</button>' : '') + '<button type="button" class="btn" id="ag-sinc">⟳ Atualizar com o Google</button><a class="btn" id="ag-google" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/">Abrir na Google Agenda</a></div></header>' +
       '<div class="pt-chips" role="tablist" aria-label="Visão da agenda"><button type="button" class="pt-chip on" data-vis="cal">Calendário</button><button type="button" class="pt-chip" data-vis="google">Eventos do Google</button></div>' +
       '<div id="ag"><div class="girando" style="margin:30px auto"></div></div><div id="ag-g" style="display:none"></div>';
     var box = area.querySelector('#ag'), boxG = area.querySelector('#ag-g'), gCarregado = false;
@@ -133,7 +133,7 @@
         : '<button type="button" class="ag-it ag-google" style="' + corG(x.g) + '" data-g="' + ds + '|' + i + '" title="' + esc(x.titulo + ' · na Google Agenda') + '">' + tx + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>';
     }
     function desenhar() {
-      var primeiro = new Date(ano, mes, 1), nDias = new Date(ano, mes + 1, 0).getDate(), estreito = window.matchMedia('(max-width: 720px)').matches;
+      var primeiro = new Date(ano, mes, 1), nDias = new Date(ano, mes + 1, 0).getDate(), estreito = window.matchMedia('(max-width: 900px)').matches;
       var nav = '<div class="ag-nav"><button type="button" class="btn btn-p" data-m="-1" aria-label="Mês anterior">‹</button><b>' + MESES[mes].charAt(0).toUpperCase() + MESES[mes].slice(1) + ' de ' + ano + '</b><button type="button" class="btn btn-p" data-m="1" aria-label="Próximo mês">›</button>' +
         '<button type="button" class="btn btn-p" data-m="0">Hoje</button>' + legenda() + '</div>';
       var corpo = '';

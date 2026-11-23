@@ -69,6 +69,7 @@
     if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Recurso de PDF indisponível. Recarregue a página.');
     var f = await fontes();
     var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    if (window.CF.idioma) window.CF.idioma.pdf(doc);
     doc.addFileToVFS('Poppins-Regular.ttf', f.regular); doc.addFont('Poppins-Regular.ttf', 'P', 'normal');
     doc.addFileToVFS('Poppins-Medium.ttf', f.medium); doc.addFont('Poppins-Medium.ttf', 'PM', 'normal');
     doc.addFileToVFS('Poppins-Bold.ttf', f.bold); doc.addFont('Poppins-Bold.ttf', 'P', 'bold');
@@ -476,12 +477,14 @@
            assinatura: { nome, cargo }, jovens:[{ nome, codigo, turma, datasTxt ('17 e 18/11/2026') }] } */
   function dataExtenso(d) {
     var m = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    if (window.CF.idioma && window.CF.idioma.atual() === 'en') return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
     return d.getDate() + ' de ' + m[d.getMonth()] + ' de ' + d.getFullYear();
   }
   async function certificado(c) {
     if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Recurso de PDF indisponível. Recarregue a página.');
     var f = await fontes();
     var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape', compress: true });
+    if (window.CF.idioma) window.CF.idioma.pdf(doc);
     doc.addFileToVFS('Poppins-Regular.ttf', f.regular); doc.addFont('Poppins-Regular.ttf', 'P', 'normal');
     doc.addFileToVFS('Poppins-Medium.ttf', f.medium); doc.addFont('Poppins-Medium.ttf', 'PM', 'normal');
     doc.addFileToVFS('Poppins-Bold.ttf', f.bold); doc.addFont('Poppins-Bold.ttf', 'P', 'bold');

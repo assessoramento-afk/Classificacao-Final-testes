@@ -395,7 +395,7 @@
             ['avaliador', 'admin', 'empresa'].map(function (k) { return '<option value="' + k + '"' + (p.perfil === k ? ' selected' : '') + '>' + NOMES_PERFIL[k] + '</option>'; }).join('') + '</select></label>' +
           '<label class="campo' + (p.perfil === 'empresa' ? '' : ' oculto') + '" for="fp-emp" id="fp-emp-box"><span>Empresa</span><select class="entrada" id="fp-emp"><option value="">Escolha a empresa…</option>' +
             empresasLista.map(function (e) { return '<option value="' + e.id + '"' + (p.empresa_id === e.id ? ' selected' : '') + '>' + esc(e.nome_fantasia) + '</option>'; }).join('') + '</select></label>' +
-          marcar('fp-ativo', 'Acesso ativo', p.ativo, 'Desativado, a pessoa não consegue entrar no sistema.'),
+          marcar('fp-ativo', 'Acesso ativo', p.ativo, 'Quando desativado, a pessoa não consegue entrar no sistema.'),
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (fundo) {
           var perfil = fundo.querySelector('#fp-perfil').value, emp = fundo.querySelector('#fp-emp').value || null, ativo = fundo.querySelector('#fp-ativo').checked;
           if (perfil === 'empresa' && !emp) { ui.toast('Escolha a empresa.', 'erro'); return false; }

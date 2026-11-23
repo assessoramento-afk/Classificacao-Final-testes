@@ -105,7 +105,7 @@ button { font-family: inherit; }
 @media (orientation: portrait) { body.pede-paisagem .girar { display: flex; } }
 .trava { position: fixed; inset: 0; z-index: 35; background: rgba(15,12,12,.6); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; font-weight: 800; }
 /* avisos */
-.avisos { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.avisos { position: fixed; left: 50%; top: calc(18px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .avisos div { background: #272323; color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 14px; box-shadow: 0 10px 24px rgba(0,0,0,.3); }
 .avisos div.erro { background: #c0392b; }
 /* avaliador */
@@ -145,3 +145,99 @@ button { font-family: inherit; }
 #mi .tm-geral { display: none; }
 
 .girando { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--borda); border-top-color: var(--laranja); animation: gira 1s linear infinite; margin: 10px auto; }
+
+/* ===== Aproveitamento de tela no tablet (1.1.1) ===== */
+/* topo mais baixo: título e etiqueta em 2 linhas compactas */
+.topo { padding: 8px 16px; min-height: 58px; }
+.topo > div:nth-child(2) { line-height: 1.2; min-width: 0; } .topo br { display: none; }
+.topo small { display: flex; width: max-content; max-width: 100%; margin-top: 4px; }
+/* lista de testes: cartões maiores, ocupando a largura */
+.lista { width: min(1180px, 100%); } .lista h1 { font-size: 30px; } .lista .sub { font-size: 16px; margin-bottom: 18px; }
+.tsts { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.tst { padding: 20px 22px; border-radius: 20px; display: flex; flex-direction: column; min-height: 170px; }
+.tst b { font-size: 20px; line-height: 1.3; } .tst small { font-size: 14px; margin-top: 6px; }
+.tst .bpri { margin-top: auto; padding: 15px; font-size: 17px; } .tst b + small { margin-bottom: 14px; }
+/* explicação: letra maior e largura total, botão sempre à vista */
+.exp { width: min(1240px, 100%); gap: 18px; }
+.bx { padding: 20px 22px; } .bx h3 { font-size: 19px; } .bx p { font-size: 16.5px; }
+.passo { margin-bottom: 16px; } .passo > b { width: 36px; height: 36px; font-size: 17px; } .passo strong { font-size: 17px; }
+.info span { font-size: 14px; padding: 7px 14px; } .dica2 { font-size: 15px; padding: 12px 14px; }
+.ini { position: sticky; bottom: 0; margin: 18px 0 0; padding: 10px 0 2px; background: linear-gradient(transparent, var(--fundo) 35%); }
+.ini .bpri, .ini .bsec { padding: 15px 30px; font-size: 17px; }
+/* teste: menos margens, mais área útil */
+.instr { margin: 10px 14px 0; padding: 10px 14px; font-size: 15px; } .miolo { padding: 12px 14px 14px; }
+.rodape { margin: 0 12px 12px; padding: 8px 10px 8px 16px; }
+/* Contar diferenças: linhas mais altas, letra e botões maiores (toque de 44 px) */
+.tm-lado { font-size: 15.5px; } .tm-lado th { font-size: 12px; padding: 8px 6px; }
+.tm-lado td { padding: 13px 6px; } .tm-lado .pq { font-size: 15.5px; } .tm-lado .art { min-width: 170px; }
+.tm-ops { gap: 6px; } .tm-ops button { min-width: 46px; height: 46px; border-radius: 11px; font-size: 17px; }
+/* Marcar o que mudou: campos em 2 colunas, cada bloco ocupa metade da altura */
+.tm-bloco { padding: 12px 16px 16px; }
+.tm-bl { grid-template-columns: auto auto 1fr; gap: 18px; }
+.tm-campos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: center; }
+.tm-cmp { padding: 6px 8px 6px 12px; font-size: 14.5px; } .tm-cmp button { width: 50px; height: 44px; }
+.tm-campos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.miolo:has(> .exp) { display: flex; flex-direction: column; } .miolo > .exp { margin-top: auto; } .miolo > .exp + .ini { margin-bottom: auto; }
+@media (max-width: 1100px) { .tm-campos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .tm-campos { grid-template-columns: 1fr; } }
+@media (max-width: 1180px) { .tm-lado { font-size: 14px; min-width: 0; } .tm-lado .pq { font-size: 13.5px; } .tm-lado td { padding: 12px 4px; } .tm-lado th { padding: 8px 4px; } .tm-lado .art { min-width: 112px; } .tm-ops { gap: 4px; } .tm-ops button { min-width: 40px; height: 44px; } }
+
+/* Cartões: 2 colunas como no papel (originais | cópias embaralhadas) */
+.tm-2col { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: start; }
+.tm-col h4 { margin: 0 0 10px; font-size: 12px; color: var(--texto-3); text-transform: uppercase; letter-spacing: .06em; } .tm-col-c h4 { color: #2f6fd0; }
+.tm-col-o { background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; padding: 12px 16px 2px; }
+.tm-o { margin-bottom: 24px; }
+.tm-cpb { padding: 14px 16px 22px; } .tm-cpb .tm-bl { grid-template-columns: auto minmax(0, 1fr); }
+@media (max-width: 900px) { .tm-2col { grid-template-columns: 1fr; } }
+
+/* Cartões: linhas alinhadas (original | cópia) */
+.tm-2col { grid-template-columns: auto minmax(0, 1fr); gap: 12px 18px; align-items: stretch; }
+.tm-2col > h4 { margin: 0; font-size: 12px; color: var(--texto-3); text-transform: uppercase; letter-spacing: .06em; } .tm-2col > h4.cp { color: #2f6fd0; }
+.tm-o { display: flex; align-items: center; margin: 0; padding: 14px 16px 22px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; } .tm-o.vazio { background: none; border: 0; }
+.tm-2col .tm-cpb { margin: 0; display: flex; align-items: center; } .tm-2col .tm-cpb .tm-bl { flex: 1; }
+@media (max-width: 900px) { .exp { grid-template-columns: 1fr; width: min(640px, 100%); margin-left: auto; margin-right: auto; } }
+/* saudação antes de cada teste */
+.saud { display: flex; align-items: center; gap: 16px; width: min(1240px, 100%); margin: 0 auto 16px; padding: 16px 20px; border-radius: 20px; background: linear-gradient(120deg, #231f1f, #3a2a20); color: #f4f1ef; box-shadow: 0 10px 24px rgba(0,0,0,.14); flex: none; }
+.saud .oi { font-size: 40px; line-height: 1; animation: acena 1.6s ease-in-out .3s 2; transform-origin: 70% 80%; }
+.saud h1 { margin: 0; font-size: 26px; } .saud p { margin: 4px 0 0; font-size: 16px; color: #d9d1d1; line-height: 1.45; } .saud b { color: #ffb27f; }
+.miolo > .saud { margin-top: auto; } .miolo:has(> .saud) > .exp { margin-top: 0; }
+@media (max-width: 900px) { .saud { width: min(640px, 100%); } }
+@keyframes acena { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(18deg); } 40%, 80% { transform: rotate(-10deg); } }
+/* tempo encerrado */
+.fim-t.te { background: radial-gradient(ellipse at 50% 30%, #2e2820, #0f0c0c 75%); }
+.te-pg { animation-name: enche-te; } @keyframes enche-te { to { stroke-dashoffset: var(--alvo); } }
+.te-rel { opacity: 0; animation: sobe .5s ease-out .9s forwards; } .te-pt { transform-origin: 90px 90px; animation: ponteiro 1.4s ease-in-out 1s 1; }
+@keyframes ponteiro { from { transform: rotate(-300deg); } to { transform: rotate(0); } }
+.fim-t.te h1 { color: #ffd98c; }
+.fim-t.te .chip { min-width: 150px; } .te-bar { display: block; width: 100%; height: 5px; border-radius: 9px; background: rgba(255,255,255,.12); margin-top: 6px; overflow: hidden; } .te-bar i { display: block; height: 100%; background: #ffc861; border-radius: 9px; }
+.te-av { margin-top: 16px; padding: 12px 18px; border-radius: 14px; background: rgba(255,200,97,.12); border: 1px solid rgba(255,200,97,.35); color: #f4f1ef; font-size: 16px; max-width: 560px; opacity: 0; animation: sobe .5s ease-out 1.65s forwards; } .te-av b { color: #ffd98c; }
+.fim-t.te .est:empty { display: none; }
+
+/* 4.19.2 · responsividade do app */
+/* a tela do crachá nunca corta o teclado: o conteúdo rola em vez de encolher */
+.entrada { justify-content: safe center; } .entrada > * { flex-shrink: 0; }
+.cofre { flex-shrink: 0; }
+/* celular: topo numa linha só, situação vira bolinha, leitor e teclas no tamanho certo, avisos embaixo */
+@media (max-width: 600px) {
+  .topo { gap: 8px; padding: 10px 12px; } .topo img { width: 30px; height: 30px; }
+  .topo > div:nth-child(2) { min-width: 0; flex: 1; } .topo b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
+  .topo small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #st { font-size: 0; width: 14px; height: 14px; padding: 0; border-radius: 50%; flex: none; }
+  #st.ok { background: #3FA66B; } #st.av { background: #e0a100; } #st.er { background: #D9534F; }
+  .lt svg { width: min(30vw, 120px); height: min(30vw, 120px); } .lt { padding: 10px 8px 6px; }
+  .cod { gap: 5px; } .cod span { width: 40px; height: 50px; font-size: 24px; }
+  .kb { gap: 6px; } .kb button { height: 46px; font-size: 17px; }
+  .painel { padding: 12px 10px; }
+  .avisos { top: calc(62px + env(safe-area-inset-top, 0px)); width: calc(100% - 24px); }
+  .avisos div { text-align: center; }
+}
+/* telas baixas (celular deitado, tablet pequeno) */
+@media (max-height: 700px) { .lt svg { width: 100px; height: 100px; } .kb button { height: 42px; } .cod span { height: 46px; } .entrada h1 { font-size: 19px; } .entrada .sub { margin-bottom: 8px; } }
+/* tablet em pé: teclado ocupa a largura, teclas maiores */
+@media (orientation: portrait) and (min-width: 700px) {
+  .cofre { width: min(780px, 94vw); }
+  .lt svg { width: 210px; height: 210px; }
+  .cod span { width: 62px; height: 76px; font-size: 36px; } .cod { gap: 9px; }
+  .kb { gap: 10px; } .kb button { height: 66px; font-size: 25px; border-radius: 14px; }
+  .entrada h1 { font-size: 30px; } .entrada .sub { font-size: 17px; }
+}

@@ -73,8 +73,37 @@
       b.insertBefore(sp, n);
     });
   }
+  /* Filtros em barras de opções no celular + lembrar o filtro escolhido em cada tela (4.19.3) */
+  var CONT = '.gf-filtros, .pt-filtros, .pt-chips, .filtros, .segmentos';
+  var BOT = '.pt-chip, button[aria-pressed], button[data-aba], button[data-f], button[data-per], button[data-tipo]';
+  var restaurado = {};
+  window.addEventListener('hashchange', function () { restaurado = {}; });
+  function idChip(b) { var a = b.attributes; for (var i = 0; i < a.length; i++) if (/^data-(aba|f|per|tipo|vis|on|sit|filtro|ano|onde)$/.test(a[i].name)) return a[i].name + '=' + a[i].value; return (b.textContent || '').replace(/[·\d]+/g, '').trim(); }
+  function ligado(b) { return b.classList.contains('on') || b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-selected') === 'true'; }
+  function barras(raiz) {
+    var tela = (location.hash.split('?')[0] || '#/').replace(/[^a-z0-9/]/gi, '');
+    raiz.querySelectorAll(CONT).forEach(function (c, ci) {
+      var solto = [].some.call(c.children, function (x) { return x.matches && x.matches(BOT); });
+      if (!solto && c.querySelector('.seg-g')) { /* já agrupado */ } else if (!solto) return;
+      var filhos = solto ? [].slice.call(c.children) : [], grupo = [];
+      function fecha() { if (grupo.length >= 2) { var g = document.createElement('div'); g.className = 'seg-g'; c.insertBefore(g, grupo[0]); grupo.forEach(function (x) { g.appendChild(x); }); } grupo = []; }
+      filhos.forEach(function (x) { if (x.matches && x.matches(BOT) && !x.classList.contains('seg-g')) grupo.push(x); else fecha(); }); fecha();
+      c.querySelectorAll('.seg-g').forEach(function (g, gi) {
+        var chave = 'cf_filtro:' + tela + ':' + (c.id || ci) + ':' + gi;
+        if (!g.getAttribute('data-mem')) {
+          g.setAttribute('data-mem', '1');
+          g.addEventListener('click', function (e) { var b = e.target.closest(BOT); if (b) try { localStorage.setItem(chave, idChip(b)); } catch (er) {} });
+        }
+        if (restaurado[chave]) return; restaurado[chave] = true;
+        var salvo = null; try { salvo = localStorage.getItem(chave); } catch (er) {}
+        if (!salvo) return;
+        var bs = [].slice.call(g.querySelectorAll(BOT)), alvo = bs.filter(function (b) { return idChip(b) === salvo; })[0];
+        if (alvo && !ligado(alvo)) setTimeout(function () { if (document.body.contains(alvo)) alvo.click(); }, 0);
+      });
+    });
+  }
   var pend = null;
-  function varrer() { pend = null; document.querySelectorAll(SEL).forEach(function (t, i) { preparar(t, i); }); icones(document); }
+  function varrer() { pend = null; document.querySelectorAll(SEL).forEach(function (t, i) { preparar(t, i); }); icones(document); barras(document); }
   var obs = new MutationObserver(function () { if (!pend) pend = setTimeout(varrer, 60); });
   function iniciar() { var c = document.body; if (c) obs.observe(c, { childList: true, subtree: true }); varrer(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();

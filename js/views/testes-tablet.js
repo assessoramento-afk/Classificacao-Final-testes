@@ -81,7 +81,7 @@
           (p.blocos || []).map(function (b, k) {
             var dif = M.diferencas(b);
             return ['original', 'copia'].map(function (lado, z) {
-              return '<tr data-b="' + k + '" data-lado="' + lado + '"' + (z ? ' class="tt-cp"' : '') + '>' + (z ? '' : '<td rowspan="2">' + (k + 1) + '</td>') + '<td><small>' + (z ? 'Cópia' : 'Original') + '</small></td>' +
+              return '<tr data-b="' + k + '" data-lado="' + lado + '"' + (z ? ' class="tt-cp"' : '') + '>' + (z ? '' : '<td rowspan="2">' + (k + 1) + '<br><small>orig. nº</small>' + inp(b.orig == null ? '' : b.orig, ' data-orig style="width:52px"') + '</td>') + '<td><small>' + (z ? 'Cópia' : 'Original') + '</small></td>' +
                 C.map(function (c) { return '<td>' + inp((b[lado] || {})[c[0]], ' data-cb="' + c[0] + '"' + (z && dif.indexOf(c[0]) >= 0 ? ' style="border-color:#2f6fd0"' : '')) + '</td>'; }).join('') +
                 (z ? '' : '<td rowspan="2"><b>' + dif.length + '</b></td><td rowspan="2"><button type="button" class="ico perigo" data-rb="' + k + '" aria-label="Remover bloco">×</button></td>') + '</tr>';
             }).join('');
@@ -109,6 +109,7 @@
           var bl = [];
           el.querySelectorAll('tbody tr[data-b]').forEach(function (tr) {
             var k = tr.getAttribute('data-b'), lado = tr.getAttribute('data-lado'); bl[k] = bl[k] || { original: {}, copia: {} };
+            var on = tr.querySelector('[data-orig]'); if (on) { var nv = parseInt(on.value, 10); if (nv > 0) bl[k].orig = nv; else delete bl[k].orig; }
             tr.querySelectorAll('[data-cb]').forEach(function (x) { bl[k][lado][x.getAttribute('data-cb')] = x.value.trim(); });
           });
           p.blocos = bl.filter(Boolean);
@@ -195,12 +196,12 @@
       var o = parseInt(cel(ws, 'B' + r2), 10), cp = ['C', 'D', 'E', 'F', 'G', 'H', 'I'].map(function (c) { return txt(cel(ws, c + r2)); });
       if (!o || !orig[o] || !cp[0]) continue;
       function objeto(a) { return { banco: a[0], bandeira: a[1], numero: a[2], nome: a[3], validade: a[4], agencia: a[5], cvv: a[6] }; }
-      blocos.push({ original: objeto(orig[o]), copia: objeto(cp) });
+      blocos.push({ orig: o, original: objeto(orig[o]), copia: objeto(cp) });
     }
     if (!blocos.length) return null;
     var p = { tipo: 'marcar', titulo: '', blocos: blocos }, dif = M.totalParte(p);
     return { partes: [p], modo_nota: 'percentual', faixas: faixasPadrao('percentual'), tempo_min: 10,
-      instrucoes: 'Em cada bloco, compare o cartão da direita com o original (esquerda) e marque X nos campos que estão diferentes. Se estiver igual, não marque.',
+      instrucoes: 'Para cada cópia (2ª coluna), encontre o cartão original na 1ª coluna e marque X nos campos que estão diferentes. Se estiver igual, não marque.',
       resumo: [['Tipo', 'Marcar o que mudou (blocos de cartões)'], ['Dados', blocos.length + ' blocos (original e cópia)'], ['Gabarito', dif + ' diferenças, calculadas comparando original e cópia'], ['Faixas da nota', '% do total: 0 → 1, 20 → 2, 40 → 3, 60 → 4, 80 → 5'], ['Tempo', 'não está na planilha · usei 10 min; ajuste no editor', true]] };
   }
   function lerConferencia(wb) {
@@ -221,7 +222,8 @@
 
   /* =================== Configurações › Tablets =================== */
   async function tablets(area) {
-    area.innerHTML = '<a class="voltar" href="#/config">← Configurações</a><header class="cabecalho"><div><h1>Tablets</h1><p>Tablets do Projeto Gol Testes · cada um tem nome, etiqueta e chave própria</p></div>' +
+    if (window.CF.avisoPedidos) window.CF.avisoPedidos();
+    area.innerHTML = '<header class="cabecalho"><div><h1>Tablets</h1><p>Tablets do Projeto Gol Testes · cada um tem nome, etiqueta e chave própria</p></div>' +
       '<div class="botoes-topo"><button type="button" class="btn btn-pri" id="tb-qr">📷 Ler QR do tablet</button><button type="button" class="btn" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar com código</button></div></header><section class="card pt-tab" id="tb-ped"></section><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div>' +
       '<p class="dica">Se um tablet sumir, use "Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p>' +
       '<div class="tb-duas"><section class="card bloco" id="tb-inst"></section><div style="display:flex;flex-direction:column;gap:16px"><section class="card bloco" id="tb-pin"></section><section class="card bloco" id="tb-modo"></section></div></div>' +
@@ -274,12 +276,12 @@
       var prox = 'TABLET ' + ('0' + (lista.length + 1)).slice(-2);
       ui.janela({ titulo: '📱 Pedido de liberação de tablet', largura: 480,
         corpo: '<div class="et-res"><div><span>Pedido</span><p><b>' + esc(p.codigo.slice(0, 3) + '-' + p.codigo.slice(3)) + '</b></p></div><div><span>Aparelho</span><p>' + esc(p.aparelho || '—') + (p.sistema ? ' · ' + esc(p.sistema) : '') + '</p></div><div><span>Navegador</span><p>' + esc(p.navegador || '—') + '</p></div><div><span>Pedido feito</span><p>' + new Date(p.criado_em).toLocaleString('pt-BR') + '</p></div></div>' +
-          '<label class="campo" style="margin-top:12px"><span>Nome do tablet</span><input class="entrada" id="pd-nome" value="' + esc(prox) + '"></label><label class="campo"><span>Etiqueta</span><input class="entrada" id="pd-et" value="' + esc(prox.replace(/\D/g, '')) + '"></label>' +
+          '<label class="campo" style="margin-top:12px"><span>Nome do tablet</span><input class="entrada" id="pd-nome" value="' + esc(prox) + '"></label><label class="campo"><span>Etiqueta</span><input class="entrada" id="pd-et" value="' + esc(prox.replace(/\D/g, '')) + '"></label>' + camposId(null) +
           '<p class="dica">Fica registrado: quem decidiu, quando, aparelho e navegador.</p>',
-        botoes: [{ texto: 'Rejeitar', aoClicar: async function () { try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: false }); if (r.error) throw r.error; ui.toast('Pedido rejeitado.', 'ok'); carregar(); pedidos(); historico(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } },
+        botoes: [{ texto: 'Rejeitar', aoClicar: async function () { try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: false }); if (r.error) throw r.error; ui.toast('Pedido rejeitado.', 'ok'); carregar(); pedidos(); historico(); if (window.CF.avisoPedidos) window.CF.avisoPedidos(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } },
           { texto: 'Liberar tablet', principal: true, aoClicar: async function (f) {
-            try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: true, p_nome: f.querySelector('#pd-nome').value, p_etiqueta: f.querySelector('#pd-et').value }); if (r.error) throw r.error;
-              ui.toast('Tablet liberado. Ele entra sozinho em alguns segundos.', 'ok'); carregar(); pedidos(); historico(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } }] });
+            try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: true, p_nome: f.querySelector('#pd-nome').value, p_etiqueta: f.querySelector('#pd-et').value, p_imei: lerId(f).imei, p_serie: lerId(f).serie, p_email: lerId(f).email }); if (r.error) throw r.error;
+              ui.toast('Tablet liberado. Ele entra sozinho em alguns segundos.', 'ok'); carregar(); pedidos(); historico(); if (window.CF.avisoPedidos) window.CF.avisoPedidos(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } }] });
     }
     function lerQR() {
       var ativo = true, stream = null;
@@ -359,6 +361,7 @@
       }); });
     }
     async function carregar() { try { lista = await q(sb.from('tablets').select('*').order('nome')); desenhar(); resultados(); historico(); } catch (e) { area.querySelector('#tb-lista').innerHTML = '<div class="aviso aviso-erro">' + esc(api.traduzErro(e)) + '</div>'; } }
+    var buscaTb = '';
     function situacao(x) {
       if (!x.ativo) return ['Desativado', 'nao', '#8a8486'];
       if (!x.ligado_em) return ['Aguardando ligar', 'neu', '#e0a100'];
@@ -369,8 +372,12 @@
     function desenhar() {
       var box = area.querySelector('#tb-lista');
       if (!lista.length) { box.innerHTML = '<section class="card bloco"><p class="dica">Nenhum tablet cadastrado ainda. Use "Cadastrar tablet" e digite o código no app Projeto Gol Testes.</p></section>'; return; }
-      box.innerHTML = '<section class="card tabela-card"><div class="tabela-rolar"><table class="tabela"><thead><tr><th>Tablet</th><th>Situação</th><th>Última conexão</th><th>Testes</th><th>Aguardando envio</th><th></th></tr></thead><tbody>' +
-        lista.map(function (x) { var s = situacao(x); return '<tr style="--c:' + s[2] + '"><td><b>' + esc(x.nome) + '</b><small style="display:block;color:var(--texto-3)">' + esc([x.etiqueta ? 'etiqueta ' + x.etiqueta : '', x.modelo || ''].filter(Boolean).join(' · ') || '—') + '</small></td><td>' + ui.pill(s[0], s[1]) + '</td><td>' + dataHora(x.ultima_conexao) + '</td><td>' + esc(x.testes_versao || '—') + '</td><td>' + (x.pendentes || 0) + '</td>' +
+      var bus = ui.normalizar(buscaTb || '');
+      var vis = lista.filter(function (x) { return !bus || ui.normalizar([x.nome, x.etiqueta, x.imei, x.numero_serie, x.email_conta, x.modelo].join(' ')).indexOf(bus) >= 0; });
+      box.innerHTML = '<div class="pt-filtros"><input class="entrada" type="search" id="tb-busca" placeholder="Buscar por nome, IMEI, série ou e-mail" value="' + esc(buscaTb || '') + '"><button type="button" class="btn" id="tb-etq">🖨 Imprimir etiquetas</button></div>' +
+        (vis.length ? '' : '<p class="dica">Nenhum tablet encontrado nessa busca.</p>') +
+        '<section class="card tabela-card"><div class="tabela-rolar"><table class="tabela"><thead><tr><th>Tablet</th><th>Situação</th><th>Última conexão</th><th>Identificação</th><th>Testes</th><th>Aguardando envio</th><th></th></tr></thead><tbody>' +
+        vis.map(function (x) { var s = situacao(x); return '<tr style="--c:' + s[2] + '"><td><b>' + esc(x.nome) + '</b><small style="display:block;color:var(--texto-3)">' + esc([x.etiqueta ? 'etiqueta ' + x.etiqueta : '', x.modelo || ''].filter(Boolean).join(' · ') || '—') + '</small></td><td>' + ui.pill(s[0], s[1]) + '</td><td>' + dataHora(x.ultima_conexao) + '</td>' + '<td class="tb-id">' + [x.imei ? '<span><em>IMEI</em>' + esc(x.imei) + '</span>' : '', x.numero_serie ? '<span><em>Série</em>' + esc(x.numero_serie) + '</span>' : '', x.email_conta ? '<span><em>Conta</em>' + esc(x.email_conta) + '</span>' : '', x.liberado_por_email ? '<span><em>Liberado por</em>' + esc(x.liberado_por_email) + '</span>' : ''].join('') + (x.imei || x.numero_serie || x.email_conta || x.liberado_por_email ? '' : '<span class="dica">—</span>') + '</td>' + '<td>' + esc(x.testes_versao || '—') + '</td><td>' + (x.pendentes || 0) + '</td>' +
           '<td class="acoes"><button type="button" class="btn btn-p" data-ed="' + x.id + '">Editar</button><button type="button" class="btn btn-p" data-cod="' + x.id + '">Novo código</button><button type="button" class="btn btn-p' + (x.ativo ? ' perigo' : '') + '" data-at="' + x.id + '">' + (x.ativo ? 'Desativar' : 'Ativar') + '</button></td></tr>'; }).join('') + '</tbody></table></div></section>';
       box.querySelectorAll('[data-cod]').forEach(function (b) { b.addEventListener('click', async function () { try { mostrarCodigo(await q(sb.rpc('tablet_novo_codigo', { p_tablet: b.getAttribute('data-cod') }))); carregar(); } catch (e) { erro(e); } }); });
       box.querySelectorAll('[data-at]').forEach(function (b) { b.addEventListener('click', async function () {
@@ -379,20 +386,69 @@
         try { await q(sb.rpc('tablet_ativar', { p_tablet: x.id, p_ativo: !x.ativo })); carregar(); } catch (e) { erro(e); }
       }); });
       box.querySelectorAll('[data-ed]').forEach(function (b) { b.addEventListener('click', function () { form(lista.filter(function (y) { return y.id === b.getAttribute('data-ed'); })[0]); }); });
+      var ib = box.querySelector('#tb-busca'); ib.addEventListener('input', function () { buscaTb = ib.value; var pos = ib.selectionStart; desenhar(); var n = area.querySelector('#tb-busca'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} });
+      box.querySelector('#tb-etq').addEventListener('click', etiquetas);
     }
     function form(x) {
       ui.janela({ titulo: x ? 'Editar tablet' : 'Cadastrar tablet', largura: 520,
         corpo: '<label class="campo"><span>Nome *</span><input class="entrada" id="tb-n" value="' + esc(x ? x.nome : 'TABLET ' + String(lista.length + 1).padStart(2, '0')) + '"></label>' +
           '<label class="campo"><span>Etiqueta</span><input class="entrada" id="tb-e" value="' + esc(x ? x.etiqueta || '' : String(lista.length + 1).padStart(2, '0')) + '"></label>' +
-          '<label class="campo"><span>Modelo (opcional)</span><input class="entrada" id="tb-m" value="' + esc(x ? x.modelo || '' : '') + '" placeholder="ex.: Samsung Tab A8"></label>',
+          '<label class="campo"><span>Modelo (opcional)</span><input class="entrada" id="tb-m" value="' + esc(x ? x.modelo || '' : '') + '" placeholder="ex.: Samsung Tab A8"></label>' + camposId(x),
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: x ? 'Salvar' : 'Cadastrar e gerar código', principal: true, aoClicar: async function (f) {
           var n = f.querySelector('#tb-n').value, e = f.querySelector('#tb-e').value, m = f.querySelector('#tb-m').value;
           try {
-            if (x) await q(sb.rpc('tablet_salvar', { p_tablet: x.id, p_nome: n, p_etiqueta: e, p_modelo: m }));
-            else mostrarCodigo(await q(sb.rpc('tablet_cadastrar', { p_nome: n, p_etiqueta: e, p_modelo: m })));
+            var d = lerId(f);
+            if (x) { await q(sb.rpc('tablet_salvar', { p_tablet: x.id, p_nome: n, p_etiqueta: e, p_modelo: m })); await q(sb.rpc('tablet_dados_salvar', { p_tablet: x.id, p_imei: d.imei, p_serie: d.serie, p_email: d.email })); }
+            else { var rc = await q(sb.rpc('tablet_cadastrar', { p_nome: n, p_etiqueta: e, p_modelo: m })); if (rc && rc.tablet && (d.imei || d.serie || d.email)) { try { await q(sb.rpc('tablet_dados_salvar', { p_tablet: rc.tablet, p_imei: d.imei, p_serie: d.serie, p_email: d.email })); } catch (e2) {} } mostrarCodigo(rc); }
             carregar(); return true;
           } catch (er) { erro(er); return false; }
         } }] });
+    }
+    function camposId(x) {
+      return '<fieldset class="tb-fs"><legend>Identificação do aparelho (opcional)</legend><p class="dica" style="margin:0 0 6px">No tablet: Configurações › Sobre o tablet (IMEI e nº de série). O e-mail é a conta Google/Apple em que o aparelho está logado.</p>' +
+        '<label class="campo"><span>IMEI</span><input class="entrada" id="tb-imei" inputmode="numeric" value="' + esc(x ? x.imei || '' : '') + '" placeholder="15 números"></label>' +
+        '<label class="campo"><span>Nº de série</span><input class="entrada" id="tb-serie" value="' + esc(x ? x.numero_serie || '' : '') + '" style="text-transform:uppercase"></label>' +
+        '<label class="campo"><span>E-mail da conta do aparelho</span><input class="entrada" id="tb-email" type="email" value="' + esc(x ? x.email_conta || '' : '') + '" placeholder="ex.: tablet07@kolpingsp.org"></label></fieldset>';
+    }
+    function lerId(f) { return { imei: f.querySelector('#tb-imei').value.trim(), serie: f.querySelector('#tb-serie').value.trim(), email: f.querySelector('#tb-email').value.trim() }; }
+    /* ---------- Etiquetas (modelo A2 · 75 × 38 mm, folha A4) ---------- */
+    function etiquetas() {
+      if (!lista.length) { ui.toast('Nenhum tablet cadastrado.', 'erro'); return; }
+      var j = ui.janela({ titulo: '🖨 Imprimir etiquetas', largura: 560, confirmarDescarte: false,
+        corpo: '<p class="dica" style="margin:0 0 8px">Modelo A2 · 75 × 38 mm · folha A4 (2 colunas × 7 linhas). Use papel adesivo A4 comum. Na janela de impressão, escolha <b>tamanho real (100%)</b>.</p>' +
+          '<label style="font-weight:700"><input type="checkbox" id="et-todos" checked> Todos os tablets</label><div class="et-l">' +
+          lista.map(function (x) { return '<label><input type="checkbox" class="et-c" value="' + x.id + '" checked> ' + esc(x.nome) + (x.etiqueta ? ' · ' + esc(x.etiqueta) : '') + '</label>'; }).join('') + '</div>',
+        botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Gerar etiquetas', principal: true, aoClicar: function (f) {
+          var ids = [].map.call(f.querySelectorAll('.et-c:checked'), function (c) { return c.value; });
+          if (!ids.length) { ui.toast('Escolha pelo menos um tablet.', 'erro'); return false; }
+          imprimirEtiquetas(lista.filter(function (x) { return ids.indexOf(x.id) >= 0; })); return true; } }] });
+      var el = j.elemento; el.querySelector('#et-todos').addEventListener('change', function (e) { el.querySelectorAll('.et-c').forEach(function (c) { c.checked = e.target.checked; }); });
+    }
+    function imprimirEtiquetas(ts) {
+      var base = location.href.replace(/#.*$/, '').replace(/[^/]*$/, ''), urlBase = location.origin + location.pathname;
+      function qr(t) { if (typeof window.qrcode !== 'function') return ''; var qq = window.qrcode(0, 'M'); qq.addData(t); qq.make(); return qq.createSvgTag({ cellSize: 3, margin: 0, scalable: true }); }
+      var ic = { imei: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/>', serie: '<path d="M4 7h16M4 12h16M4 17h10"/>', email: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>' };
+      function lin(i, rot, v) { return v ? '<li><svg viewBox="0 0 24 24">' + ic[i] + '</svg><div><em>' + rot + '</em><b>' + esc(v) + '</b></div></li>' : ''; }
+      var cards = ts.map(function (x) {
+        var num = String(x.etiqueta || x.nome.replace(/\D/g, '') || '').slice(0, 4);
+        return '<div class="y"><div class="cab"><img src="' + base + 'assets/img/gol_dark.png"><div><b>Projeto Gol Testes</b><small>Patrimônio · Kolping Estadual de São Paulo</small></div></div>' +
+          '<div class="selo"><small>TABLET</small><i>' + esc(num) + '</i></div><div class="cor"><ul>' + lin('imei', 'IMEI', x.imei) + lin('serie', 'Nº DE SÉRIE', x.numero_serie) + lin('email', 'CONTA DO APARELHO', x.email_conta) +
+          (!x.imei && !x.numero_serie && !x.email_conta ? '<li><div><em>TABLET</em><b>' + esc(x.nome) + '</b></div></li>' : '') + '</ul><div class="qr">' + qr(urlBase + '#/tablets?t=' + x.id) + '</div></div>' +
+          '<div class="pe"><img src="' + base + 'assets/img/kolping_light.png"><span>NÃO RETIRAR</span></div></div>';
+      }).join('');
+      var css = '@font-face{font-family:P;src:url(' + base + 'assets/fonts/poppins-regular.woff2)}@font-face{font-family:P;font-weight:700 800;src:url(' + base + 'assets/fonts/poppins-bold.woff2)}@font-face{font-family:CC;src:url(' + base + 'assets/fonts/codigo-cracha.woff)}' +
+        '@page{size:A4;margin:10mm 15mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;font-family:P,sans-serif}' +
+        '.folha{display:grid;grid-template-columns:repeat(2,75mm);grid-auto-rows:38mm;gap:2mm 6mm;justify-content:center}' +
+        '.y{width:75mm;height:38mm;border-radius:3.5mm;overflow:hidden;background:#fff;border:.2mm solid #ddd;display:grid;grid-template-rows:11.5mm 1fr 5mm;position:relative;break-inside:avoid}' +
+        '.cab{background:linear-gradient(110deg,#1d1919,#2d2626 55%,#4a2c1b);display:flex;align-items:center;gap:2.2mm;padding:0 20mm 0 3mm;color:#f4f1ef}.cab img{width:7.5mm;height:7.5mm;border-radius:50%;box-shadow:0 0 0 .5mm rgba(238,115,48,.7)}.cab b{font-size:3.1mm;display:block}.cab small{font-size:1.9mm;color:#cfc7c7;display:block}' +
+        '.selo{position:absolute;right:3mm;top:2.2mm;width:15mm;height:13.5mm;border-radius:4mm;background:linear-gradient(135deg,#f08a4b,#e0631f);box-shadow:0 0 0 1mm #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#1b1111}.selo small{font-size:1.6mm;font-weight:800;letter-spacing:.2em}.selo i{font:700 7mm/1 CC,monospace;font-style:normal}' +
+        '.cor{display:flex;gap:2.5mm;align-items:flex-end;padding:2mm 3mm 1mm 3.5mm}ul{list-style:none;margin:0;padding:0;flex:1;min-width:0}li{display:flex;gap:1.5mm;margin-bottom:1.2mm}li svg{width:2.3mm;height:2.3mm;stroke:#ee7330;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:.3mm}li em{display:block;font-style:normal;font-size:1.7mm;font-weight:800;letter-spacing:.1em;color:#8a8486}li b{display:block;color:#272323;font-size:2.3mm;white-space:nowrap}' +
+        '.qr{background:#fff;border-radius:2.5mm;padding:1mm;box-shadow:0 0 0 .4mm #f1e6df;margin-bottom:.5mm}.qr svg{width:14.5mm;height:14.5mm;display:block}' +
+        '.pe{background:#f7f3f1;display:flex;align-items:center;justify-content:space-between;padding:0 3mm;border-top:.2mm solid #efe9e7}.pe img{height:2.6mm}.pe span{font-size:1.7mm;color:#8a8486;letter-spacing:.06em}';
+      var w = window.open('', '_blank');
+      if (!w) { ui.toast('O navegador bloqueou a nova janela. Permita pop-ups para este site.', 'erro'); return; }
+      w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas dos tablets</title><style>' + css + '</style></head><body><div class="folha">' + cards + '</div><script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script></body></html>');
+      w.document.close();
     }
     function mostrarCodigo(r) {
       var c = String(r.codigo || '');

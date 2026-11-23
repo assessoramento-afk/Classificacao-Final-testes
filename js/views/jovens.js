@@ -532,7 +532,7 @@
     area.innerHTML = '<a class="voltar" href="#/cadastros">← Cadastros</a><header class="cabecalho"><div><h1>Jovens</h1><p>Todos os jovens cadastrados e o histórico de cada um</p></div>' +
       '<div class="botoes-topo">' + (window.CF.perm.pode('cadastros_historico') ? '<button type="button" class="btn" id="tj-hx">⬇ Histórico geral (Excel)</button><button type="button" class="btn" id="tj-hp">⬇ Histórico geral (PDF)</button>' : '') +
       '<button type="button" class="btn btn-pri" id="tj-novo">' + ui.icone('mais', 17) + 'Novo jovem</button></div></header>' +
-      '<div class="pt-chips" id="tj-abas" role="group" aria-label="Momento do jovem"></div><div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="tj-busca" placeholder="Buscar por nome (procura em todas as abas)"></label></div><div id="tj"><div class="girando" style="margin:30px auto"></div></div>';
+      '<div class="pt-chips" id="tj-abas" role="group" aria-label="Momento do jovem"></div><div class="barra"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="tj-busca" placeholder="Buscar por nome" title="A busca procura em todas as abas"></label></div><div id="tj"><div class="girando" style="margin:30px auto"></div></div>';
     var js = [], parts = [], ag = null;
     try { var r = await Promise.all([dados.jovens.todos(), dados.jovens.todasParticipacoes(), dados.agenda.carregarTudo()]); js = r[0]; parts = r[1]; ag = r[2]; }
     catch (e) { erro(e); return; }

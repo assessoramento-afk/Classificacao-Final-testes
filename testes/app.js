@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.1.0';
+  var VERSAO_APP = '1.1.2';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -29,7 +29,7 @@
   }
 
   /* ---------- Modo de testes (dados fictícios; nada é enviado) ---------- */
-  var DEMO = {"gerado_em": "demo", "tablet": {"id": "demo", "nome": "MODO DE TESTES", "etiqueta": "dados fictícios"}, "pin_hash": "9aea0edb57b7c45b4bea33f8d027328456a22039999eaaa61bc4844bb04e6630", "turmas": [{"id": "tu-demo", "nome": "TURMA DE TESTE", "processo_id": "p-demo", "vaga": "Demonstração", "empresa": "Projeto Gol", "dias": [], "testes": ["t-conf", "t-cart"]}], "testes": [{"id": "t-conf", "nome": "Conferência de Mercadoria (exemplo)", "codigo": "DEMO1", "versao": 1, "estrutura": {"tempo_min": 5, "orientacao": "paisagem", "modo_nota": "pontos", "instrucoes": "Compare a Cópia com o Original e informe, em cada linha, quantos erros a cópia tem. Se não houver erro, marque \"–\".", "faixas": [{"min": 5, "nota": 5}, {"min": 4, "nota": 4}, {"min": 3, "nota": 3}, {"min": 2, "nota": 2}, {"min": 0, "nota": 1}], "explicacao": {"passos": [["Leia a linha do Original", "À esquerda está o produto como ele deve estar."], ["Compare com a Cópia", "Confira letra por letra e número por número."], ["Conte os erros da linha", "Toque em 1, 2, 3 ou 4. Se estiver igual, toque em –."]], "exemplo": "Original 224878 × Cópia 214878: 1 erro.", "dica": "Atenção a letras parecidas (coro × couro)."}, "partes": [{"tipo": "contar", "colunas": ["Artigo", "Tamanho", "Nº", "Entrega"], "linhas": [{"original": ["Camisa xadrez", "P-GG", "451203", "imediata"], "copia": ["Camisa xadrez", "P-GG", "451203", "imediata"], "gabarito": "-"}, {"original": ["Bota de couro", "35-40", "880214", "3 dias"], "copia": ["Bota de coro", "35-40", "880241", "3 dias"], "gabarito": "2"}, {"original": ["Jaqueta jeans", "M-G", "120987", "2 dias"], "copia": ["Jaqueta jeans", "M-G", "120987", "5 dias"], "gabarito": "1"}, {"original": ["Meia esportiva", "único", "300456", "imediata"], "copia": ["Meia esportiva", "único", "300456", "imediata"], "gabarito": "-"}, {"original": ["Boné aba reta", "único", "771100", "4 dias"], "copia": ["Boné aba curva", "58", "771100", "4 dias"], "gabarito": "2"}]}]}}, {"id": "t-cart", "nome": "Cartões de Crédito (exemplo)", "codigo": "DEMO2", "versao": 1, "estrutura": {"tempo_min": 5, "orientacao": "paisagem", "modo_nota": "percentual", "instrucoes": "Compare a Cópia com o Original e marque X nos campos que estão diferentes.", "faixas": [{"min": 80, "nota": 5}, {"min": 60, "nota": 4}, {"min": 40, "nota": 3}, {"min": 20, "nota": 2}, {"min": 0, "nota": 1}], "partes": [{"tipo": "marcar", "blocos": [{"original": {"banco": "NUBANK", "bandeira": "MASTERCARD", "numero": "5432 1098 7654 3210", "nome": "MARIA DA SILVA", "validade": "08/29", "agencia": "0001", "cvv": "123"}, "copia": {"banco": "NUBANK", "bandeira": "MASTERCARD", "numero": "5432 1098 7654 3201", "nome": "MARIA DA SILVA", "validade": "08/29", "agencia": "0001", "cvv": "132"}}, {"original": {"banco": "ITAÚ", "bandeira": "VISA", "numero": "4111 2222 3333 4444", "nome": "JOÃO PEREIRA", "validade": "11/27", "agencia": "1234", "cvv": "456"}, "copia": {"banco": "ITAÚ", "bandeira": "VISA", "numero": "4111 2222 3333 4444", "nome": "JOÃO PEREIRA", "validade": "11/27", "agencia": "1234", "cvv": "456"}}, {"original": {"banco": "CAIXA", "bandeira": "ELO", "numero": "6362 9700 0000 1122", "nome": "ANA SOUZA", "validade": "03/30", "agencia": "0456", "cvv": "789"}, "copia": {"banco": "CAIXA", "bandeira": "ELO", "numero": "6362 9700 0000 1122", "nome": "ANA SOUSA", "validade": "03/31", "agencia": "0456", "cvv": "789"}}]}]}}], "jovens": [{"codigo": "TEST-01", "participacao_id": "demo-1", "nome": "JOVEM DE TESTE UM", "turma_id": "tu-demo"}, {"codigo": "TEST-02", "participacao_id": "demo-2", "nome": "JOVEM DE TESTE DOIS", "turma_id": "tu-demo"}], "feitos": []};
+  var DEMO = {"gerado_em": "demo", "tablet": {"id": "demo", "nome": "MODO DE TESTES", "etiqueta": "dados fictícios"}, "pin_hash": "9aea0edb57b7c45b4bea33f8d027328456a22039999eaaa61bc4844bb04e6630", "turmas": [{"id": "tu-demo", "nome": "TURMA DE TESTE", "processo_id": "p-demo", "vaga": "Demonstração", "empresa": "Projeto Gol", "dias": [], "testes": ["t-conf", "t-cart"]}], "testes": [{"id": "t-conf", "nome": "Conferência de Mercadoria (exemplo)", "codigo": "DEMO1", "versao": 1, "estrutura": {"tempo_min": 5, "orientacao": "paisagem", "modo_nota": "pontos", "instrucoes": "Compare a Cópia com o Original e informe, em cada linha, quantos erros a cópia tem. Se não houver erro, marque \"–\".", "faixas": [{"min": 5, "nota": 5}, {"min": 4, "nota": 4}, {"min": 3, "nota": 3}, {"min": 2, "nota": 2}, {"min": 0, "nota": 1}], "explicacao": {"passos": [["Leia a linha do Original", "À esquerda está o produto como ele deve estar."], ["Compare com a Cópia", "Confira letra por letra e número por número."], ["Conte os erros da linha", "Toque em 1, 2, 3 ou 4. Se estiver igual, toque em –."]], "exemplo": "Original 224878 × Cópia 214878: 1 erro.", "dica": "Atenção a letras parecidas (coro × couro)."}, "partes": [{"tipo": "contar", "colunas": ["Artigo", "Tamanho", "Nº", "Entrega"], "linhas": [{"original": ["Camisa xadrez", "P-GG", "451203", "imediata"], "copia": ["Camisa xadrez", "P-GG", "451203", "imediata"], "gabarito": "-"}, {"original": ["Bota de couro", "35-40", "880214", "3 dias"], "copia": ["Bota de coro", "35-40", "880241", "3 dias"], "gabarito": "2"}, {"original": ["Jaqueta jeans", "M-G", "120987", "2 dias"], "copia": ["Jaqueta jeans", "M-G", "120987", "5 dias"], "gabarito": "1"}, {"original": ["Meia esportiva", "único", "300456", "imediata"], "copia": ["Meia esportiva", "único", "300456", "imediata"], "gabarito": "-"}, {"original": ["Boné aba reta", "único", "771100", "4 dias"], "copia": ["Boné aba curva", "58", "771100", "4 dias"], "gabarito": "2"}]}]}}, {"id": "t-cart", "nome": "Cartões de Crédito (exemplo)", "codigo": "DEMO2", "versao": 1, "estrutura": {"tempo_min": 5, "orientacao": "paisagem", "modo_nota": "percentual", "instrucoes": "Para cada cópia (2ª coluna), encontre o cartão original na 1ª coluna e marque X nos campos que estão diferentes.", "faixas": [{"min": 80, "nota": 5}, {"min": 60, "nota": 4}, {"min": 40, "nota": 3}, {"min": 20, "nota": 2}, {"min": 0, "nota": 1}], "partes": [{"tipo": "marcar", "blocos": [{"original": {"banco": "CAIXA", "bandeira": "ELO", "numero": "6362 9700 0000 1122", "nome": "ANA SOUZA", "validade": "03/30", "agencia": "0456", "cvv": "789"}, "copia": {"banco": "CAIXA", "bandeira": "ELO", "numero": "6362 9700 0000 1122", "nome": "ANA SOUSA", "validade": "03/31", "agencia": "0456", "cvv": "789"}, "orig": 3}, {"original": {"banco": "NUBANK", "bandeira": "MASTERCARD", "numero": "5432 1098 7654 3210", "nome": "MARIA DA SILVA", "validade": "08/29", "agencia": "0001", "cvv": "123"}, "copia": {"banco": "NUBANK", "bandeira": "MASTERCARD", "numero": "5432 1098 7654 3201", "nome": "MARIA DA SILVA", "validade": "08/29", "agencia": "0001", "cvv": "132"}, "orig": 1}, {"original": {"banco": "ITAÚ", "bandeira": "VISA", "numero": "4111 2222 3333 4444", "nome": "JOÃO PEREIRA", "validade": "11/27", "agencia": "1234", "cvv": "456"}, "copia": {"banco": "ITAÚ", "bandeira": "VISA", "numero": "4111 2222 3333 4444", "nome": "JOÃO PEREIRA", "validade": "11/27", "agencia": "1234", "cvv": "456"}, "orig": 2}]}]}}], "jovens": [{"codigo": "TEST-01", "participacao_id": "demo-1", "nome": "JOVEM DE TESTE UM", "turma_id": "tu-demo"}, {"codigo": "TEST-02", "participacao_id": "demo-2", "nome": "JOVEM DE TESTE DOIS", "turma_id": "tu-demo"}], "feitos": []};
 
   /* ---------- Estado ---------- */
   var E = { chave: null, pacote: null, jovem: null, ultimaSinc: null, enviando: false, baixando: false, demo: false, demoFeitos: [] };
@@ -39,6 +39,9 @@
   function normCod(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
   function mmss(s) { s = Math.max(0, Math.round(s)); return ('0' + Math.floor(s / 60)).slice(-2) + ':' + ('0' + (s % 60)).slice(-2); }
   function hora(iso) { try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+  // primeiro nome com só a inicial maiúscula (MARIA DA SILVA → Maria)
+  function primeiroNome(n) { var p = String(n || '').trim().split(/\s+/)[0] || ''; return p.charAt(0).toLocaleUpperCase('pt-BR') + p.slice(1).toLocaleLowerCase('pt-BR'); }
+  function saudacao() { var h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'; }
   function hojeISO() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 
   // sem copiar e colar em nenhum teste
@@ -74,7 +77,13 @@
   setInterval(function () { if (!emTeste) baixar(true); }, 5 * 60000);
   window.addEventListener('online', function () { enviar(); baixar(true); atualizarStatus(); });
   window.addEventListener('offline', atualizarStatus);
+  /* ---------- Bateria (Chrome/Android) ---------- */
+  var BAT = null; try { if (navigator.getBattery) navigator.getBattery().then(function (b) { BAT = b; ['levelchange', 'chargingchange'].forEach(function (ev) { b.addEventListener(ev, mostrarBateria); }); mostrarBateria(); }); } catch (e) {}
+  function bateriaBaixa() { return !!(BAT && !BAT.charging && BAT.level < 0.2); }
+  function bateriaTxt() { return BAT ? Math.round(BAT.level * 100) + '%' + (BAT.charging ? ' · carregando' : '') : 'não informado'; }
+  function mostrarBateria() { var el = document.getElementById('bat'); if (!el) return; var baixa = bateriaBaixa(); el.hidden = !baixa; if (baixa) el.textContent = '🔋 ' + Math.round(BAT.level * 100) + '% · carregue o tablet'; }
   async function atualizarStatus() {
+    mostrarBateria();
     var el = document.getElementById('st'); if (!el) return;
     if (E.demo) { el.className = 'pil av'; el.textContent = 'MODO DE TESTES · nada é enviado'; return; }
     var n = (await fila.todos()).length;
@@ -94,7 +103,7 @@
 
   /* ---------- Telas ---------- */
   function topo(titulo, sub, dir) {
-    return '<div class="topo"><img src="' + LOGO + '" alt="" id="logo"><div><b>' + esc(titulo) + '</b>' + (sub ? '<br><small>' + esc(sub) + '</small>' : '') + '</div><div class="dir">' + (dir || '') + '<span class="pil" id="st">…</span></div></div>';
+    return '<div class="topo"><img src="' + LOGO + '" alt="" id="logo"><div><b>' + esc(titulo) + '</b>' + (sub ? '<br><small>' + esc(sub) + '</small>' : '') + '</div><div class="dir">' + (dir || '') + '<span class="pil er" id="bat" hidden></span><span class="pil" id="st">…</span></div></div>';
   }
   var emTeste = false;
   // modo avaliador: segurar o logo por 3 segundos
@@ -116,7 +125,7 @@
   function cofre(opts) {   // opts: { tam, numeros, formato(4+2), aoCompletar(cod, ui) }
     var cod = '', ocupado = false;
     var teclas = opts.numeros ? '1234567890'.split('') : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
-    var h = '<div class="cofre"><div class="lt" id="lt">' + SVG_LEITOR + '<div class="letr" id="letr">' + (opts.numeros ? 'DIGITE O CÓDIGO' : 'DIGITE SEU CÓDIGO') + '</div></div><div class="painel"><div class="cod" id="cod"></div>' +
+    var h = '<div class="cofre"><div class="lt" id="lt">' + SVG_LEITOR + '<div class="letr" id="letr">' + (opts.rotulo || (opts.numeros ? 'DIGITE O CÓDIGO' : 'DIGITE SEU CÓDIGO')) + '</div></div><div class="painel"><div class="cod" id="cod"></div>' +
       '<div class="kb' + (opts.numeros ? ' so-num' : '') + '" id="kb">' + teclas.map(function (t) { return '<button type="button" data-t="' + t + '"' + (/\d/.test(t) ? ' class="num"' : '') + '>' + t + '</button>'; }).join('') +
       '<button type="button" class="ap" data-t="⌫" aria-label="Apagar">⌫</button></div></div></div>';
     function desenha() {
@@ -127,10 +136,10 @@
     }
     function estado(cls, txt) { var lt = document.getElementById('lt'); lt.className = 'lt ' + (cls || ''); document.getElementById('letr').textContent = txt; }
     var ui = {
-      erro: function (txt) { estado('erro', txt || 'ACESSO NEGADO'); document.getElementById('cod').classList.add('erro'); setTimeout(function () { cod = ''; ocupado = false; desenha(); estado('', opts.numeros ? 'DIGITE O CÓDIGO' : 'DIGITE SEU CÓDIGO'); }, 1800); },
+      erro: function (txt) { estado('erro', txt || 'ACESSO NEGADO'); document.getElementById('cod').classList.add('erro'); setTimeout(function () { cod = ''; ocupado = false; desenha(); estado('', opts.rotulo || (opts.numeros ? 'DIGITE O CÓDIGO' : 'DIGITE SEU CÓDIGO')); }, 1800); },
       ok: function (txt) { estado('ok', txt || 'ACESSO LIBERADO'); },
       lendo: function () { estado('lendo', 'VERIFICANDO…'); },
-      aviso: function (txt) { estado('aviso', txt); setTimeout(function () { if (!ocupado) estado('', opts.numeros ? 'DIGITE O CÓDIGO' : 'DIGITE SEU CÓDIGO'); }, 1800); },
+      aviso: function (txt) { estado('aviso', txt); setTimeout(function () { if (!ocupado) estado('', opts.rotulo || (opts.numeros ? 'DIGITE O CÓDIGO' : 'DIGITE SEU CÓDIGO')); }, 1800); },
       definir: function (c) { cod = normCod(c).slice(0, opts.tam); desenha(); if (cod.length === opts.tam) { ocupado = true; opts.aoCompletar(cod, ui); } }
     };
     return { html: h, ligar: function () {
@@ -244,7 +253,7 @@
     var ids = tu.testes || [], f = await feitos(j.participacao_id);
     var ts = ids.map(function (id) { return ((E.pacote && E.pacote.testes) || []).filter(function (x) { return x.id === id; })[0]; }).filter(Boolean);
     app.innerHTML = topo('Projeto Gol Testes', j.nome + ' · ' + (tu.nome || ''), '<button type="button" class="bsec" id="sair" style="padding:7px 14px">Sair</button>') +
-      '<div class="miolo"><div class="lista"><h1>Olá, ' + esc(String(j.nome || '').split(' ')[0]) + '!</h1><p class="sub">Escolha o teste que o avaliador indicar.</p><div class="tsts">' +
+      '<div class="miolo"><div class="lista"><h1>' + saudacao() + ', ' + esc(primeiroNome(j.nome)) + '!</h1><p class="sub">Escolha o teste que o avaliador indicar.</p><div class="tsts">' +
       (ts.length ? ts.map(function (t, i) {
         var est = t.estrutura || {}, ft = f[t.id];
         return '<div class="tst' + (ft ? ' feito' : '') + '" style="--c:' + (ft ? '#3FA66B' : '#ee7330') + '"><b>' + esc(t.nome) + '</b><small>⏱ ' + (est.tempo_min || '?') + ' minutos' + (est.orientacao === 'paisagem' ? ' · tela deitada' : '') + '</small>' +
@@ -260,16 +269,16 @@
   function telaExplicacao(t) {
     var est = t.estrutura || {}, exp = est.explicacao || {};
     var passos = exp.passos && exp.passos.length ? exp.passos : [['Leia as instruções', est.instrucoes || 'Leia com atenção antes de começar.'], ['Responda', 'Toque nas respostas. Você pode voltar e mudar enquanto houver tempo.'], ['Finalize', 'Quando terminar, toque em "Finalizar teste". Se o tempo acabar, o teste termina sozinho.']];
-    app.innerHTML = topo(t.nome, E.jovem.nome) + '<div class="miolo"><div class="exp"><div class="bx"><h3>📘 Como fazer este teste</h3>' +
+    app.innerHTML = topo(t.nome, E.jovem.nome) + '<div class="miolo"><div class="saud"><span class="oi">👋</span><div><h1>' + saudacao() + ', ' + esc(primeiroNome(E.jovem.nome)) + '!</h1><p>Você vai fazer o teste <b>' + esc(t.nome) + '</b>. Leia as orientações com calma e toque em <b>Iniciar teste</b> quando for autorizado pela equipe Kolping. Boa sorte!</p></div></div><div class="exp"><div class="bx"><h3>📘 Como fazer este teste</h3>' +
       passos.map(function (p, i) { return '<div class="passo"><b>' + (i + 1) + '</b><div><strong>' + esc(p[0]) + '</strong><p style="margin:4px 0 0">' + esc(p[1]) + '</p></div></div>'; }).join('') +
       '<div class="info"><span>⏱ ' + (est.tempo_min || '?') + ' minutos</span>' + (paisagem(est) ? '<span>🔄 tela deitada</span>' : '') + '</div></div>' +
       '<div>' + (exp.exemplo ? '<div class="bx" style="background:linear-gradient(160deg,#231f1f,#3a2a20);color:#f4f1ef"><h3>Exemplo</h3><p>' + esc(exp.exemplo) + '</p></div>' : '') +
-      (exp.dica ? '<div class="dica2">💡 <b>Dica:</b> ' + esc(exp.dica) + '</div>' : '') + (est.instrucoes ? '<div class="bx" style="margin-top:12px"><h3>Instruções</h3><p>' + esc(est.instrucoes) + '</p></div>' : '') + '</div></div>' +
+      (est.instrucoes ? '<div class="bx" style="margin-top:12px"><h3>Instruções</h3><p>' + esc(est.instrucoes) + '</p></div>' : '') + '</div></div>' +
       '<div class="ini"><button type="button" class="bsec" id="volt" style="margin-right:10px">Voltar</button><button type="button" class="bpri" id="ini">Iniciar teste</button></div></div>';
     atualizarStatus();
     document.getElementById('volt').addEventListener('click', telaTestes);
     document.getElementById('ini').addEventListener('click', function () {
-      janela('⏱', 'Começar agora?', 'O tempo de ' + mmss((est.tempo_min || 10) * 60) + ' começa a contar.', [['Voltar', null], ['Começar', function () { telaTeste(t); }]]);
+      janela('⏱', 'Começar agora?', 'O tempo de ' + mmss((est.tempo_min || 10) * 60) + ' começa a contar.' + (bateriaBaixa() ? '<br><b style="color:#c0392b">🔋 Bateria em ' + Math.round(BAT.level * 100) + '%. Ligue o tablet na tomada antes de começar.</b>' : ''), [['Voltar', null], ['Começar', function () { telaTeste(t); }]]);
     });
   }
   function janela(ic, tit, txt, bts) {
@@ -279,15 +288,44 @@
     f.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (!b) return; f.remove(); var a = bts[+b.getAttribute('data-i')][1]; if (a) a(); });
   }
 
+  /* ---------- Proteções durante o teste: tela cheia, tela acesa e botão voltar ---------- */
+  var protecoes = (function () {
+    var trava = null, ativo = false;
+    function tela() { try { if (ativo && navigator.wakeLock && !trava) navigator.wakeLock.request('screen').then(function (w) { trava = w; w.addEventListener('release', function () { trava = null; }); }).catch(function () {}); } catch (e) {} }
+    function cheia() { try { var d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).catch(function () {}); } catch (e) {} }
+    function voltar() { if (!ativo) return; history.pushState({ teste: 1 }, ''); if (!document.querySelector('.fundoj')) janela('🔒', 'O teste está em andamento', 'Para sair, toque em <b>Finalizar teste</b>.', [['Continuar o teste', null]]); }
+    function fechar(e) { if (ativo) { e.preventDefault(); e.returnValue = ''; } }
+    window.addEventListener('popstate', voltar);
+    window.addEventListener('beforeunload', fechar);
+    return {
+      ligar: function () { ativo = true; cheia(); tela(); history.pushState({ teste: 1 }, ''); },
+      tela: tela,
+      desligar: function () { ativo = false; try { if (trava) trava.release(); } catch (e) {} trava = null; try { if (document.fullscreenElement) document.exitFullscreen().catch(function () {}); } catch (e) {} }
+    };
+  })();
+  // retomar um teste que foi interrompido (app fechado, tablet reiniciado, bateria acabou)
+  async function retomarAndamento() {
+    var a = null; try { a = await kv.ler('andamento'); } catch (e) {}
+    if (!a || !!a.demo !== !!E.demo) return false;
+    var t = ((E.pacote && E.pacote.testes) || []).filter(function (x) { return x.id === a.teste_id; })[0];
+    if (!t || !a.jovem) { await kv.apagar('andamento'); return false; }
+    E.jovem = a.jovem; telaTeste(t, a); return true;
+  }
+
   // 5) Teste com tempo
-  function telaTeste(t) {
-    var est = t.estrutura || {}, tempo = (est.tempo_min || 10) * 60, inicio = new Date(), fimTs = inicio.getTime() + tempo * 1000, acabou = false, saidas = [], saiuEm = null;
+  function telaTeste(t, ret) {   // ret = teste interrompido que está sendo retomado
+    var est = t.estrutura || {}, tempo = (est.tempo_min || 10) * 60, inicio = ret ? new Date(ret.inicio) : new Date(), fimTs = ret ? ret.fimTs : inicio.getTime() + tempo * 1000, acabou = false, saidas = ret ? (ret.saidas || []) : [], saiuEm = null;
+    if (ret && ret.salvoEm) saidas.push({ de: ret.salvoEm, ate: new Date().toISOString(), motivo: 'app fechado' });
+    protecoes.ligar();
     emTeste = true; if (paisagem(est)) { document.body.classList.add('pede-paisagem'); try { screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} }
     app.innerHTML = topo(t.nome, E.jovem.nome, '<div class="relo" id="relo"><span class="anel" id="anel"></span><span class="tempo" id="tempo">' + mmss(tempo) + '</span></div>') + '<div class="prog"><i id="barra"></i></div>' +
       '<div class="instr"><span class="tx">' + esc(est.instrucoes || 'Responda e toque em "Finalizar teste" quando terminar.') + '</span><button type="button" class="ib" id="ouvir">🔊 Ouvir</button><button type="button" class="ib" id="maior">A+ Letra maior</button></div>' +
       '<div class="miolo" id="mi"></div><div class="rodape"><span class="cont" id="cont"></span><div class="nav" id="nav"></div><button type="button" class="bpri" id="fin">✓ Finalizar teste</button></div>' +
       '<div class="girar"><svg viewBox="0 0 64 64"><rect x="18" y="8" width="28" height="48" rx="5"/><path d="M28 50h8"/></svg><b style="font-size:20px">Gire o tablet para a horizontal</b><span style="color:#cfc7c7">Este teste é feito com a tela deitada. O tempo continua contando.</span></div>';
     var ctl = M.desenhar(document.getElementById('mi'), est); atualizarStatus();
+    if (ret) { ctl.restaurar(ret.resp); aviso('Teste retomado de onde parou. O tempo continuou contando.'); }
+    function guardar() { if (acabou) return; kv.gravar('andamento', { demo: E.demo, jovem: E.jovem, teste_id: t.id, versao: t.versao, inicio: inicio.toISOString(), fimTs: fimTs, saidas: saidas, resp: ctl.respostas(), salvoEm: new Date().toISOString() }).catch(function () {}); }
+    guardar(); var guarda = setInterval(guardar, 15000);
     var itens = [].slice.call(app.querySelectorAll('#mi tr[data-l], #mi .tm-bloco'));
     function respondidas() {
       var r = ctl.respostas(), n = 0;
@@ -302,7 +340,7 @@
       var r = ctl.respostas();
       itens.forEach(function (x, i) { var feito = x.matches('tr') ? x.querySelector('.tm-ops .on') : x.querySelector('.tm-cmp .on'); var b = nav.querySelector('[data-n="' + i + '"]'); if (b) b.classList.toggle('ok', !!feito); });
     }
-    document.getElementById('mi').addEventListener('click', function () { setTimeout(contar, 0); });
+    document.getElementById('mi').addEventListener('click', function () { setTimeout(function () { contar(); guardar(); }, 0); });
     document.getElementById('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-n]'); if (b) itens[+b.getAttribute('data-n')].scrollIntoView({ behavior: 'smooth', block: 'center' }); });
     document.getElementById('maior').addEventListener('click', function () { document.body.classList.toggle('grande'); });
     document.getElementById('ouvir').addEventListener('click', function () { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(est.instrucoes || t.nome); u.lang = 'pt-BR'; speechSynthesis.speak(u); } catch (e) {} });
@@ -314,16 +352,17 @@
       el.textContent = mmss(resta); var an = document.getElementById('anel'); an.style.setProperty('--p', p); an.style.setProperty('--cr', resta <= 60 ? '#ff7a6e' : resta <= tempo * 0.25 ? '#ffc861' : '#7fe0a2');
       document.getElementById('relo').classList.toggle('fim', resta <= 60);
       if (resta <= 60 && resta > 59) aviso('Falta 1 minuto');
+      if ((est.tempo_min || 10) > 15 && resta <= 300 && resta > 299) aviso('Faltam 5 minutos');
       if (resta <= 0) { clearInterval(tick); terminar(true); }
     }, 500);
-    function saiu() { if (document.hidden) saiuEm = new Date().toISOString(); else if (saiuEm) { saidas.push({ de: saiuEm, ate: new Date().toISOString() }); saiuEm = null; aviso('Você saiu do teste. Isso fica registrado.', 'erro'); } }
+    function saiu() { if (document.hidden) saiuEm = new Date().toISOString(); else if (saiuEm) { saidas.push({ de: saiuEm, ate: new Date().toISOString() }); saiuEm = null; guardar(); protecoes.tela(); aviso('Você saiu do teste. Isso fica registrado.', 'erro'); } }
     document.addEventListener('visibilitychange', saiu);
     document.getElementById('fin').addEventListener('click', function () {
       var falta = itens.length - respondidas();
       janela('✓', 'Finalizar o teste?', (falta > 0 ? 'Ainda faltam <b>' + falta + '</b> questões. ' : '') + 'Depois de finalizar, não dá para voltar.', [['Continuar o teste', null], ['Finalizar', function () { terminar(false); }]]);
     });
     async function terminar(porTempo) {
-      if (acabou) return; acabou = true; clearInterval(tick); document.removeEventListener('visibilitychange', saiu); emTeste = false;
+      if (acabou) return; acabou = true; clearInterval(tick); clearInterval(guarda); document.removeEventListener('visibilitychange', saiu); emTeste = false; protecoes.desligar();
       var tr = document.createElement('div'); tr.className = 'trava'; tr.textContent = porTempo ? '⏱ Tempo encerrado' : 'Salvando…'; document.body.appendChild(tr);
       var c = ctl.corrigir(), fim = new Date();
       var res = { uid: uid(), participacao_id: E.jovem.participacao_id, teste_id: t.id, versao: t.versao, respostas: ctl.respostas(), pontos: c.pontos, total: c.total, nota: c.nota,
@@ -334,17 +373,39 @@
         var fl = (await kv.ler('feitosLocal')) || []; fl.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'este tablet' }); await kv.gravar('feitosLocal', fl.slice(-500));
         enviar();
       }
+      await kv.apagar('andamento');
       setTimeout(function () { tr.remove(); document.body.classList.remove('pede-paisagem', 'grande'); try { screen.orientation.unlock(); } catch (e) {} telaConclusao(t, res, respondidas(), itens.length); }, porTempo ? 1600 : 400);
     }
   }
 
   // 6) Conclusão
+  // 6b) Tempo encerrado: tom acolhedor, mostra quanto foi respondido e pede para aguardar a equipe
+  function telaTempoEncerrado(t, res, resp, tot) {
+    var fr = tot ? Math.min(1, resp / tot) : 0, nome = primeiroNome(E.jovem && E.jovem.nome);
+    app.innerHTML = '<div class="fim-t te">' +
+      '<div class="an"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="70" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="10"/>' +
+        '<circle class="pg te-pg" cx="90" cy="90" r="70" fill="none" stroke="#ffc861" stroke-width="10" stroke-linecap="round" transform="rotate(-90 90 90)" style="--alvo:' + (440 * (1 - fr)).toFixed(1) + '"/>' +
+        '<g class="te-rel"><circle cx="90" cy="90" r="36" fill="rgba(255,200,97,.1)" stroke="#ffc861" stroke-width="3"/><path class="te-pt" d="M90 90V66" stroke="#ffc861" stroke-width="5" stroke-linecap="round"/><path d="M90 90l14 9" stroke="#ffc861" stroke-width="5" stroke-linecap="round"/><circle cx="90" cy="90" r="4" fill="#ffc861"/></g></svg></div>' +
+      '<h1>O tempo acabou' + (nome ? ', ' + esc(nome) : '') + '!</h1>' +
+      '<p>Não se preocupe: <b>tudo o que você respondeu foi salvo</b>. ' + (E.demo ? 'Modo de testes: as respostas não são enviadas.' : 'O resultado vai para a Classificação Final.') + '</p>' +
+      '<div class="chips"><div class="chip"><b>' + resp + ' de ' + tot + '</b><span>respondidas</span><i class="te-bar"><i style="width:' + Math.round(fr * 100) + '%"></i></i></div><div class="chip"><b>' + mmss(res.tempo_seg) + '</b><span>tempo do teste</span></div></div>' +
+      '<div class="te-av">🙋 Fique no seu lugar e <b>aguarde a orientação da equipe Kolping</b>.</div>' +
+      '<span class="est" id="est2" style="background:rgba(63,166,107,.2);color:#9fe9bc">' + (E.demo ? '' : online() ? 'Enviando…' : 'Será enviado quando houver internet') + '</span>' +
+      '<div class="bs"><button type="button" class="bsec" id="sair2">Sair</button><button type="button" class="bpri" id="outro">Fazer outro teste</button></div><div class="volta">Voltando para a entrada em 20 s<i></i></div></div>';
+    var vt = setTimeout(telaEntrada, 22000);
+    document.getElementById('outro').addEventListener('click', function () { clearTimeout(vt); telaTestes(); });
+    document.getElementById('sair2').addEventListener('click', function () { clearTimeout(vt); telaEntrada(); });
+    var e0 = document.getElementById('est2');
+    if (E.demo) { e0.textContent = 'Modo de testes · nota ' + res.nota + ' (' + res.pontos + ' de ' + res.total + ' pontos) · nada foi enviado'; e0.style.background = '#fff4dc'; e0.style.color = '#8a6200'; return; }
+    setTimeout(async function () { var n = (await fila.todos()).filter(function (x) { return x.uid === res.uid; }).length; var e = document.getElementById('est2'); if (e) e.textContent = n ? 'Será enviado quando houver internet' : '✓ Enviado para a Classificação Final'; }, 4000);
+  }
   function telaConclusao(t, res, resp, tot) {
     var porT = res.por_tempo, conf = '';
+    if (porT) { telaTempoEncerrado(t, res, resp, tot); return; }
     if (!porT) for (var i = 0; i < 26; i++) conf += '<i class="conf" style="left:' + (4 + Math.random() * 92) + '%;background:' + ['#ee7330', '#f4f1ef', '#ffb27f', '#3FA66B'][i % 4] + ';animation-delay:' + (1.2 + Math.random() * .8) + 's"></i>';
     app.innerHTML = '<div class="fim-t">' + conf + '<div class="an"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="70" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="8"/><circle class="pg" cx="90" cy="90" r="70" fill="none" stroke="' + (porT ? '#ffc861' : '#ee7330') + '" stroke-width="8" stroke-linecap="round" transform="rotate(-90 90 90)"/>' +
       (porT ? '<g fill="none" stroke="#ffc861" stroke-width="7" stroke-linecap="round"><path class="mc" d="M90 52v40l24 14"/></g>' : '<path class="mc" d="M58 92l22 22 44-48" fill="none" stroke="#f4f1ef" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>') + '</svg></div>' +
-      '<h1>' + (porT ? 'Tempo encerrado' : 'Teste concluído!') + '</h1><p>' + (porT ? 'O teste foi finalizado com o que você respondeu. ' : 'Parabéns, <b>' + esc(String(E.jovem.nome || '').split(' ')[0]) + '</b>! ') + (E.demo ? 'Modo de testes: as respostas não são enviadas.' : 'Suas respostas foram salvas neste tablet e vão para a Classificação Final.') + '</p>' +
+      '<h1>' + (porT ? 'Tempo encerrado' : 'Teste concluído!') + '</h1><p>' + (porT ? 'O teste foi finalizado com o que você respondeu. ' : 'Parabéns, <b>' + esc(primeiroNome(E.jovem.nome)) + '</b>! ') + (E.demo ? 'Modo de testes: as respostas não são enviadas.' : 'Suas respostas foram salvas neste tablet e vão para a Classificação Final.') + '</p>' +
       '<div class="chips"><div class="chip"><b>' + mmss(res.tempo_seg) + '</b><span>tempo usado</span></div><div class="chip"><b>' + resp + ' de ' + tot + '</b><span>respondidas</span></div></div>' +
       '<span class="est" id="est2" style="background:rgba(63,166,107,.2);color:#9fe9bc">' + (online() ? 'Enviando…' : 'Será enviado quando houver internet') + '</span>' +
       '<div class="bs"><button type="button" class="bpri" id="outro">Fazer outro teste</button><button type="button" class="bsec" id="sair2">Sair</button></div><div class="volta">Voltando para a entrada em 20 s<i></i></div></div>';
@@ -360,7 +421,7 @@
   function pedirPIN() {
     var h = E.pacote && E.pacote.pin_hash;
     if (!h) { aviso('O PIN do avaliador ainda não foi definido em Configurações › Tablets.', 'erro'); return; }
-    var c = cofre({ tam: 4, numeros: true, aoCompletar: async function (cod, ui) {
+    var c = cofre({ tam: 4, numeros: true, rotulo: 'DIGITE O PIN', aoCompletar: async function (cod, ui) {
       ui.lendo();
       if ((await sha('cfpin:' + cod)) === h) { ui.ok('MODO AVALIADOR'); setTimeout(telaAvaliador, 700); } else ui.erro('PIN INCORRETO');
     } });
@@ -373,6 +434,7 @@
     app.innerHTML = topo('Modo avaliador', (tb.nome || '') + ' · versão ' + VERSAO_APP) + '<div class="miolo"><div class="av-l">' +
       '<div class="lin" style="--c:' + (online() ? '#3FA66B' : '#e0a100') + '"><b>Internet</b>' + (online() ? 'conectado' : 'sem internet') + '</div>' +
       '<div class="lin" style="--c:' + (n ? '#e0a100' : '#3FA66B') + '"><b>Resultados aguardando envio</b>' + n + '</div>' +
+      '<div class="lin" style="--c:' + (bateriaBaixa() ? '#c0392b' : '#3FA66B') + '"><b>Bateria</b>' + bateriaTxt() + '</div>' +
       '<div class="lin" style="--c:#2f6fd0"><b>Testes no tablet</b>' + (p.testes || []).length + '</div>' +
       '<div class="lin" style="--c:#2f6fd0"><b>Turmas de hoje</b>' + (tur.length ? tur.map(function (t) { return esc(t.nome + ' · ' + t.empresa); }).join('<br>') : 'nenhuma') + '</div>' +
       '<div class="lin" style="--c:#8a8486"><b>Última atualização</b>' + (E.ultimaSinc ? new Date(E.ultimaSinc).toLocaleString('pt-BR') : '—') + '</div>' +
@@ -391,11 +453,12 @@
     try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
     if (/[?&]teste\b/.test(location.search)) {
       var lig = false; try { lig = await rpc('tablet_modo_testes_ler', {}); } catch (e) {}
-      if (lig === true) { E.demo = true; E.chave = 'demo'; E.pacote = DEMO; telaEntrada(); aviso('Modo de testes: use TEST-01 ou TEST-02. PIN do avaliador: 1234.'); return; }
+      if (lig === true) { E.demo = true; E.chave = 'demo'; E.pacote = DEMO; if (!(await retomarAndamento())) { telaEntrada(); aviso('Modo de testes: use TEST-01 ou TEST-02. PIN do avaliador: 1234.'); } return; }
       app.innerHTML = '<div class="entrada"><h1>Modo de testes desligado</h1><p class="sub">O modo de testes do app está desligado em Configurações › Tablets' + (online() ? '' : ' (ou o aparelho está sem internet)') + '.</p></div>'; return;
     }
     E.chave = await kv.ler('chave'); E.pacote = (await kv.ler('pacote')) || null; E.ultimaSinc = await kv.ler('ultimaSinc');
     if (!E.chave) { telaLigar(); return; }
-    telaEntrada(); baixar(true).then(function (ok) { if (ok && !emTeste && !E.jovem) telaEntrada(); }); enviar();
+    if (!(await retomarAndamento())) telaEntrada();
+    baixar(true).then(function (ok) { if (ok && !emTeste && !E.jovem) telaEntrada(); }); enviar();
   })();
 })();

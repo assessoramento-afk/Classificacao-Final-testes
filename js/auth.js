@@ -17,7 +17,7 @@
   function moldura(conteudoCartao) {
     return '<main class="acesso">' + faixa() +
       '<div class="acesso-corpo"><section class="acesso-card">' + conteudoCartao + '</section>' +
-      '<p class="acesso-rodape">Kolping Estadual de São Paulo · versão ' + esc(C.versao) + '</p></div></main>';
+      '<p class="acesso-rodape">Kolping Estadual de São Paulo · versão ' + esc(C.versao) + ' · <span class="idioma-troca" translate="no"><button type="button" data-idioma="pt"' + (window.CF.idioma.atual() === 'pt' ? ' class="ativo"' : '') + '>PT</button> | <button type="button" data-idioma="en"' + (window.CF.idioma.atual() === 'en' ? ' class="ativo"' : '') + '>EN</button></span></p></div></main>';
   }
 
   /* ---------- Leitor "cofre digital" da entrada (anéis + logo do Projeto Gol) ---------- */

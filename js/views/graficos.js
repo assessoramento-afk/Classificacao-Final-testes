@@ -153,7 +153,7 @@
         cv.toBlob(function (b) { ok({ blob: b, url: cv.toDataURL('image/png'), w: W, h: H }); }, 'image/png');
       };
       img.onerror = function () { falha(new Error('Não foi possível gerar a imagem do gráfico.')); };
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgTexto(g, '#ffffff'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(window.CF.idioma ? window.CF.idioma.traduzirSVG(svgTexto(g, '#ffffff')) : svgTexto(g, '#ffffff'));
     });
   }
 
@@ -301,11 +301,11 @@
       box.innerHTML =
         '<div class="gf-topo"><div><h1>Olá, ' + esc(primeiroNome) + '!</h1><p class="dica">Gráficos do Projeto Gol Jovens Talentos</p></div>' +
           '<div class="gf-filtros">' + [['empresa', 'Empresas'], ['escola', 'Escolas'], ['todos', 'Todos']].map(function (x) {
-            return '<button type="button" class="pt-chip' + (st.tipo === x[0] ? ' on' : '') + '" data-tipo="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '<span class="gf-sep"></span>' + [['3m', 'Últimos 3 meses'], ['ano', 'Este ano'], ['tudo', 'Tudo']].map(function (x) {
+            return '<button type="button" class="pt-chip' + (st.tipo === x[0] ? ' on' : '') + '" data-tipo="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '<span class="gf-sep"></span>' + [['3m', '<span class="so-pc">Últimos </span>3 meses'], ['ano', 'Este ano'], ['tudo', 'Tudo']].map(function (x) {
             return '<button type="button" class="pt-chip' + (st.periodo === x[0] ? ' on' : '') + '" data-per="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
             '<select class="entrada gf-emp" id="gf-emp" aria-label="Empresa"><option value="">Empresa: todas</option>' + empresas.slice().sort(function (a, b) { return (a.nome_fantasia || '').localeCompare(b.nome_fantasia || ''); }).map(function (e) {
               return '<option value="' + e.id + '"' + (st.empresa === e.id ? ' selected' : '') + '>' + esc(e.nome_fantasia || e.razao_social) + '</option>'; }).join('') + '</select>' +
-            '<button type="button" class="btn btn-pri" id="gf-pdf">⬇ Baixar todos (PDF)</button></div></div>' +
+            '<button type="button" class="btn btn-pri gf-baixar" id="gf-pdf" title="Baixar todos (PDF)" aria-label="Baixar todos (PDF)">⬇ <span class="so-pc">Baixar todos (PDF)</span></button></div></div>' +
         '<div class="gf-kpis" style="--n:' + kpis.length + '">' + kpis.map(function (k) { return '<div class="card gf-k" style="--c:' + k[0] + '"><b>' + esc(String(k[1])) + '</b><span>' + esc(k[2]) + '</span><small>' + esc(k[3]) + '</small></div>'; }).join('') + '</div>' +
         '<div class="gf-l1">' + cartao('resultado') + cartao('meses') + '</div>' +
         '<div class="gf-l2' + (admin ? '' : ' gf-l2b') + '">' + cartao('areas') + (admin ? cartao('empresa') : '') +

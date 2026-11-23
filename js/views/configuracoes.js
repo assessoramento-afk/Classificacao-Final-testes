@@ -54,7 +54,7 @@
     if (sub === 'integracoes') return paginaIntegracoes(area);
     if (sub === 'feriados') return paginaFeriados(area);
     if (sub === 'escolas-cks') return paginaEscolas(area);
-    if (sub === 'tablets') return window.CF.testesTablet.tablets(area);
+    if (sub === 'tablets') { location.hash = '#/tablets'; return; }
     paginaInicial(area);
   };
 
@@ -102,7 +102,7 @@
         (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'perm', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
         (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
         card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
-        (window.CF.perm && window.CF.perm.pode && window.CF.perm.pode('banco_editar') ? card('tablets', 'integ', 'Tablets', 'Projeto Gol Testes · cadastro e situação dos tablets') : '') +
+        '' +
         card('saude', 'saude', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
@@ -239,7 +239,7 @@
         (m.ativo ? '<div class="aviso aviso-info">🛠<span><b>Modo manutenção ligado</b>' + (m.bloquear ? ' · lançamentos bloqueados para os avaliadores' : '') + ': “' + esc(m.mensagem || '') + '”</span></div>' : '') +
         '<section class="card bloco sd-bloco"><span class="lbl">Uso do Supabase · plano gratuito</span>' +
           barraUso('Banco de dados', u.banco_bytes, u.limite_banco_mb) + barraUso('Fotos e arquivos', u.arquivos_bytes, u.limite_arquivos_mb) +
-          ((pb >= 0.8 || pa >= 0.8) ? '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + (pb >= 0.8 ? 'O <b>banco de dados</b> passou de 80%: acima de 500 MB o plano gratuito fica somente leitura (o sistema para de gravar). ' : '') + (pa >= 0.8 ? 'As <b>fotos e arquivos</b> passaram de 80%: considere apagar fotos de processos antigos. ' : '') + 'Planeje a limpeza ou a troca de plano.</span></div>' : '') +
+          ((pb >= 0.8 || pa >= 0.8) ? '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + (pb >= 0.8 ? 'O <b>banco de dados</b> passou de 80%: acima de 500 MB o plano gratuito fica somente para leitura (o sistema para de gravar). ' : '') + (pa >= 0.8 ? 'As <b>fotos e arquivos</b> passaram de 80%: considere apagar fotos de processos antigos. ' : '') + 'Planeje a limpeza ou a troca de plano.</span></div>' : '') +
           '<details><summary class="dica">O que mais ocupa espaço</summary><div class="sd-tab">' + (u.tabelas || []).map(function (t) { return '<span>' + esc(t.tabela) + '</span><b>' + mb(t.bytes) + '</b>'; }).join('') +
             Object.keys(u.por_bucket || {}).map(function (b) { return '<span>arquivos · ' + esc(b) + '</span><b>' + mb(u.por_bucket[b]) + '</b>'; }).join('') + '</div></details>' +
           '<p class="dica" style="margin:0">O tráfego de dados (5 GB por mês no plano gratuito) só aparece no painel do Supabase: ' + (ref ? '<a href="https://supabase.com/dashboard/project/' + ref + '" target="_blank" rel="noopener">abrir painel</a>' : 'abra o painel') + '. ' +
@@ -546,7 +546,7 @@
           (st.agenda_id ? '<a class="btn btn-p" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/u/0/r/settings/calendar/' + btoa(st.agenda_id).replace(/=+$/, '') + '">Compartilhar / link Outlook</a>' : '') +
           '<button type="button" class="btn btn-p" id="ag-recon">Reconectar Google</button></div></section>' +
           (st.agenda_id ? '<section class="card" style="padding:12px 18px"><b>Agendas que o sistema lê</b><p class="dica" style="margin:2px 0 6px">As agendas marcadas aparecem na Agenda do sistema na cor escolhida, com o nome da agenda, e podem virar turma ou ser excluídas pelo sistema (com confirmação).</p><div id="ag-lidas"><div class="girando" style="margin:10px auto"></div></div></section>' : '') +
-          '<p class="dica">Para a equipe ver a agenda: no Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
+          '<p class="dica">Para a equipe ver a agenda: na Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
           'Para quem usa o Outlook: copie o <b>Endereço secreto no formato iCal</b> e, no Outlook, use <b>Adicionar calendário › Assinar da Web</b>. ' +
           'Se aparecer "ainda não autorizou a agenda", clique em <b>Reconectar Google</b> e entre com projetogol@kolpingsp.org.</p>' : '');
       var con = box.querySelector('#drv-con');
