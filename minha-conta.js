@@ -28,7 +28,10 @@
         '<section class="card bloco"><h2>Aparência</h2><span class="icone-card" aria-hidden="true">' + ui.icone('auto', 40) + '</span>' +
           '<div class="segmentos" role="group" aria-label="Tema">' +
             ['auto', 'escuro', 'claro'].map(function (k) { return '<button type="button" data-opcao-tema="' + k + '">' + esc(window.CF.tema.NOMES[k]) + '</button>'; }).join('') +
-          '</div><span class="dica">Automático segue o tema do seu celular ou computador.</span></section>' +
+          '</div><span class="dica">O modo Automático segue o tema do seu celular ou computador.</span></section>' +
+        '<section class="card bloco"><h2>Idioma</h2><span class="icone-card" aria-hidden="true" style="font-size:34px">🌐</span>' +
+          '<div class="segmentos" role="group" aria-label="Idioma">' + ['pt', 'en'].map(function (k) { return '<button type="button" data-opcao-idioma="' + k + '" translate="no" aria-pressed="' + (window.CF.idioma.atual() === k) + '"' + (window.CF.idioma.atual() === k ? ' class="ativo"' : '') + '>' + esc(window.CF.idioma.NOMES[k]) + '</button>'; }).join('') +
+          '</div><span class="dica">O idioma vale para as telas, os PDFs e as planilhas gerados neste aparelho.</span></section>' +
         '<section class="card bloco"><h2>Senha</h2><span class="icone-card" aria-hidden="true">' + ui.icone('cadeado', 40) + '</span>' +
           '<p>Para trocar a senha, informe a nova senha duas vezes.</p>' +
           '<button type="button" class="btn" id="b-senha">Trocar senha</button></section>' +

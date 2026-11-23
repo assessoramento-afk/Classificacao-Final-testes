@@ -222,7 +222,7 @@
           campo('fk-desc', 'O que observar (descrição neste teste)', c.descricao, { largo: true, area: true }) +
           '<label class="campo" for="fk-entrada"><span>Como o avaliador lança</span><select class="entrada" id="fk-entrada"><option value="nota"' + (c.entrada === 'nota' ? ' selected' : '') + '>Nota de 1 a 5</option><option value="pontuacao"' + (c.entrada === 'pontuacao' ? ' selected' : '') + '>Pontuação (convertida)</option></select></label>' +
           (t.tem_nivel ? '<label class="campo" for="fk-nivel"><span>Nível</span><select class="entrada" id="fk-nivel"><option value="">Todos</option><option value="iniciante"' + (c.nivel === 'iniciante' ? ' selected' : '') + '>Iniciante</option><option value="jovem_aprendiz"' + (c.nivel === 'jovem_aprendiz' ? ' selected' : '') + '>Jovem Aprendiz</option></select></label>' : '') +
-          '<div class="largo">' + marcar('fk-conta', 'Conta na nota', c.conta_na_nota, 'Desmarque só para critérios apenas informativos') + '</div></div>',
+          '<div class="largo">' + marcar('fk-conta', 'Conta na nota', c.conta_na_nota, 'Desmarque apenas para critérios informativos') + '</div></div>',
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Adicionar' : 'Salvar', principal: true, aoClicar: async function (f) {
           var sel = f.querySelector('#fk-comp').value, exib = limpo(f.querySelector('#fk-nome').value);
           var nv = f.querySelector('#fk-nivel');
@@ -378,7 +378,10 @@
 
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.banco = function (area, ctx) {
+    var mt = (window.location.hash || '').match(/^#\/banco\/tablet\/([0-9a-f-]{36})/);
+    if (mt && window.CF.testesTablet) { window.CF.testesTablet.editor(area, mt[1]); return; }
     var admin = ctx.perfil.perfil === 'admin';
+    var ondeAplica = 'todos';   // todos | tablet | papel
     var b = null, busca = '', inativos = false, abertas = {};
     var estado = { b: null, abertas: abertas, recarregar: function () { return recarregar(); } };
     var ed = window.CF.bancoEditor(estado);
@@ -392,6 +395,7 @@
       '<div class="barra barra-banco"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-b" placeholder="Buscar teste, código ou competência"></label>' +
         '<button type="button" class="btn btn-p" id="b-abrir">Abrir todas</button><button type="button" class="btn btn-p" id="b-fechar">Fechar todas</button>' +
         '<label class="marcar-linha"><input type="checkbox" id="b-inat"> Mostrar inativos</label></div>' +
+      '<div class="pt-chips bt-onde" role="group" aria-label="Onde é aplicado"><button type="button" class="pt-chip on" data-onde="todos">Todos</button><button type="button" class="pt-chip" data-onde="tablet">📱 No tablet</button><button type="button" class="pt-chip" data-onde="papel">📝 No papel</button></div>' +
       '<div id="areas" class="areas"><div class="girando" style="margin:30px auto"></div></div>';
 
     if (admin) {
@@ -401,6 +405,7 @@
     }
     area.querySelector('#busca-b').addEventListener('input', function (e) { busca = ui.normalizar(e.target.value); desenhar(); });
     area.querySelector('#b-inat').addEventListener('change', function (e) { inativos = e.target.checked; desenhar(); });
+    area.querySelectorAll('[data-onde]').forEach(function (bt) { bt.addEventListener('click', function () { ondeAplica = bt.getAttribute('data-onde'); area.querySelectorAll('[data-onde]').forEach(function (x) { x.classList.toggle('on', x === bt); }); desenhar(); }); });
     area.querySelector('#b-abrir').addEventListener('click', function () { gruposVisiveis().forEach(function (g) { abertas[g.id] = true; }); desenhar(); });
     area.querySelector('#b-fechar').addEventListener('click', function () { Object.keys(abertas).forEach(function (k) { delete abertas[k]; }); desenhar(); });
 
@@ -412,6 +417,8 @@
 
     function criteriosDe(tid) { return b.criterios.filter(function (c) { return c.teste_id === tid; }).sort(function (x, y) { return x.ordem - y.ordem; }); }
     function testeCombina(t) {
+      if (ondeAplica === 'tablet' && !t.tablet) return false;
+      if (ondeAplica === 'papel' && t.tablet) return false;
       if (!busca) return true;
       if (ui.normalizar(t.nome).indexOf(busca) >= 0) return true;
       if (t.codigo && ui.normalizar(t.codigo).replace(/-/g, '').indexOf(busca.replace(/-/g, '')) >= 0) return true;   // busca pelo código (T-K7M-4Q2)
@@ -481,7 +488,7 @@
       var usaPont = cs.some(function (c) { return c.entrada === 'pontuacao'; });
       var selos = [t.padrao ? 'Padrão' : null, t.tem_nivel ? 'Com nível' : null, null].filter(Boolean);
       return '<article class="teste-card" id="teste-' + t.id + '"><div class="teste-cab"><div class="teste-tit"><b>' + esc(t.nome) + '</b>' + (t.codigo ? '<span class="cod cod-teste" title="Código de referência do teste">' + esc(t.codigo) + '</span>' : '') +
-          '<div class="selos">' + '<span class="selo-mod">' + (t.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual') + '</span>' + selos.map(function (s) { return ui.pill(s, 'neu'); }).join('') + (!t.ativo ? ui.pill('Inativo', 'nao') : '') + '</div>' + '</div>' +
+          '<div class="selos">' + (function () { var tt = (b.tablet || []).filter(function (x) { return x.teste_id === t.id; })[0]; return t.tablet ? '<span class="selo-tab">📱 No tablet' + (tt && tt.versao_publicada ? ' · v' + tt.versao_publicada : ' · rascunho') + '</span>' : ''; })() + '<span class="selo-mod">' + (t.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual') + '</span>' + selos.map(function (s) { return ui.pill(s, 'neu'); }).join('') + (!t.ativo ? ui.pill('Inativo', 'nao') : '') + '</div>' + '</div>' +
           (admin ? '<div class="mini-acoes"><button type="button" class="ico" data-ed-teste="' + t.id + '" title="Editar teste" aria-label="Editar teste ' + esc(t.nome) + '">' + icone('lapis') + '</button>' +
             '<button type="button" class="ico perigo" data-ex-teste="' + t.id + '" title="Excluir teste" aria-label="Excluir teste ' + esc(t.nome) + '">' + icone('lixo') + '</button></div>' : '') + '</div>' +
         (t.descricao ? '<p class="teste-desc">' + esc(t.descricao) + '</p>' : '') +
@@ -497,6 +504,7 @@
         }).join('') : '<span class="dica">Sem competências</span>') + '</div>' +
         caixaMateriais(t) +
         '<div class="teste-pe">' + (admin ? '<button type="button" class="btn btn-p btn-comp-leve" data-add-comp="' + t.id + '">' + ui.icone('mais', 15) + 'Competência</button>' : '') +
+          (admin ? '<a class="btn btn-p" href="#/banco/tablet/' + t.id + '">📱 ' + (t.tablet ? 'Teste no tablet' : 'Aplicar no tablet') + '</a>' : '') +
           (usaPont ? '<button type="button" class="btn btn-p" data-conv="' + t.id + '">Tabela de conversão</button>' : '') + '</div>' +
         '</article>';
     }

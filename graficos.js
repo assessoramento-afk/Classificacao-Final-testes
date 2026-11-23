@@ -32,26 +32,62 @@
   }
 
   /* ---------- Gráficos (SVG) ---------- */
-  function gResultado(procs, P) {   // opção A: colunas lado a lado, com as quantidades
+  // degradês usados nos gráficos (cores das situações)
+  var GRAD = { aprovado: ['#2f8f57', '#7ee0a2'], backup: ['#b88a1a', '#f0c75e'], reprovado: ['#b8443e', '#ff8a80'], desistencia: ['#6f6869', '#a59d9e'] };
+  function defsGrad() {
+    return '<defs>' + Object.keys(GRAD).map(function (k) { return '<linearGradient id="gd-' + k + '" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + GRAD[k][0] + '"/><stop offset="1" stop-color="' + GRAD[k][1] + '"/></linearGradient>'; }).join('') +
+      '<linearGradient id="gd-lar" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c85a1e"/><stop offset="1" stop-color="#ff9a5a"/></linearGradient>' +
+      '<linearGradient id="gd-lar-v" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ee7330" stop-opacity=".35"/><stop offset="1" stop-color="#ee7330" stop-opacity="0"/></linearGradient></defs>';
+  }
+  function gResultado(procs, P) {   // estilo C: totais no topo + uma barra proporcional por processo
     var keys = ['aprovado', 'backup', 'reprovado', 'desistencia'];
     if (!procs.length) return null;
-    var max = 4; procs.forEach(function (p) { keys.forEach(function (k) { max = Math.max(max, p.cont[k]); }); });
-    max = Math.ceil(max / 4) * 4;
-    var gw = Math.max(96, Math.min(130, 560 / procs.length)), bw = Math.min(20, (gw - 18) / 4), W = 50 + procs.length * gw + 10, H = 250, base = 200, alt = 175, s = '';
-    for (var i = 0; i <= 4; i++) { var y = base - alt * i / 4; s += '<line x1="42" x2="' + (W - 6) + '" y1="' + y + '" y2="' + y + '" stroke="' + P.borda + '"/>' + t(36, y + 3.5, String(max * i / 4), { tam: 10, al: 'end', cor: P.texto3 }); }
-    procs.forEach(function (p, k) {
-      var x0 = 52 + k * gw + (gw - bw * 4 - 9) / 2;
-      keys.forEach(function (key, j) {
-        var v = p.cont[key], h = v / max * alt, x = x0 + j * (bw + 3);
-        s += '<rect x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(h, 0.5).toFixed(1) + '" rx="3" fill="' + CORES[key] + '"/>';
-        s += t((x + bw / 2).toFixed(1), (base - h - 4).toFixed(1), String(v), { tam: 10, al: 'middle', neg: true, cor: P.texto });
-      });
-      var cx = (52 + k * gw + gw / 2).toFixed(1);
-      s += t(cx, base + 17, p.empresa.length > 16 ? p.empresa.slice(0, 15) + '…' : p.empresa, { tam: 10.5, al: 'middle', cor: P.texto2 });
-      s += t(cx, base + 30, p.vaga.length > 18 ? p.vaga.slice(0, 17) + '…' : p.vaga, { tam: 9.5, al: 'middle', cor: P.texto3 });
+    var W = 620, s = defsGrad(), tot = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0 };
+    procs.forEach(function (p) { keys.forEach(function (k) { tot[k] += p.cont[k] || 0; }); });
+    var bw = (W - 3 * 10) / 4, CORT = { aprovado: '#3FA66B', backup: '#c99512', reprovado: '#D9534F', desistencia: P.texto2 };
+    keys.forEach(function (k, i) {   // 4 números grandes
+      var x = i * (bw + 10);
+      s += '<rect x="' + x + '" y="0" width="' + bw + '" height="58" rx="12" fill="' + P.trilho + '" stroke="' + P.borda + '"/>';
+      s += t(x + bw / 2, 30, String(tot[k]), { tam: 22, al: 'middle', neg: true, cor: CORT[k] });
+      s += t(x + bw / 2, 48, NOMES[k].toLowerCase(), { tam: 11, al: 'middle', cor: P.texto3 });
     });
-    var lx = 52; keys.forEach(function (k) { s += '<rect x="' + lx + '" y="' + (H - 8) + '" width="10" height="10" rx="2" fill="' + CORES[k] + '"/>' + t(lx + 15, H + 1, NOMES[k], { tam: 11, cor: P.texto2 }); lx += 26 + NOMES[k].length * 6.6; });
-    return { svg: s, w: W, h: H + 8 };
+    var y = 84;
+    procs.forEach(function (p) {
+      var n = keys.reduce(function (a, k) { return a + (p.cont[k] || 0); }, 0);
+      var nome = (p.empresa + ' · ' + p.vaga); if (nome.length > 62) nome = nome.slice(0, 61) + '…';
+      s += t(0, y, nome, { tam: 12.5, cor: P.texto });
+      s += t(W, y, n + ' jove' + (n === 1 ? 'm' : 'ns'), { tam: 11, al: 'end', cor: P.texto3 });
+      s += '<rect x="0" y="' + (y + 7) + '" width="' + W + '" height="14" rx="7" fill="' + P.trilho + '"/>';
+      var x = 0, clip = 'cl' + Math.random().toString(36).slice(2, 8);
+      s += '<clipPath id="' + clip + '"><rect x="0" y="' + (y + 7) + '" width="' + W + '" height="14" rx="7"/></clipPath><g clip-path="url(#' + clip + ')">';
+      keys.forEach(function (k) {
+        var v = p.cont[k] || 0; if (!v || !n) return;
+        var w = W * v / n;
+        s += '<rect x="' + x.toFixed(1) + '" y="' + (y + 7) + '" width="' + w.toFixed(1) + '" height="14" fill="url(#gd-' + k + ')"/>';
+        if (w > 26) s += t((x + w / 2).toFixed(1), y + 18, String(v), { tam: 10, al: 'middle', neg: true, cor: '#ffffff' });
+        x += w;
+      });
+      s += '</g>';
+      y += 40;
+    });
+    var lx = 0, ly = y + 4;   // legenda em duas linhas (cabe em qualquer largura)
+    keys.forEach(function (k, i) {
+      var cx = (i % 2) * 200, cy = ly + Math.floor(i / 2) * 20;
+      s += '<circle cx="' + (cx + 5) + '" cy="' + (cy - 4) + '" r="5" fill="' + GRAD[k][1] + '"/>' + t(cx + 15, cy, NOMES[k], { tam: 11.5, cor: P.texto2 });
+    });
+    return { svg: s, w: W, h: ly + 26 };
+  }
+  // Na tela, o "Resultado por processo" é HTML (letra legível no celular); o SVG fica para o PNG e o PDF
+  function htmlResultado(procs) {
+    var keys = ['aprovado', 'backup', 'reprovado', 'desistencia'], tot = { aprovado: 0, backup: 0, reprovado: 0, desistencia: 0 };
+    procs.forEach(function (p) { keys.forEach(function (k) { tot[k] += p.cont[k] || 0; }); });
+    return '<div class="gc-kpis">' + keys.map(function (k) { return '<div class="gc-k gc-' + k + '"><b>' + tot[k] + '</b><span>' + NOMES[k].toLowerCase() + '</span></div>'; }).join('') + '</div>' +
+      procs.map(function (p) {
+        var n = keys.reduce(function (a, k) { return a + (p.cont[k] || 0); }, 0);
+        return '<div class="gc-lin"><div class="gc-n"><span>' + esc(ui.titulo(p.empresa) + ' · ' + ui.titulo(p.vaga)) + '</span><small>' + n + ' jove' + (n === 1 ? 'm' : 'ns') + '</small></div><div class="gc-bar">' +
+          keys.map(function (k) { var v = p.cont[k] || 0; return v && n ? '<i class="gc-' + k + '" style="width:' + (100 * v / n).toFixed(2) + '%" title="' + NOMES[k] + ': ' + v + '">' + (v / n > .08 ? v : '') + '</i>' : ''; }).join('') + '</div></div>';
+      }).join('') +
+      '<div class="gc-leg">' + keys.map(function (k) { return '<span><i class="gc-' + k + '"></i>' + NOMES[k] + '</span>'; }).join('') + '</div>';
   }
   function gMeses(serie, P) {
     if (!serie.length) return null;
@@ -69,12 +105,12 @@
   }
   function gAreas(areas, P) {
     if (!areas.length) return null;
-    var W = 420, lh = 30, H = areas.length * lh + 10, s = '';
+    var W = 420, lh = 30, H = areas.length * lh + 10, s = defsGrad();
     areas.forEach(function (a, i) {
       var y = 10 + i * lh;
       s += t(0, y + 12, a.nome.length > 16 ? a.nome.slice(0, 15) + '…' : a.nome, { tam: 11.5, cor: P.texto2 });
       s += '<rect x="130" y="' + (y + 3) + '" width="230" height="10" rx="5" fill="' + P.trilho + '"/>';
-      s += '<rect x="130" y="' + (y + 3) + '" width="' + (a.v / 5 * 230).toFixed(1) + '" height="10" rx="5" fill="#ee7330"/>';
+      s += '<rect x="130" y="' + (y + 3) + '" width="' + (a.v / 5 * 230).toFixed(1) + '" height="10" rx="5" fill="url(#gd-lar)"/>';
       s += t(W - 4, y + 13, n1(a.v), { tam: 12, al: 'end', neg: true, cor: P.texto });
     });
     return { svg: s, w: W, h: H };
@@ -117,7 +153,7 @@
         cv.toBlob(function (b) { ok({ blob: b, url: cv.toDataURL('image/png'), w: W, h: H }); }, 'image/png');
       };
       img.onerror = function () { falha(new Error('Não foi possível gerar a imagem do gráfico.')); };
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgTexto(g, '#ffffff'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(window.CF.idioma ? window.CF.idioma.traduzirSVG(svgTexto(g, '#ffffff')) : svgTexto(g, '#ffffff'));
     });
   }
 
@@ -133,7 +169,7 @@
       var r = await Promise.all([dados.agenda.carregarTudo(), dados.jovens.todasParticipacoes(),
         admin ? window.CF.sb.rpc('acomp_listar', { p_proc: null }).then(function (x) { return x.error ? [] : x.data; }) : Promise.resolve([]),
         window.CF.agendaG ? window.CF.agendaG.eventosGoogle() : Promise.resolve([]), window.CF.agendaG ? window.CF.agendaG.coresAgendas() : Promise.resolve({}), window.CF.origensDados ? window.CF.origensDados().catch(function () { return null; }) : Promise.resolve(null)]);
-      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {}, gev: r[3] || [], coresG: r[4] || {}, ori: r[5] || { escolas: [], cks: [], origens: [] } };
+      base = { ag: r[0], parts: r[1], acomp: r[2] || [], cls: {}, gev: r[3] || [], coresG: r[4] || {}, ori: r[5] || { escolas: [], cks: [], origens: [] } }; try { base.esp = window.CF.agendaG ? await window.CF.agendaG.especiais() : []; } catch (e) { base.esp = []; }
     } catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
     var ag = base.ag, procs = ag.processos || [], empresas = ag.empresas || [];
     function nomeEmp(id, pid) { if (!id && pid && window.CF.nomeOrigens) return window.CF.nomeOrigens(base.ori, pid); var e = empresas.filter(function (x) { return x.id === id; })[0]; return e ? (e.nome_fantasia || e.razao_social || '') : ''; }
@@ -194,14 +230,40 @@
       var proximas = turmasF.map(function (x) { return { t: x, ds: diasTurma(x.id), p: ps.filter(function (y) { return y.id === x.processo_id; })[0] }; })
         .filter(function (x) { return x.ds.length && x.ds[x.ds.length - 1] >= h; });
       // eventos criados direto na Google Agenda também aparecem (marcados)
-      var coresG = base.coresG || {}; if (!st.empresa) (base.gev || []).forEach(function (g) { var nm = ((coresG[g.agenda_id] || {}).nome || g.agenda_nome || '').toLowerCase(); if (/assessoramento/.test(nm)) return; if ((g.data_fim || g.data_ini) >= h) proximas.push({ g: g, ds: g.data_fim && g.data_fim !== g.data_ini ? [g.data_ini, g.data_fim] : [g.data_ini] }); });
+      var coresG = base.coresG || {}; if (!st.empresa) (base.gev || []).forEach(function (g) { var nm = ((coresG[g.agenda_id] || {}).nome || g.agenda_nome || '').toLowerCase(); if (/assessoramento|feriado|holiday/i.test(nm + ' ' + (g.agenda_id || ''))) return; if (((coresG[g.agenda_id] || {}).proximas) === false) return; if (/anivers/i.test(g.titulo || '')) return; if ((g.data_fim || g.data_ini) >= h) proximas.push({ g: g, ds: g.data_fim && g.data_fim !== g.data_ini ? [g.data_ini, g.data_fim] : [g.data_ini] }); });
       proximas.sort(function (a, b) { return a.ds[0].localeCompare(b.ds[0]); });
-      var em15 = proximas.filter(function (x) { return !x.g && x.ds[0] <= limISO; });
+      var em15 = proximas.filter(function (x) { return x.ds[0] <= limISO; });   // turmas do sistema e da agenda (as mesmas da lista Próximas turmas)
       return {
         sit: { andamento: ps.filter(function (x) { return x.situacao === 'andamento'; }).length, montagem: ps.filter(function (x) { return x.situacao === 'montagem'; }).length, revisao: ps.filter(function (x) { return x.situacao === 'revisao'; }).length },
         em15: em15, proximas: proximas.slice(0, 10), avaliados: avaliados, nProcPeriodo: noPeriodo.length, tot: tot, totAll: totAll,
         res: res, meses: meses, areas: areas, ac: ac
       };
+    }
+
+    var SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+    function proximasHTML(d) {   // Próximas turmas · folhinha com o dia, barra da cor da agenda, feriados do sistema na data certa
+      var h = hoje(), itens = d.proximas.slice(), fim = itens.length ? itens[itens.length - 1].ds[0] : h;
+      var fer = (base.esp || []).filter(function (e) { return e.tipo === 'feriado' && e.data_ini >= h && e.data_ini <= fim; });
+      var nT = itens.filter(function (x) { return !x.g; }).length, nE = itens.length - nT;
+      var lista = itens.map(function (x) { return { d: x.ds[0], x: x }; }).concat(fer.map(function (e) { return { d: e.data_ini, f: e }; })).sort(function (a, b) { return a.d.localeCompare(b.d) || (a.f ? -1 : 1); });
+      function dia(ds) { var dt = new Date(ds + 'T12:00:00'); return '<div class="px-dt' + (ds === h ? ' hoje' : '') + '"><b>' + ds.slice(8, 10) + '</b><span>' + (ds === h ? 'hoje' : SEM[dt.getDay()]) + '</span></div>'; }
+      function quando(ds) { return ds.length > 1 ? (ds.length > 2 ? dataBR(ds[0]).slice(0, 5) + ' a ' + dataBR(ds[ds.length - 1]).slice(0, 5) : ds.map(function (z) { return dataBR(z).slice(0, 5); }).join(' e ')) + ' · ' : ''; }
+      var cores = base.coresG || {}, usadas = {};
+      var corpo = lista.map(function (it) {
+        if (it.f) return '<div class="px-fer">⚑ ' + dataBR(it.d).slice(0, 5) + ' · ' + SEM[new Date(it.d + 'T12:00:00').getDay()] + ' · feriado (' + esc(it.f.titulo) + ')</div>';
+        var x = it.x;
+        if (x.g) {
+          var c = cores[x.g.agenda_id] || {}, cor = c.cor || '#2f6fd0', nome = c.nome || x.g.agenda_nome || 'Google'; usadas[nome] = cor;
+          return '<div class="px-it" style="--c:' + cor + '">' + dia(x.ds[0]) + '<div class="px-inf"><b>' + esc(x.g.titulo) + '</b><small>' + esc(quando(x.ds) + (x.g.dia_inteiro ? 'dia inteiro' : window.CF.agendaG.hora(x.g.inicio) + ' – ' + window.CF.agendaG.hora(x.g.fim)) + ' · ' + nome) + '</small></div></div>';
+        }
+        usadas['Turmas do sistema'] = '#2f6fd0';
+        return '<div class="px-it" style="--c:#2f6fd0">' + dia(x.ds[0]) + '<div class="px-inf"><b>' + esc(x.t.nome) + '</b><small>' + esc(quando(x.ds) + ui.titulo(nomeEmp(x.p.empresa_id, x.p.id)) + ' · ' + ui.titulo(x.p.vaga)) + '</small></div></div>';
+      }).join('');
+      if (fer.length) usadas['Feriado'] = '#7d7577';
+      return '<section class="card gf-g"><div class="gf-cab"><div><h2>Próximas turmas</h2><p>Turmas do sistema e agendas escolhidas em Integrações</p></div><a class="btn btn-p" href="#/cadastros/turmas">Ver todas</a></div>' +
+        (lista.length ? '<div class="px-kp"><div><b>' + nT + '</b><span>turmas</span></div><div><b>' + nE + '</b><span>eventos</span></div><div><b>' + fer.length + '</b><span>feriado' + (fer.length === 1 ? '' : 's') + '</span></div></div>' + corpo +
+          '<div class="gc-leg">' + Object.keys(usadas).map(function (k) { return '<span><i style="background:' + usadas[k] + ';border-radius:3px"></i>' + esc(k) + '</span>'; }).join('') + '</div>'
+          : '<p class="dica" style="margin:18px 0">Nenhuma turma marcada.</p>') + '</section>';
     }
 
     var graficos = {};   // id → { titulo, sub, g(paleta) }
@@ -217,9 +279,10 @@
       if (!admin) delete graficos.empresa;
       function cartao(id, extra) {
         var gr = graficos[id], g = gr.f(P);
+        if (id === 'resultado' && g) return '<section class="card gf-g"><div class="gf-cab"><div><h2>' + esc(gr.titulo) + '</h2><p>' + esc(gr.sub) + '</p></div><button type="button" class="btn btn-p" data-png="' + id + '">⬇ Baixar</button></div>' + htmlResultado(d.res) + '</section>';
         return '<section class="card gf-g"><div class="gf-cab"><div><h2>' + esc(gr.titulo) + '</h2><p>' + esc(gr.sub) + '</p></div>' +
           (g ? '<button type="button" class="btn btn-p" data-png="' + id + '">⬇ Baixar</button>' : '') + '</div>' +
-          (g ? '<div class="gf-svg">' + svgTexto(g).replace('<svg ', '<svg role="img" aria-label="' + esc(gr.titulo) + '" style="width:100%;height:auto;max-width:' + g.w + 'px" ') + '</div>' : '<p class="dica" style="margin:18px 0">Ainda não há dados para este gráfico no período.</p>') + (extra || '') + '</section>';
+          (g ? '<div class="gf-svg">' + svgTexto(g).replace('<svg ', '<svg role="img" aria-label="' + esc(gr.titulo) + '" style="width:100%;height:auto" ') + '</div>' : '<p class="dica" style="margin:18px 0">Ainda não há dados para este gráfico no período.</p>') + (extra || '') + '</section>';
       }
       var aprov = d.totAll ? pct(d.tot.aprovado, d.totAll) : null;
       var kpis = [
@@ -238,20 +301,15 @@
       box.innerHTML =
         '<div class="gf-topo"><div><h1>Olá, ' + esc(primeiroNome) + '!</h1><p class="dica">Gráficos do Projeto Gol Jovens Talentos</p></div>' +
           '<div class="gf-filtros">' + [['empresa', 'Empresas'], ['escola', 'Escolas'], ['todos', 'Todos']].map(function (x) {
-            return '<button type="button" class="pt-chip' + (st.tipo === x[0] ? ' on' : '') + '" data-tipo="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '<span class="gf-sep"></span>' + [['3m', 'Últimos 3 meses'], ['ano', 'Este ano'], ['tudo', 'Tudo']].map(function (x) {
+            return '<button type="button" class="pt-chip' + (st.tipo === x[0] ? ' on' : '') + '" data-tipo="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '<span class="gf-sep"></span>' + [['3m', '<span class="so-pc">Últimos </span>3 meses'], ['ano', 'Este ano'], ['tudo', 'Tudo']].map(function (x) {
             return '<button type="button" class="pt-chip' + (st.periodo === x[0] ? ' on' : '') + '" data-per="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
             '<select class="entrada gf-emp" id="gf-emp" aria-label="Empresa"><option value="">Empresa: todas</option>' + empresas.slice().sort(function (a, b) { return (a.nome_fantasia || '').localeCompare(b.nome_fantasia || ''); }).map(function (e) {
               return '<option value="' + e.id + '"' + (st.empresa === e.id ? ' selected' : '') + '>' + esc(e.nome_fantasia || e.razao_social) + '</option>'; }).join('') + '</select>' +
-            '<button type="button" class="btn btn-pri" id="gf-pdf">⬇ Baixar todos (PDF)</button></div></div>' +
+            '<button type="button" class="btn btn-pri gf-baixar" id="gf-pdf" title="Baixar todos (PDF)" aria-label="Baixar todos (PDF)">⬇ <span class="so-pc">Baixar todos (PDF)</span></button></div></div>' +
         '<div class="gf-kpis" style="--n:' + kpis.length + '">' + kpis.map(function (k) { return '<div class="card gf-k" style="--c:' + k[0] + '"><b>' + esc(String(k[1])) + '</b><span>' + esc(k[2]) + '</span><small>' + esc(k[3]) + '</small></div>'; }).join('') + '</div>' +
         '<div class="gf-l1">' + cartao('resultado') + cartao('meses') + '</div>' +
         '<div class="gf-l2' + (admin ? '' : ' gf-l2b') + '">' + cartao('areas') + (admin ? cartao('empresa') : '') +
-          '<section class="card gf-g"><div class="gf-cab"><div><h2>Próximas turmas</h2><p>Turmas e eventos da Google Agenda</p></div><a class="btn btn-p" href="#/cadastros/turmas">Ver todas</a></div>' +
-          (d.proximas.length ? '<ul class="gf-lst">' + d.proximas.map(function (x) {
-            var q = x.ds[0] === hoje() ? 'hoje' + (x.ds[1] ? ' e ' + dataBR(x.ds[1]).slice(0, 5) : '') : x.ds.map(function (s) { return dataBR(s).slice(0, 5); }).join(' e ');
-            if (x.g) return '<li><span><b>' + esc(x.g.titulo) + '</b><span class="gtag"' + (function () { var c = (base.coresG || {})[x.g.agenda_id]; return c ? ' style="background:' + c.cor + ';color:' + window.CF.agendaG.textoSobre(c.cor) + '"' : ''; })() + '>' + esc(((base.coresG || {})[x.g.agenda_id] || {}).nome || x.g.agenda_nome || 'Google') + '</span><small>' + (x.g.dia_inteiro ? 'dia inteiro' : esc(window.CF.agendaG.hora(x.g.inicio) + '–' + window.CF.agendaG.hora(x.g.fim))) + '</small></span><span' + (x.ds[0] === hoje() ? ' class="gf-hoje"' : '') + '>' + esc(q) + '</span></li>';
-            return '<li><span><b>' + esc(x.t.nome) + '</b><small>' + esc((x.p.tipo === 'escola' ? '🎓 ' : '') + nomeEmp(x.p.empresa_id, x.p.id) + ' · ' + x.p.vaga) + '</small></span><span' + (x.ds[0] === hoje() ? ' class="gf-hoje"' : '') + '>' + esc(q) + '</span></li>'; }).join('') + '</ul>'
-            : '<p class="dica" style="margin:18px 0">Nenhuma turma marcada.</p>') + '</section></div>';
+          proximasHTML(d) + '</div>';
       box.querySelectorAll('[data-per]').forEach(function (b) { b.addEventListener('click', function () { st.periodo = b.getAttribute('data-per'); desenhar(); }); });
       box.querySelectorAll('[data-tipo]').forEach(function (b) { b.addEventListener('click', function () { st.tipo = b.getAttribute('data-tipo'); if (st.tipo === 'escola') st.empresa = ''; desenhar(); }); });
       box.querySelector('#gf-emp').addEventListener('change', function () { st.empresa = this.value; desenhar(); });

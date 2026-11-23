@@ -309,7 +309,7 @@
       '</div>' +
       (turmas.length ? '<section class="card bloco card-cor" style="--cor:var(--c-area)"><span class="lbl">Turmas do processo</span><div class="turmas-lista">' + turmas.map(function (t) {
         var dias = diasDaTurma(ag, t.id);
-        return '<div class="tlinha"><div class="tl-txt"><b>' + esc(t.nome) + '</b><small>' + esc(window.CF.datas.listaDias(dias)) + ' · ' + dias.length + ' dia' + (dias.length > 1 ? 's' : '') + (t.horario ? ' · ' + esc(t.horario) : '') + ' · ' + t.vagas + ' vagas</small></div>' +
+        return '<div class="tlinha"><div class="tl-txt"><b>' + esc(t.nome) + '</b><small>' + esc(window.CF.datas.listaDias(dias)) + ' · ' + dias.length + ' dia' + (dias.length > 1 ? 's' : '') + (t.horario ? ' · ' + esc(window.CF.datas.horario(t.horario)) : '') + ' · ' + t.vagas + ' vagas</small></div>' +
           (podeTurma ? '<div class="acoes"><button type="button" class="btn btn-p" data-ed-turma="' + t.id + '">Editar</button>' + '<button type="button" class="btn btn-p btn-perigo" data-ex-turma="' + t.id + '">Excluir</button>' + '</div>' : '') + '</div>';
       }).join('') + '</div><span class="dica">As datas ficam travadas na agenda. Remarcar uma turma libera os dias antigos e trava os novos.</span></section>' : '') +
       (montagem ? '<div class="aviso aviso-info">' + ui.icone('alerta', 18) + '<span>Para <b>iniciar</b>: pelo menos 1 turma, 1 jovem e 1 teste. Ao iniciar, a configuração de testes fica guardada e a lista de jovens de cada turma vai para os avaliadores. </span></div>' : '') +
@@ -418,7 +418,46 @@
     }
     j.elemento.querySelector('[data-qmenos]').addEventListener('click', function () { mudarQtd(qtd - 1); });
     j.elemento.querySelector('[data-qmais]').addEventListener('click', function () { mudarQtd(qtd + 1); });
+    // janela em etapas: Turma → Processo → Datas → Conferir (ao editar, abre direto no Conferir)
+    var cp = j.elemento.querySelector('.janela-corpo'), k = [].slice.call(cp.children);
+    var info = document.createElement('div'); info.className = 'card bloco';
+    info.innerHTML = '<p style="margin:0 0 4px"><b>' + esc(e.nome_fantasia || '') + '</b> · ' + esc(p.vaga || '') + '</p><p class="dica" style="margin:0">' + esc(p.identificacao || '') + ' · os testes são os do processo e valem para todas as turmas dele.</p>';
+    cp.insertBefore(info, k[1]);
+    window.CF.etapas(j, [
+      { nome: 'Turma', els: [k[0], k[3]], validar: function () { var v = parseInt(j.elemento.querySelector('#tu-vagas').value, 10); return !j.elemento.querySelector('#tu-nome').value.trim() ? 'Informe o nome da turma.' : (isNaN(v) || v < 1 || v > 60 ? 'Vagas entre 1 e 60.' : null); } },
+      { nome: 'Processo', els: [info] },
+      { nome: 'Datas', els: [k[1], k[2], k[4]], validar: function () { var c = cal.valor(); if (c.length !== qtd) return qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os ' + qtd + ' dias da turma.'; var r2 = c.filter(function (d) { var h = horas[d]; return h && (!h.inicio || !h.fim || h.fim <= h.inicio); })[0]; return r2 ? 'No dia ' + D.curta(r2) + ', o horário de fim precisa ser depois do início.' : null; } }
+    ], function () {
+      return [['Turma', esc(ui.maiusculas(j.elemento.querySelector('#tu-nome').value.trim())) + ' · ' + esc(j.elemento.querySelector('#tu-vagas').value) + ' vagas', 0],
+        ['Processo', esc((e.nome_fantasia || '') + ' · ' + (p.vaga || '')), null],
+        ['Datas', cal.valor().slice().sort().map(function (d) { var h = horas[d] || {}; return esc(D.curta(d) + ' (' + (h.inicio || '08:00') + ' – ' + (h.fim || '17:00') + ')'); }).join(' · '), 2],
+        ['Agenda', 'vai para "Classificação Final · Turmas"', null]];
+    }, { inicio: novo ? null : 'conferir' });
   }
+
+  /* ---------- "+ Nova turma" (Cadastros › Turmas e atalhos): escolhe escola ou empresa e abre as etapas ---------- */
+  window.CF.novaTurma = async function (ctx) {
+    var ag, empresas;
+    try { var r = await Promise.all([dados.agenda.carregarTudo(), dados.empresas.listar()]); ag = r[0]; empresas = r[1]; } catch (e) { erro(e); return; }
+    var abertos = (ag.processos || []).filter(function (p) { return p.tipo !== 'escola' && (p.situacao === 'montagem' || p.situacao === 'andamento'); });
+    var j = ui.janela({ titulo: 'Nova turma', largura: 560, confirmarDescarte: false,
+      corpo: '<p class="dica" style="margin:0 0 12px">Para quem é esta turma?</p>' +
+        '<button type="button" class="nt-op" data-nt="escola" style="--c:#2f6fd0"><span class="nt-ic">🎓</span><span><b>Profiling Escolas</b><small>Turma de alunos de escolas e CKs</small></span></button>' +
+        '<button type="button" class="nt-op" data-nt="empresa" style="--c:#ee7330"><span class="nt-ic">🏢</span><span><b>Profiling Empresas</b><small>Turma de um processo seletivo de empresa</small></span></button>' +
+        '<div id="nt-proc" style="display:none;margin-top:10px"><label class="campo"><span>Processo</span><select class="entrada" id="nt-sel">' +
+        (abertos.length ? abertos.map(function (p) { var e = porId(empresas, p.empresa_id) || {}; return '<option value="' + p.id + '">' + esc((e.nome_fantasia || '') + ' · ' + p.vaga + ' · ' + (p.identificacao || '')) + '</option>'; }).join('') : '<option value="">Nenhum processo em montagem ou em andamento</option>') +
+        '</select></label></div>',
+      botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Continuar →', principal: true, aoClicar: function (f) {
+        var tipo = (f.querySelector('.nt-op.on') || {}).getAttribute ? f.querySelector('.nt-op.on').getAttribute('data-nt') : null;
+        if (!tipo) { ui.toast('Escolha para quem é a turma.', 'erro'); return false; }
+        if (tipo === 'escola') { setTimeout(function () { novaTurmaEscola(ctx, ag); }, 30); return true; }
+        var pid = f.querySelector('#nt-sel').value, p = porId(ag.processos, pid);
+        if (!p) { ui.toast('Escolha o processo.', 'erro'); return false; }
+        setTimeout(function () { formTurma(p, null, ag, empresas, function () { if (window.CF.app && window.CF.app.recarregar) window.CF.app.recarregar(); else window.dispatchEvent(new HashChangeEvent('hashchange')); }); }, 30);
+        return true;
+      } }] });
+    j.elemento.querySelectorAll('.nt-op').forEach(function (b) { b.addEventListener('click', function () { j.elemento.querySelectorAll('.nt-op').forEach(function (x) { x.classList.toggle('on', x === b); }); j.elemento.querySelector('#nt-proc').style.display = b.getAttribute('data-nt') === 'empresa' ? '' : 'none'; }); });
+  };
 
   /* ---------- Materiais do processo ---------- */
   function verMateriais(p, e, testesProc, b, turmas, ag) {
@@ -526,6 +565,22 @@
     function mudarQtd(n) { qtd = Math.min(10, Math.max(1, n)); el.querySelector('#ne-qn').textContent = qtd + (qtd === 1 ? ' dia' : ' dias'); cal.definirMax(qtd); }
     el.querySelector('[data-qmenos]').addEventListener('click', function () { mudarQtd(qtd - 1); });
     el.querySelector('[data-qmais]').addEventListener('click', function () { mudarQtd(qtd + 1); });
+    // janela em etapas: Turma → Origem → Datas → Testes → Conferir
+    var k = [].slice.call(el.querySelector('.janela-corpo').children);
+    function nomeOri(key) { var o = opcoes.filter(function (x) { return x[0] === key; })[0]; return o ? o[1] + ' (' + o[2] + ')' : ''; }
+    window.CF.etapas(j, [
+      { nome: 'Turma', els: [k[0], k[4]], validar: function () { var v = parseInt(el.querySelector('#ne-vagas').value, 10); return !el.querySelector('#ne-nome').value.trim() ? 'Informe o nome da turma.' : (isNaN(v) || v < 1 || v > 60 ? 'Vagas entre 1 e 60.' : null); } },
+      { nome: 'Origem', els: [k[1]], validar: function () { return origens.length ? null : 'Escolha pelo menos uma escola ou CK.'; } },
+      { nome: 'Datas', els: [k[2]], validar: function () { var c = cal.valor(); if (c.length !== qtd) return qtd === 1 ? 'Escolha o dia da turma.' : 'Escolha os ' + qtd + ' dias da turma.'; var r2 = c.filter(function (d) { var h = horas[d]; return h && (!h.inicio || !h.fim || h.fim <= h.inicio); })[0]; return r2 ? 'No dia ' + D.curta(r2) + ', o horário de fim precisa ser depois do início.' : null; } },
+      { nome: 'Testes', els: [k[3]], validar: function () { return testes.some(function (t) { return marc[t.id]; }) ? null : 'Escolha pelo menos um teste.'; } }
+    ], function () {
+      var tst = testes.filter(function (t) { return marc[t.id]; }), nTab = tst.filter(function (t) { return t.tablet; }).length;
+      return [['Turma', esc(ui.maiusculas(el.querySelector('#ne-nome').value.trim())) + ' · ' + esc(el.querySelector('#ne-vagas').value) + ' vagas', 0],
+        ['Origem', esc(origens.map(nomeOri).join(' · ')), 1],
+        ['Datas', cal.valor().slice().sort().map(function (d) { var h = horas[d] || {}; return esc(D.curta(d) + ' (' + (h.inicio || '08:00') + ' – ' + (h.fim || '12:00') + ')'); }).join(' · '), 2],
+        ['Testes', tst.length + ' teste' + (tst.length === 1 ? '' : 's') + (nTab ? ' · ' + nTab + ' no tablet' : ''), 3],
+        ['Agenda', 'vai para "Classificação Final · Turmas"', null]];
+    });
   }
 
   async function assistente(proc, passoInicial, ctx, testesAtuais, tipoNovo) {

@@ -266,6 +266,7 @@
     wd.columns.forEach(function (col, k) { col.width = k === 1 ? 34 : (k < 12 ? 18 : 16); });
     wd.getRow(2).eachCell(function (cc) { if (typeof cc.value === 'number') cc.numFmt = '0.00'; });
 
+    if (window.CF.idioma) window.CF.idioma.traduzirPlanilha(wb);
     var buf = await wb.xlsx.writeBuffer();
     return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
@@ -428,6 +429,7 @@
       });
     });
 
+    if (window.CF.idioma) window.CF.idioma.traduzirPlanilha(wb);
     var buf = await wb.xlsx.writeBuffer();
     return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
@@ -487,6 +489,7 @@
     });
     wp.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 14 } };
 
+    if (window.CF.idioma) window.CF.idioma.traduzirPlanilha(wb);
     var buf = await wb.xlsx.writeBuffer();
     return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }

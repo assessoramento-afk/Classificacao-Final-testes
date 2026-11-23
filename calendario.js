@@ -19,6 +19,15 @@
   function curta(s) { var d = data(s); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }
   function longa(s) { var d = data(s); return SEMANA_LONGA[d.getDay()] + ' ' + curta(s); }
   function completa(s) { var d = data(s); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); }
+  // Horário no padrão do sistema: 08:00 – 12:00 (vários períodos separados por " · ")
+  function horario(txt) {
+    if (!txt) return '';
+    var h = String(txt).match(/(\d{1,2})(?:[:h](\d{2}))?(?::\d{2})?\s*h?/g) || [];
+    var hs = h.map(function (x) { var m = x.match(/(\d{1,2})(?:[:h](\d{2}))?/); return m ? ('0' + m[1]).slice(-2) + ':' + (m[2] || '00') : ''; }).filter(Boolean);
+    if (hs.length < 2) return String(txt);
+    var par = []; for (var i = 0; i + 1 < hs.length; i += 2) par.push(hs[i] + ' – ' + hs[i + 1]);
+    return par.join(' · ');
+  }
   function listaDias(lista) { return lista.slice().sort().map(longa).join(' e '); }
   function mesAno(ano, mes) { return MESES[mes] + ' ' + ano; }
 
@@ -73,6 +82,6 @@
   }
 
   window.CF.datas = { iso: iso, data: data, hoje: hoje, somarDias: somarDias, diasEntre: diasEntre, curta: curta, longa: longa, completa: completa,
-    listaDias: listaDias, mesAno: mesAno, MESES: MESES, SEMANA: SEMANA };
+    listaDias: listaDias, horario: horario, mesAno: mesAno, MESES: MESES, SEMANA: SEMANA };
   window.CF.calendario = { escolher: escolher };
 })();

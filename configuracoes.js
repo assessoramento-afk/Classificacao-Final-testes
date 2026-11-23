@@ -13,6 +13,7 @@
     'escolas-cks': '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
     feriados: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/>',
     'email-acomp': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    tablets: '<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
     integracoes: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
     permissoes: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.5"/>',
     empresas: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
@@ -53,6 +54,7 @@
     if (sub === 'integracoes') return paginaIntegracoes(area);
     if (sub === 'feriados') return paginaFeriados(area);
     if (sub === 'escolas-cks') return paginaEscolas(area);
+    if (sub === 'tablets') { location.hash = '#/tablets'; return; }
     paginaInicial(area);
   };
 
@@ -100,6 +102,7 @@
         (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'perm', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
         (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
         card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
+        '' +
         card('saude', 'saude', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
   }
 
@@ -236,7 +239,7 @@
         (m.ativo ? '<div class="aviso aviso-info">🛠<span><b>Modo manutenção ligado</b>' + (m.bloquear ? ' · lançamentos bloqueados para os avaliadores' : '') + ': “' + esc(m.mensagem || '') + '”</span></div>' : '') +
         '<section class="card bloco sd-bloco"><span class="lbl">Uso do Supabase · plano gratuito</span>' +
           barraUso('Banco de dados', u.banco_bytes, u.limite_banco_mb) + barraUso('Fotos e arquivos', u.arquivos_bytes, u.limite_arquivos_mb) +
-          ((pb >= 0.8 || pa >= 0.8) ? '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + (pb >= 0.8 ? 'O <b>banco de dados</b> passou de 80%: acima de 500 MB o plano gratuito fica somente leitura (o sistema para de gravar). ' : '') + (pa >= 0.8 ? 'As <b>fotos e arquivos</b> passaram de 80%: considere apagar fotos de processos antigos. ' : '') + 'Planeje a limpeza ou a troca de plano.</span></div>' : '') +
+          ((pb >= 0.8 || pa >= 0.8) ? '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + (pb >= 0.8 ? 'O <b>banco de dados</b> passou de 80%: acima de 500 MB o plano gratuito fica somente para leitura (o sistema para de gravar). ' : '') + (pa >= 0.8 ? 'As <b>fotos e arquivos</b> passaram de 80%: considere apagar fotos de processos antigos. ' : '') + 'Planeje a limpeza ou a troca de plano.</span></div>' : '') +
           '<details><summary class="dica">O que mais ocupa espaço</summary><div class="sd-tab">' + (u.tabelas || []).map(function (t) { return '<span>' + esc(t.tabela) + '</span><b>' + mb(t.bytes) + '</b>'; }).join('') +
             Object.keys(u.por_bucket || {}).map(function (b) { return '<span>arquivos · ' + esc(b) + '</span><b>' + mb(u.por_bucket[b]) + '</b>'; }).join('') + '</div></details>' +
           '<p class="dica" style="margin:0">O tráfego de dados (5 GB por mês no plano gratuito) só aparece no painel do Supabase: ' + (ref ? '<a href="https://supabase.com/dashboard/project/' + ref + '" target="_blank" rel="noopener">abrir painel</a>' : 'abra o painel') + '. ' +
@@ -543,7 +546,7 @@
           (st.agenda_id ? '<a class="btn btn-p" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/u/0/r/settings/calendar/' + btoa(st.agenda_id).replace(/=+$/, '') + '">Compartilhar / link Outlook</a>' : '') +
           '<button type="button" class="btn btn-p" id="ag-recon">Reconectar Google</button></div></section>' +
           (st.agenda_id ? '<section class="card" style="padding:12px 18px"><b>Agendas que o sistema lê</b><p class="dica" style="margin:2px 0 6px">As agendas marcadas aparecem na Agenda do sistema na cor escolhida, com o nome da agenda, e podem virar turma ou ser excluídas pelo sistema (com confirmação).</p><div id="ag-lidas"><div class="girando" style="margin:10px auto"></div></div></section>' : '') +
-          '<p class="dica">Para a equipe ver a agenda: no Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
+          '<p class="dica">Para a equipe ver a agenda: na Google Agenda da projetogol@, abra as configurações da agenda "Classificação Final · Turmas" › <b>Compartilhar com pessoas específicas</b> (ou disponibilizar para kolpingsp.org). ' +
           'Para quem usa o Outlook: copie o <b>Endereço secreto no formato iCal</b> e, no Outlook, use <b>Adicionar calendário › Assinar da Web</b>. ' +
           'Se aparecer "ainda não autorizou a agenda", clique em <b>Reconectar Google</b> e entre com projetogol@kolpingsp.org.</p>' : '');
       var con = box.querySelector('#drv-con');
@@ -562,13 +565,14 @@
             lista.map(function (a, i) {
               var corAtual = (lidas.filter(function (x) { return x.id === a.id; })[0] || {}).cor || 'azul', CA = window.CF.agendaG.CORES_AG;
               return '<div class="ag-li"><input type="checkbox" data-ag="' + i + '"' + (ids[a.id] ? ' checked' : '') + ' aria-label="Ler esta agenda"><div><b>' + esc(a.nome) + (a.principal ? ' (principal)' : '') + '</b><small>' + (/holiday|feriado/i.test(a.id + a.nome) ? 'agenda do Google · o sistema já tem os feriados' : (/contacts|anivers/i.test(a.id + a.nome) ? 'agenda automática do Google' : 'agenda da conta')) + '</small></div>' +
+                '<label class="ag-px" title="Mostrar os eventos desta agenda no cartão Próximas turmas (Gráficos)"><input type="checkbox" data-px="' + i + '"' + ((lidas.filter(function (x) { return x.id === a.id; })[0] || {}).proximas === false || /holiday|feriado/i.test(a.id + a.nome) ? '' : ' checked') + '> Próximas turmas</label>' +
                 '<span class="ag-cores" role="radiogroup" aria-label="Cor">' + Object.keys(CA).map(function (k) { return '<button type="button" class="ag-cor' + (k === corAtual ? ' on' : '') + '" data-cor="' + i + '|' + k + '" title="' + k + '" style="background:' + CA[k] + '"></button>'; }).join('') + '</span></div>';
             }).join('') + '</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="btn btn-pri btn-p" id="ag-lidas-salvar">Salvar agendas lidas</button></div>';
           boxL.querySelectorAll('.ag-cor').forEach(function (bt) {
             bt.addEventListener('click', function () { var i = bt.getAttribute('data-cor').split('|')[0]; boxL.querySelectorAll('.ag-cor[data-cor^="' + i + '|"]').forEach(function (x) { x.classList.remove('on'); }); bt.classList.add('on'); });
           });
           boxL.querySelector('#ag-lidas-salvar').addEventListener('click', function (ev) {
-            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var i = +c.getAttribute('data-ag'), a = lista[i], on = boxL.querySelector('.ag-cor.on[data-cor^="' + i + '|"]'); sel.push({ id: a.id, nome: a.nome, cor: on ? on.getAttribute('data-cor').split('|')[1] : 'azul' }); } });
+            var sel = []; boxL.querySelectorAll('[data-ag]').forEach(function (c) { if (c.checked) { var i = +c.getAttribute('data-ag'), a = lista[i], on = boxL.querySelector('.ag-cor.on[data-cor^="' + i + '|"]'); var px = boxL.querySelector('[data-px="' + i + '"]'); sel.push({ id: a.id, nome: a.nome, cor: on ? on.getAttribute('data-cor').split('|')[1] : 'azul', proximas: !!(px && px.checked) }); } });
             ui.executar(ev.currentTarget, 'Salvando…', async function () {
               try { var x = await window.CF.sb.rpc('agendas_lidas_salvar', { p: sel }); if (x.error) throw x.error; ui.toast('Agendas salvas. Atualizando…', 'ok'); await window.CF.agendaG.sincronizar(false); } catch (e) { erro(e); }
             });

@@ -82,7 +82,8 @@
         q(sb.from('materiais').select('*').order('nome')).catch(function () { return []; }),
         q(sb.from('teste_materiais').select('*').order('ordem')).catch(function () { return []; })
       ]);
-      return { areas: r[0], qualificacoes: r[1], competencias: r[2], testes: r[3], criterios: r[4], conversao: r[5], materiais: r[6], testeMateriais: r[7] };
+      var tt = []; try { var rt = await sb.from('teste_tablet').select('teste_id, versao_publicada, atualizado_em'); tt = rt.error ? [] : rt.data || []; } catch (e) { /* tabela ainda não criada */ }
+      return { areas: r[0], qualificacoes: r[1], competencias: r[2], testes: r[3], criterios: r[4], conversao: r[5], materiais: r[6], testeMateriais: r[7], tablet: tt };
     },
     salvarArea: function (a) { return salvar('areas', a); },
     salvarMaterial: function (m) { return salvar('materiais', m); },

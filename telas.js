@@ -46,15 +46,19 @@
   };
 
   // Cadastros: jovens e turmas (Fase 2). Endereços antigos de cadastros vão para Configurações.
+  window.CF.telas.tablets = function (area) {
+    if (!(window.CF.perm && window.CF.perm.pode && window.CF.perm.pode('banco_editar'))) { area.innerHTML = '<div class="card vazio">Sem permissão para ver os tablets.</div>'; return; }
+    window.CF.testesTablet.tablets(area);
+  };
   window.CF.telas.cadastros = function (area) {
     var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);
     if (m && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias'].indexOf(m[1]) >= 0) { window.location.replace('#/config/' + m[1]); return; }
     if (m && m[1] === 'jovens') { window.CF.telas.jovensTodos(area); return; }
     if (m && m[1] === 'turmas') { window.CF.telas.turmasTodas(area); return; }
-    area.innerHTML = cabecalho('Cadastros', 'Jovens e turmas dos processos seletivos') +
+    area.innerHTML = cabecalho('Cadastros', 'Turmas e jovens do Projeto Gol Jovens Talentos') +
       '<div class="cards-cfg">' +
-        '<a class="cfg" href="#/cadastros/jovens" style="--cor:var(--c-aval)" data-card="jovens"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg></span><div><b>Jovens</b><small>Todos os jovens cadastrados e o histórico de processos de cada um. O cadastro é feito dentro de cada processo.</small></div></a>' +
         '<a class="cfg" href="#/cadastros/turmas" style="--cor:var(--c-area)" data-card="turmas"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div><b>Turmas</b><small>Todas as turmas, com datas e jovens. Cada turma abre o Kit da turma: crachás, lista de presença por dia, termos e materiais.</small></div></a>' +
+        '<a class="cfg" href="#/cadastros/jovens" style="--cor:var(--c-aval)" data-card="jovens"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg></span><div><b>Jovens</b><small>Todos os jovens cadastrados e o histórico de processos de cada um. O cadastro é feito dentro de cada processo.</small></div></a>' +
       '</div>';
   };
 })();

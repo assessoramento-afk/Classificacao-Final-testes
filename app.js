@@ -11,7 +11,7 @@
   // Menu de cada perfil: [rota, texto, ícone]
   var esc = ui.esc;
   var MENUS = {
-    admin: [['painel', 'Gráficos', 'graficos'], ['escolas', 'Profiling Escolas', 'escola'], ['processos', 'Profiling Empresas', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['cadastros', 'Cadastros', 'cadastros'], ['banco', 'Banco de testes', 'banco'], ['config', 'Configurações', 'config']],
+    admin: [['painel', 'Gráficos', 'graficos'], ['cadastros', 'Cadastros', 'cadastros'], ['escolas', 'Profiling Escolas', 'escola'], ['processos', 'Profiling Empresas', 'processos'], ['acompanhamento', 'Acompanhamento', 'acomp'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco'], ['tablets', 'Tablets', 'tablet'], ['config', 'Configurações', 'config']],
     avaliador: [['escolas', 'Profiling Escolas', 'escola'], ['processos', 'Profiling Empresas', 'processos'], ['painel', 'Gráficos', 'graficos'], ['agenda', 'Agenda', 'agenda'], ['banco', 'Banco de testes', 'banco']],
     empresa: [['portal', 'Resultados', 'portal'], ['aprovados', 'Jovens aprovados', 'acomp']]
   };
@@ -35,6 +35,15 @@
   }
 
   /* ---------- Estrutura (menu lateral + topo) ---------- */
+  // aviso de pedidos de liberação de tablet pendentes no item "Tablets" do menu
+  async function avisoPedidos() {
+    var el = document.getElementById('menu-tb-ped'); if (!el) return;
+    var lk = el.closest('a'), ok = window.CF.perm && window.CF.perm.pode && window.CF.perm.pode('banco_editar');
+    if (lk) lk.style.display = ok ? '' : 'none'; if (!ok) return;
+    try { var r = await window.CF.sb.from('tablet_pedidos').select('id', { count: 'exact', head: true }).eq('situacao', 'pendente'); var n = r.count || 0; el.hidden = !n; el.textContent = n + (n === 1 ? ' pedido' : ' pedidos'); } catch (e) {}
+  }
+  setInterval(avisoPedidos, 60000);
+  window.CF.avisoPedidos = avisoPedidos;
   function montarShell() {
     var p = estado.perfil;
     var menu = MENUS[p.perfil] || [];
@@ -44,7 +53,7 @@
           '<div class="lateral-marca">' + ui.logo('kolping', 'k', 'Kolping Estadual São Paulo') +
           '<div class="lateral-prog">' + ui.logo('gol', '', 'Projeto Gol Jovens Talentos') + '<div><b>' + esc(C.nomeSistema) + '</b><small>' + esc(C.programa) + '</small></div></div></div>' +
           '<nav class="menu">' + menu.map(function (m) {
-            return '<a href="#/' + m[0] + '" data-rota="' + m[0] + '">' + ui.icone(m[2], 18) + '<span>' + esc(m[1]) + '</span></a>';
+            return '<a href="#/' + m[0] + '" data-rota="' + m[0] + '">' + ui.icone(m[2], 18) + '<span>' + esc(m[1]) + '</span>' + (m[0] === 'tablets' ? '<em class="menu-sel" id="menu-tb-ped" hidden></em>' : '') + '</a>';
           }).join('') + '</nav>' +
           '<div class="lateral-versao">Versão ' + esc(C.versao) + '</div>' +
         '</aside>' +
@@ -109,7 +118,7 @@
   function atualizarUsuario() {
     var p = estado.perfil; if (!p) return;
     var n = raiz.querySelector('#u-nome');
-    if (n) n.textContent = p.nome || p.email;
+    if (n) { n.textContent = p.nome || p.email; n.title = p.nome || p.email; }
     window.CF.foto.preencherAvatar(raiz.querySelector('#u-avatar'), p);
     window.CF.online.atualizarMeusDados(p);
   }
@@ -253,7 +262,7 @@
         telaMensagem('Cadastro aguardando aprovação', 'Olá, ' + (perfil.nome || '') + '! Seu cadastro foi recebido e precisa ser liberado por um administrador. Assim que for aprovado, você poderá entrar normalmente.', true);
         return;
       }
-      montarShell();
+      montarShell(); setTimeout(avisoPedidos, 1500); setTimeout(avisoPedidos, 5000);
     } catch (e) {
       console.error(e);
       telaMensagem('Não foi possível carregar', api.traduzErro(e), true);
@@ -278,11 +287,11 @@
     auth.mostrarAcesso(raiz, 'entrar', mensagem || null);
   }
 
-  // Conta usada para entrar: 'google', 'azure' ou null (e-mail e senha)
+  // Conta usada para entrar: 'google' ou null (e-mail e senha)
   window.CF.contaExterna = function () {
     var u = estado.sessao && estado.sessao.user; if (!u) return null;
     var prov = (u.app_metadata && u.app_metadata.provider) || '';
-    return prov === 'google' || prov === 'azure' ? prov : null;
+    return prov === 'google' ? prov : null;
   };
   sb.auth.onAuthStateChange(function (evento, sessao) {
     // O Supabase recomenda não aguardar chamadas ao banco dentro deste evento
@@ -301,7 +310,9 @@
         var mudouUsuario = !estado.sessao || !sessao || estado.sessao.user.id !== sessao.user.id;
         estado.sessao = sessao;
         if (window.location.hash.indexOf('access_token') >= 0) history.replaceState(null, '', window.location.pathname);
-        abrirSistema(mudouUsuario);
+        var esp = window.CF.esperaEntrada;   // efeito "ACESSO LIBERADO" da tela de entrada
+        if (esp && evento === 'SIGNED_IN') { window.CF.esperaEntrada = null; esp.then(function () { abrirSistema(mudouUsuario); }); }
+        else abrirSistema(mudouUsuario);
         return;
       }
       if (evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') { estado.sessao = sessao; }

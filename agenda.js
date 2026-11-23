@@ -78,9 +78,18 @@
     var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     var SEM = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
     area.innerHTML = '<header class="cabecalho"><div><h1>Agenda</h1><p>Turmas do sistema e eventos da Google Agenda "Classificação Final · Turmas"</p></div>' +
-      '<div class="botoes-topo">' + (window.CF.perm && window.CF.perm.pode('config_modelos') ? '<button type="button" class="btn" id="ag-pdf">⬆ Importar eventos (PDF)</button>' : '') + '<button type="button" class="btn" id="ag-sinc">⟳ Atualizar com o Google</button><a class="btn" id="ag-google" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/">Abrir no Google Agenda</a></div></header>' +
-      '<div id="ag"><div class="girando" style="margin:30px auto"></div></div>';
-    var box = area.querySelector('#ag');
+      '<div class="botoes-topo">' + (window.CF.perm && window.CF.perm.pode('config_modelos') ? '<button type="button" class="btn" id="ag-pdf">⬆ Importar eventos (PDF)</button>' : '') + '<button type="button" class="btn" id="ag-sinc">⟳ Atualizar com o Google</button><a class="btn" id="ag-google" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/">Abrir na Google Agenda</a></div></header>' +
+      '<div class="pt-chips" role="tablist" aria-label="Visão da agenda"><button type="button" class="pt-chip on" data-vis="cal">Calendário</button><button type="button" class="pt-chip" data-vis="google">Eventos do Google</button></div>' +
+      '<div id="ag"><div class="girando" style="margin:30px auto"></div></div><div id="ag-g" style="display:none"></div>';
+    var box = area.querySelector('#ag'), boxG = area.querySelector('#ag-g'), gCarregado = false;
+    area.querySelectorAll('[data-vis]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-vis');
+        area.querySelectorAll('[data-vis]').forEach(function (x) { x.classList.toggle('on', x === b); });
+        box.style.display = v === 'cal' ? '' : 'none'; boxG.style.display = v === 'google' ? '' : 'none';
+        if (v === 'google' && !gCarregado && window.CF.telas.turmasTodas) { gCarregado = true; window.CF.telas.turmasTodas(boxG, 'google'); }
+      });
+    });
     function pad(n) { return ('0' + n).slice(-2); }
     function hm(x) { return String(x || '').slice(0, 5); }
     async function carregar() {
@@ -120,11 +129,11 @@
       var tx = (x.hora ? '<b>' + esc(x.hora) + '</b> ' : '') + esc(x.titulo);
       if (x.tipo === 'esp') return '<span class="ag-it ag-esp" style="background:' + G.TIPOS_ESP[x.esp.tipo].cor + '" title="' + esc(x.titulo + ' · ' + x.sub) + '">' + esc(x.titulo) + '<small>' + esc(x.sub) + '</small></span>';
       return x.tipo === 'turma'
-        ? '<a class="ag-it ag-turma" href="' + x.link + '" title="' + esc(x.titulo + ' · ' + x.sub + (x.hora ? ' · ' + x.hora + '–' + x.fim : '')) + '">' + tx + '<small>' + esc(x.sub) + '</small></a>'
+        ? '<a class="ag-it ag-turma" href="' + x.link + '" title="' + esc(x.titulo + ' · ' + x.sub + (x.hora ? ' · ' + x.hora + ' – ' + x.fim : '')) + '">' + tx + '<small>' + esc(x.sub) + '</small></a>'
         : '<button type="button" class="ag-it ag-google" style="' + corG(x.g) + '" data-g="' + ds + '|' + i + '" title="' + esc(x.titulo + ' · na Google Agenda') + '">' + tx + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>';
     }
     function desenhar() {
-      var primeiro = new Date(ano, mes, 1), nDias = new Date(ano, mes + 1, 0).getDate(), estreito = window.matchMedia('(max-width: 720px)').matches;
+      var primeiro = new Date(ano, mes, 1), nDias = new Date(ano, mes + 1, 0).getDate(), estreito = window.matchMedia('(max-width: 900px)').matches;
       var nav = '<div class="ag-nav"><button type="button" class="btn btn-p" data-m="-1" aria-label="Mês anterior">‹</button><b>' + MESES[mes].charAt(0).toUpperCase() + MESES[mes].slice(1) + ' de ' + ano + '</b><button type="button" class="btn btn-p" data-m="1" aria-label="Próximo mês">›</button>' +
         '<button type="button" class="btn btn-p" data-m="0">Hoje</button>' + legenda() + '</div>';
       var corpo = '';
@@ -152,8 +161,8 @@
           var pr = b.getAttribute('data-g').split('|'), x = itensDoDia(pr[0])[+pr[1]], g = x.g;
           var podeEx = window.CF.perm && window.CF.perm.pode('processos_editar');
           var jg = ui.janela({ titulo: g.titulo, confirmarDescarte: false,
-            corpo: '<p style="margin:0 0 6px"><span class="gtag" style="margin:0">' + esc(g.agenda_nome || 'na Google Agenda') + '</span></p><p style="margin:0">' + (g.dia_inteiro ? D.longa(g.data_ini) + (g.data_fim !== g.data_ini ? ' a ' + D.longa(g.data_fim) : '') + ' · dia inteiro' : G.dia(g.inicio) + ' · ' + G.hora(g.inicio) + '–' + G.hora(g.fim)) + '</p>' +
-              '<p class="dica">Criado direto no Google. Se for uma turma, use "Criar turma a partir deste evento" em Cadastros › Turmas.</p>',
+            corpo: '<p style="margin:0 0 6px"><span class="gtag" style="margin:0">' + esc(g.agenda_nome || 'na Google Agenda') + '</span></p><p style="margin:0">' + (g.dia_inteiro ? D.longa(g.data_ini) + (g.data_fim !== g.data_ini ? ' a ' + D.longa(g.data_fim) : '') + ' · dia inteiro' : G.dia(g.inicio) + ' · ' + G.hora(g.inicio) + ' – ' + G.hora(g.fim)) + '</p>' +
+              '<p class="dica">Criado direto no Google. Se for uma turma, use "Criar turma a partir deste evento" em Agenda › Eventos do Google.</p>',
             botoes: (podeEx ? [{ texto: 'Excluir evento', aoClicar: async function () { if (await G.excluirEvento(g)) { carregar(); return true; } return false; } }] : []).concat([{ texto: 'Fechar', acao: 'fechar' }, { texto: 'Ir para Turmas', principal: true, aoClicar: function () { window.location.hash = '#/cadastros/turmas'; return true; } }]) });
         });
       });

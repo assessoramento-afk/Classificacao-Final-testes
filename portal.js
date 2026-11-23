@@ -60,7 +60,7 @@
     }).join('');
     var ct = a.contratado === true ? '<span class="tb-ct ok">' + flex(a.genero, 'Contratado', 'Contratada') + ' ✓</span>' : (a.contratado === false ? '<span class="tb-ct nao">Não ' + flex(a.genero, 'contratado', 'contratada') + '</span>' : '<span class="tb-ct">Contratado?</span>');
     return '<div class="tb"><div class="tb-st" style="--c:' + (COR[r.cls] || '#8a8486') + '"><b>● ' + (ROT[r.cls] || '') + '</b>' + (frase ? ' · ' + frase : '') + '</div>' +
-      '<div class="tb-barra">' + seg + ct + '</div><div class="tb-rot">' + ms.map(function (x) { return '<span>' + x.marco + ' meses' + (x.estado === 'feita' ? ' ✓' : '') + '</span>'; }).join('') + '<span class="tb-esp"></span></div></div>';
+      '<div class="tb-barra">' + seg + ct + '</div><div class="tb-rot">' + ms.map(function (x) { return '<span>' + x.marco + '<em class="tb-m"> meses</em>' + (x.estado === 'feita' ? ' ✓' : '') + '</span>'; }).join('') + '<span class="tb-esp"></span></div></div>';
   }
   function pendencias(lista) {
     var out = [];
@@ -404,9 +404,9 @@
         '<section class="card pt-tab"><div class="pt-filtros">' + [['todos', 'Todos'], ['atrasada', 'Atrasadas'], ['pendente', 'Aguardando'], ['concluido', 'Concluídos']].map(function (x) {
             return '<button type="button" class="pt-chip' + (st.filtro === x[0] ? ' on' : '') + '" data-f="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
           '<input class="entrada" id="ak-busca" type="search" placeholder="Buscar jovem, código ou empresa" value="' + esc(st.busca) + '"></div>' +
-          (vis.length ? '<div class="tabela-rolar"><table class="pt-rk"><thead><tr><th>Jovem</th><th>Aprovado em</th><th>Avaliações</th><th>Situação</th><th></th></tr></thead><tbody>' +
+          (vis.length ? '<div class="tabela-rolar"><table class="pt-rk acomp-tab"><thead><tr><th>Jovem</th><th>Aprovado em</th><th>Avaliações</th><th>Situação</th><th></th></tr></thead><tbody>' +
             vis.map(function (x, i) {
-              return '<tr style="--c:' + CORR[x.r.cls] + '"><td class="pt-nm pt-barra"><b>' + esc(x.a.nome) + '</b><small>' + esc(x.a.empresa + ' · ' + x.a.vaga + ' · ' + x.a.codigo + (x.a.contato_kolping ? ' · contato: ' + x.a.contato_kolping : '')) + '</small></td>' +
+              return '<tr style="--c:' + CORR[x.r.cls] + '"><td class="pt-nm pt-barra"><b>' + esc(x.a.nome) + '</b><small>' + esc(ui.titulo(x.a.empresa) + ' · ' + ui.titulo(x.a.vaga) + ' · ' + x.a.codigo + (x.a.contato_kolping ? ' · contato: ' + x.a.contato_kolping : '')) + '</small></td>' +
                 '<td>' + dataBR(x.a.aprovado_em) + '</td><td>' + trilha(x.a) + '</td>' +
                 '<td style="color:' + CORR[x.r.cls] + ';font-weight:700;font-size:13px">' + esc(x.r.txt) + '</td>' +
                 '<td><div class="ak-bts"><button type="button" class="btn btn-p" data-ver="' + x.a.participacao_id + '">Ver</button>' +

@@ -85,9 +85,9 @@
       if (!itens.length) { box.innerHTML = vazio(lista.length ? 'Nenhuma empresa encontrada.' : 'Nenhuma empresa cadastrada ainda. Use "Nova empresa".'); return; }
       box.innerHTML = '<div class="card tabela-card"><table class="tabela"><thead><tr><th>Empresa</th><th>CNPJ</th><th>Contato</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.map(function (e) {
-          var contato = [e.responsavel, e.telefone_responsavel || e.telefone, e.cidade ? e.cidade + (e.uf ? '/' + e.uf : '') : null].filter(Boolean).join(' · ') || '—';
+          var contato = [ui.titulo(e.responsavel), e.telefone_responsavel || e.telefone, e.cidade ? ui.titulo(e.cidade) + (e.uf ? '/' + e.uf : '') : null].filter(Boolean).join(' · ') || '—';
           return '<tr><td><div class="cel-empresa"><span class="logo-mini" data-logo="' + esc(e.logo_path || '') + '">' + (e.logo_path ? '' : 'SEM LOGO') + '</span>' +
-            '<div><b>' + esc(e.nome_fantasia) + '</b><small>' + esc(e.razao_social) + '</small></div></div></td>' +
+            '<div><b>' + esc(ui.titulo(e.nome_fantasia)) + '</b><small>' + esc(ui.titulo(e.razao_social)) + '</small></div></div></td>' +
             '<td class="num">' + esc(ui.formatarCNPJ(e.cnpj)) + '</td><td>' + esc(contato) + '</td>' +
             '<td>' + ui.pill(e.ativa ? 'Ativa' : 'Inativa', e.ativa ? 'sim' : 'nao') + '</td>' +
             '<td><div class="acoes"><button type="button" class="btn btn-p" data-editar="' + e.id + '">Editar</button></div></td></tr>';
@@ -395,7 +395,7 @@
             ['avaliador', 'admin', 'empresa'].map(function (k) { return '<option value="' + k + '"' + (p.perfil === k ? ' selected' : '') + '>' + NOMES_PERFIL[k] + '</option>'; }).join('') + '</select></label>' +
           '<label class="campo' + (p.perfil === 'empresa' ? '' : ' oculto') + '" for="fp-emp" id="fp-emp-box"><span>Empresa</span><select class="entrada" id="fp-emp"><option value="">Escolha a empresa…</option>' +
             empresasLista.map(function (e) { return '<option value="' + e.id + '"' + (p.empresa_id === e.id ? ' selected' : '') + '>' + esc(e.nome_fantasia) + '</option>'; }).join('') + '</select></label>' +
-          marcar('fp-ativo', 'Acesso ativo', p.ativo, 'Desativado, a pessoa não consegue entrar no sistema.'),
+          marcar('fp-ativo', 'Acesso ativo', p.ativo, 'Quando desativado, a pessoa não consegue entrar no sistema.'),
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar', principal: true, aoClicar: async function (fundo) {
           var perfil = fundo.querySelector('#fp-perfil').value, emp = fundo.querySelector('#fp-emp').value || null, ativo = fundo.querySelector('#fp-ativo').checked;
           if (perfil === 'empresa' && !emp) { ui.toast('Escolha a empresa.', 'erro'); return false; }

@@ -93,7 +93,7 @@
   var cacheCores = null;
   async function coresAgendas() {
     if (cacheCores) return cacheCores;
-    try { var r = await window.CF.sb.rpc('agenda_cores'); var m = {}; ((r && r.data) || []).forEach(function (a) { m[a.id] = { nome: a.nome, cor: CORES_AG[a.cor] || a.cor || CORES_AG.azul }; }); cacheCores = m; }
+    try { var r = await window.CF.sb.rpc('agenda_cores'); var m = {}; ((r && r.data) || []).forEach(function (a) { m[a.id] = { nome: a.nome, cor: CORES_AG[a.cor] || a.cor || CORES_AG.azul, proximas: a.proximas !== false }; }); cacheCores = m; }
     catch (e) { cacheCores = {}; }
     return cacheCores;
   }
