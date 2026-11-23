@@ -223,12 +223,25 @@
   /* =================== Configurações › Tablets =================== */
   async function tablets(area) {
     if (window.CF.avisoPedidos) window.CF.avisoPedidos();
-    area.innerHTML = '<header class="cabecalho"><div><h1>Tablets</h1><p>Tablets do Projeto Gol Testes · cada um tem nome, etiqueta e chave própria</p></div>' +
-      '<div class="botoes-topo"><button type="button" class="btn btn-pri" id="tb-qr">📷 Ler QR do tablet</button><button type="button" class="btn" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar com código</button></div></header><section class="card pt-tab" id="tb-ped"></section><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div>' +
-      '<p class="dica">Se um tablet sumir, use "Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p>' +
-      '<div class="tb-duas"><section class="card bloco" id="tb-inst"></section><div style="display:flex;flex-direction:column;gap:16px"><section class="card bloco" id="tb-pin"></section><section class="card bloco" id="tb-modo"></section></div></div>' +
-      '<section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section>' +
-      '<section class="card pt-tab" id="tb-hist"></section>';
+    var ABAS = [['lista', 'Tablets'], ['ped', 'Pedidos'], ['res', 'Resultados recebidos'], ['hist', 'Histórico'], ['conf', 'Instalar e configurar']];
+    var abaTb = 'lista'; try { abaTb = localStorage.getItem('cf_tb_aba') || 'lista'; } catch (e) {}
+    area.innerHTML = '<header class="cabecalho"><div><h1>Tablets</h1><p>Projeto Gol Testes · tablets liberados, pedidos, resultados e configurações do app</p></div>' +
+      '<div class="botoes-topo"><button type="button" class="btn" id="tb-etq">🖨 Imprimir etiquetas</button><button type="button" class="btn" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar com código</button><button type="button" class="btn btn-pri" id="tb-qr">📷 Ler QR do tablet</button></div></header>' +
+      '<div class="tb-kp" id="tb-kp"></div>' +
+      '<nav class="tb-abas" role="tablist">' + ABAS.map(function (a) { return '<button type="button" role="tab" data-tbaba="' + a[0] + '">' + a[1] + '<em id="tb-n-' + a[0] + '" hidden></em></button>'; }).join('') + '</nav>' +
+      '<div class="tb-pn" data-pn="lista"><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div><p class="dica">Se um tablet sumir, use "⋯ › Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p></div>' +
+      '<div class="tb-pn" data-pn="ped"><section class="card pt-tab" id="tb-ped"></section></div>' +
+      '<div class="tb-pn" data-pn="res"><section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section></div>' +
+      '<div class="tb-pn" data-pn="hist"><section class="card pt-tab" id="tb-hist"></section></div>' +
+      '<div class="tb-pn" data-pn="conf"><div class="tb-duas"><section class="card bloco" id="tb-inst"></section><div style="display:flex;flex-direction:column;gap:16px"><section class="card bloco" id="tb-pin"></section><section class="card bloco" id="tb-modo"></section></div></div></div>';
+    function irAba(a) {
+      abaTb = a; try { localStorage.setItem('cf_tb_aba', a); } catch (e) {}
+      area.querySelectorAll('[data-tbaba]').forEach(function (b) { var on = b.getAttribute('data-tbaba') === a; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
+      area.querySelectorAll('.tb-pn').forEach(function (p) { p.hidden = p.getAttribute('data-pn') !== a; });
+    }
+    area.querySelectorAll('[data-tbaba]').forEach(function (b) { b.addEventListener('click', function () { irAba(b.getAttribute('data-tbaba')); }); });
+    irAba(abaTb);
+    function contaAba(a, n) { var e = area.querySelector('#tb-n-' + a); if (!e) return; e.hidden = n == null; e.textContent = n == null ? '' : n; }
     var lista = [];
     // Instalação no tablet: link e QR Code do app (mesma publicação, pasta testes/)
     var urlApp = location.origin + location.pathname.replace(/[^/]*$/, '') + 'testes/';
@@ -259,6 +272,7 @@
       try { ps = await q(sb.from('tablet_pedidos').select('id,codigo,aparelho,sistema,navegador,situacao,criado_em,decidido_em,tablet_id').order('criado_em', { ascending: false }).limit(60)); }
       catch (e) { b.innerHTML = '<h2>Pedidos de liberação</h2><p class="dica">Falta rodar o SQL da versão 4.19.0.</p>'; return; }
       var pend = ps.filter(function (x) { return x.situacao === 'pendente'; }), dec = ps.filter(function (x) { return x.situacao !== 'pendente'; }).slice(0, 15);
+      contaAba('ped', pend.length || null); var kp0 = area.querySelector('#tb-kp'); kp0.setAttribute('data-ped', pend.length); var kb = kp0.querySelector('[data-kped] b'); if (kb) kb.textContent = pend.length;
       var COR = { pendente: '#e0a100', liberado: '#3FA66B', rejeitado: '#D9534F' };
       function lin(x) { return '<tr style="--c:' + COR[x.situacao] + '"><td><b>' + esc(x.codigo.slice(0, 3) + '-' + x.codigo.slice(3)) + '</b></td><td>' + esc([x.aparelho, x.sistema, x.navegador].filter(Boolean).join(' · ')) + '</td><td>' + new Date(x.criado_em).toLocaleString('pt-BR') + '</td>' +
         '<td><span class="pill" style="background:color-mix(in srgb,' + COR[x.situacao] + ' 15%,transparent);color:' + COR[x.situacao] + '">' + x.situacao + '</span>' + (x.decidido_em ? '<br><small class="dica">' + new Date(x.decidido_em).toLocaleString('pt-BR') + '</small>' : '') + '</td>' +
@@ -313,16 +327,20 @@
       b.querySelector('#tb-modo-v').addEventListener('change', async function (e) { try { var r = await sb.rpc('tablet_modo_testes', { p_ligado: e.target.checked }); if (r.error) throw r.error; ui.toast(e.target.checked ? 'Modo de testes ligado.' : 'Modo de testes desligado.', 'ok'); modoBox(); historico(); } catch (er) { ui.toast(api.traduzErro(er), 'erro'); modoBox(); } });
     }
     /* ---------- Histórico ---------- */
+    var filtroHist = null;
     async function historico() {
       var b = area.querySelector('#tb-hist'), hs = [], pessoas = [];
       try { hs = await q(sb.from('tablet_historico').select('*').order('em', { ascending: false }).limit(40)); } catch (e) { b.innerHTML = ''; return; }
       try { pessoas = await q(sb.from('perfis').select('id,nome')); } catch (e) {}
       function pn(id) { var x = pessoas.filter(function (p) { return p.id === id; })[0]; return x ? x.nome : (id ? '—' : 'o próprio tablet'); }
       function tn(id) { var t = lista.filter(function (x) { return x.id === id; })[0]; return t ? t.nome : ''; }
-      b.innerHTML = '<h2>Histórico dos tablets</h2>' + (hs.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Quando</th><th>O quê</th><th>Tablet</th><th>Quem</th></tr></thead><tbody>' +
+      if (filtroHist) hs = hs.filter(function (h) { return h.tablet_id === filtroHist; });
+      b.innerHTML = '<h2>Histórico dos tablets' + (filtroHist ? ' · ' + esc(tn(filtroHist)) + ' <button type="button" class="btn btn-p" id="tb-hist-todos">Ver todos</button>' : '') + '</h2>' + (hs.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Quando</th><th>O quê</th><th>Tablet</th><th>Quem</th></tr></thead><tbody>' +
         hs.map(function (h) { return '<tr><td>' + new Date(h.em).toLocaleString('pt-BR') + '</td><td><b>' + esc(h.acao) + '</b>' + (h.detalhe ? '<br><small class="dica">' + esc(h.detalhe) + '</small>' : '') + '</td><td>' + esc(tn(h.tablet_id)) + '</td><td>' + esc(pn(h.por)) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="dica">Nada registrado ainda.</p>');
+      var vt = b.querySelector('#tb-hist-todos'); if (vt) vt.addEventListener('click', function () { filtroHist = null; historico(); });
     }
     area.querySelector('#tb-qr').addEventListener('click', lerQR);
+    area.querySelector('#tb-etq').addEventListener('click', etiquetas);
     modoBox(); pedidos();
     var pedTimer = setInterval(function () { if (!document.body.contains(area.querySelector('#tb-ped'))) { clearInterval(pedTimer); return; } pedidos(); }, 20000);
     // Resultados recebidos (últimos 200) com "Ver respostas"
@@ -369,25 +387,54 @@
       if (x.ultima_conexao && (Date.now() - new Date(x.ultima_conexao)) > 7 * 864e5) return ['Desatualizado', 'nao', '#D9534F'];
       return ['Pronto', 'ok', '#3FA66B'];
     }
+    var filtroTb = 'todos'; try { filtroTb = localStorage.getItem('cf_tb_filtro') || 'todos'; } catch (e) {}
+    function grupo(x) { var s = situacao(x)[0]; return s === 'Pronto' ? 'prontos' : s === 'Desativado' ? 'desativados' : s === 'Desatualizado' ? 'desatualizados' : 'pendentes'; }
+    function quando(d) { if (!d) return '—'; var t = new Date(d), h = new Date(); var ontem = new Date(h); ontem.setDate(h.getDate() - 1);
+      var hm = t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return t.toDateString() === h.toDateString() ? 'hoje ' + hm : t.toDateString() === ontem.toDateString() ? 'ontem ' + hm : t.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + hm; }
     function desenhar() {
       var box = area.querySelector('#tb-lista');
-      if (!lista.length) { box.innerHTML = '<section class="card bloco"><p class="dica">Nenhum tablet cadastrado ainda. Use "Cadastrar tablet" e digite o código no app Projeto Gol Testes.</p></section>'; return; }
+      var cont = { todos: lista.length, prontos: 0, pendentes: 0, desatualizados: 0, desativados: 0 }; lista.forEach(function (x) { cont[grupo(x)]++; });
+      contaAba('lista', lista.length);
+      var kp = area.querySelector('#tb-kp'), nPed = +(kp.getAttribute('data-ped') || 0);
+      kp.innerHTML = [['prontos', 'prontos', '#3FA66B'], ['pendentes', 'com envio pendente', '#e0a100'], ['desatualizados', 'desatualizados', '#D9534F'], ['desativados', 'desativados', '#8a8486']].map(function (k) {
+        return '<button type="button" class="tb-k" data-kf="' + k[0] + '" style="--c:' + k[2] + '"><b>' + cont[k[0]] + '</b><span>' + k[1] + '</span></button>'; }).join('') +
+        '<button type="button" class="tb-k" data-kped="1" style="--c:#ee7330"><b>' + nPed + '</b><span>pedidos aguardando</span></button>';
+      kp.querySelectorAll('[data-kf]').forEach(function (b) { b.addEventListener('click', function () { filtroTb = b.getAttribute('data-kf'); try { localStorage.setItem('cf_tb_filtro', filtroTb); } catch (e) {} irAba('lista'); desenhar(); }); });
+      kp.querySelector('[data-kped]').addEventListener('click', function () { irAba('ped'); });
+      if (!lista.length) { box.innerHTML = '<section class="card bloco"><p class="dica">Nenhum tablet cadastrado ainda. Use "📷 Ler QR do tablet" (o tablet mostra o QR ao abrir o app) ou "Cadastrar com código".</p></section>'; return; }
       var bus = ui.normalizar(buscaTb || '');
-      var vis = lista.filter(function (x) { return !bus || ui.normalizar([x.nome, x.etiqueta, x.imei, x.numero_serie, x.email_conta, x.modelo].join(' ')).indexOf(bus) >= 0; });
-      box.innerHTML = '<div class="pt-filtros"><input class="entrada" type="search" id="tb-busca" placeholder="Buscar por nome, IMEI, série ou e-mail" value="' + esc(buscaTb || '') + '"><button type="button" class="btn" id="tb-etq">🖨 Imprimir etiquetas</button></div>' +
-        (vis.length ? '' : '<p class="dica">Nenhum tablet encontrado nessa busca.</p>') +
-        '<section class="card tabela-card"><div class="tabela-rolar"><table class="tabela"><thead><tr><th>Tablet</th><th>Situação</th><th>Última conexão</th><th>Identificação</th><th>Testes</th><th>Aguardando envio</th><th></th></tr></thead><tbody>' +
-        vis.map(function (x) { var s = situacao(x); return '<tr style="--c:' + s[2] + '"><td><b>' + esc(x.nome) + '</b><small style="display:block;color:var(--texto-3)">' + esc([x.etiqueta ? 'etiqueta ' + x.etiqueta : '', x.modelo || ''].filter(Boolean).join(' · ') || '—') + '</small></td><td>' + ui.pill(s[0], s[1]) + '</td><td>' + dataHora(x.ultima_conexao) + '</td>' + '<td class="tb-id">' + [x.imei ? '<span><em>IMEI</em>' + esc(x.imei) + '</span>' : '', x.numero_serie ? '<span><em>Série</em>' + esc(x.numero_serie) + '</span>' : '', x.email_conta ? '<span><em>Conta</em>' + esc(x.email_conta) + '</span>' : '', x.liberado_por_email ? '<span><em>Liberado por</em>' + esc(x.liberado_por_email) + '</span>' : ''].join('') + (x.imei || x.numero_serie || x.email_conta || x.liberado_por_email ? '' : '<span class="dica">—</span>') + '</td>' + '<td>' + esc(x.testes_versao || '—') + '</td><td>' + (x.pendentes || 0) + '</td>' +
-          '<td class="acoes"><button type="button" class="btn btn-p" data-ed="' + x.id + '">Editar</button><button type="button" class="btn btn-p" data-cod="' + x.id + '">Novo código</button><button type="button" class="btn btn-p' + (x.ativo ? ' perigo' : '') + '" data-at="' + x.id + '">' + (x.ativo ? 'Desativar' : 'Ativar') + '</button></td></tr>'; }).join('') + '</tbody></table></div></section>';
+      var vis = lista.filter(function (x) { return (filtroTb === 'todos' || grupo(x) === filtroTb) && (!bus || ui.normalizar([x.nome, x.etiqueta, x.imei, x.numero_serie, x.email_conta, x.modelo].join(' ')).indexOf(bus) >= 0); });
+      var NF = [['todos', 'Todos'], ['prontos', 'Prontos'], ['pendentes', 'Pendentes'], ['desatualizados', 'Desatualizados'], ['desativados', 'Desativados']];
+      box.innerHTML = '<div class="pt-filtros tb-fl"><input class="entrada" type="search" id="tb-busca" placeholder="Buscar por nome, IMEI, série ou e-mail" value="' + esc(buscaTb || '') + '">' +
+        NF.map(function (f) { return '<button type="button" class="pt-chip' + (filtroTb === f[0] ? ' on' : '') + '" data-tbf="' + f[0] + '">' + f[1] + ' <span class="pt-n">' + cont[f[0]] + '</span></button>'; }).join('') + '</div>' +
+        (vis.length ? '<div class="tb-gr">' + vis.map(function (x) {
+          var s = situacao(x), num = String(x.etiqueta || x.nome.replace(/\D/g, '') || '?').slice(0, 3);
+          var st2 = s[0] === 'Envio pendente' && x.pendentes ? x.pendentes + ' a enviar' : s[0];
+          return '<article class="tb-c" style="--c:' + s[2] + '"><div class="tb-h"><span class="tb-num">' + esc(num) + '</span><div><b>' + esc(x.nome) + '</b><small>' + esc(x.modelo || 'modelo não informado') + '</small></div></div>' +
+            '<span class="tb-st" style="background:color-mix(in srgb,' + s[2] + ' 14%,transparent);color:' + s[2] + '">● ' + esc(st2) + '</span>' +
+            '<div class="tb-li"><i>ÚLTIMA CONEXÃO</i>' + quando(x.ultima_conexao) + '<br><i>IMEI</i>' + esc(x.imei || '—') + '<br><i>CONTA</i>' + esc(x.email_conta || '—') + (x.liberado_por_email ? '<br><i>LIBERADO POR</i>' + esc(x.liberado_por_email) : '') + '</div>' +
+            '<div class="tb-ac"><button type="button" class="btn btn-p" data-ed="' + x.id + '">Editar</button><button type="button" class="btn btn-p" data-cod="' + x.id + '">Novo código</button><button type="button" class="btn btn-p tb-mais" data-mais="' + x.id + '" aria-label="Mais opções de ' + esc(x.nome) + '">⋯</button></div></article>';
+        }).join('') + '</div>' : '<p class="dica">Nenhum tablet nesse filtro ou busca.</p>');
+      box.querySelectorAll('[data-tbf]').forEach(function (b) { b.addEventListener('click', function () { filtroTb = b.getAttribute('data-tbf'); try { localStorage.setItem('cf_tb_filtro', filtroTb); } catch (e) {} desenhar(); }); });
       box.querySelectorAll('[data-cod]').forEach(function (b) { b.addEventListener('click', async function () { try { mostrarCodigo(await q(sb.rpc('tablet_novo_codigo', { p_tablet: b.getAttribute('data-cod') }))); carregar(); } catch (e) { erro(e); } }); });
-      box.querySelectorAll('[data-at]').forEach(function (b) { b.addEventListener('click', async function () {
-        var x = lista.filter(function (y) { return y.id === b.getAttribute('data-at'); })[0];
-        if (x.ativo && !(await ui.confirmar('Desativar ' + x.nome + '?', 'A chave deste tablet para de funcionar na hora. Para usar de novo, gere um novo código.', 'Desativar', 'Cancelar'))) return;
-        try { await q(sb.rpc('tablet_ativar', { p_tablet: x.id, p_ativo: !x.ativo })); carregar(); } catch (e) { erro(e); }
-      }); });
       box.querySelectorAll('[data-ed]').forEach(function (b) { b.addEventListener('click', function () { form(lista.filter(function (y) { return y.id === b.getAttribute('data-ed'); })[0]); }); });
+      box.querySelectorAll('[data-mais]').forEach(function (b) { b.addEventListener('click', function () { maisOpcoes(lista.filter(function (y) { return y.id === b.getAttribute('data-mais'); })[0]); }); });
       var ib = box.querySelector('#tb-busca'); ib.addEventListener('input', function () { buscaTb = ib.value; var pos = ib.selectionStart; desenhar(); var n = area.querySelector('#tb-busca'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} });
-      box.querySelector('#tb-etq').addEventListener('click', etiquetas);
+    }
+    function maisOpcoes(x) {
+      var j = ui.janela({ titulo: x.nome, largura: 420, confirmarDescarte: false,
+        corpo: '<div class="tb-menu"><button type="button" class="btn" data-o="etq">🖨 Imprimir a etiqueta deste tablet</button><button type="button" class="btn" data-o="hist">🕘 Ver o histórico deste tablet</button>' +
+          '<button type="button" class="btn ' + (x.ativo ? 'btn-perigo' : '') + '" data-o="at">' + (x.ativo ? '⛔ Desativar' : '✓ Reativar') + '</button></div>',
+        botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
+      var el = j.elemento;
+      el.querySelector('[data-o="etq"]').addEventListener('click', function () { j.fechar(true); imprimirEtiquetas([x]); });
+      el.querySelector('[data-o="hist"]').addEventListener('click', function () { j.fechar(true); filtroHist = x.id; irAba('hist'); historico(); });
+      el.querySelector('[data-o="at"]').addEventListener('click', async function () {
+        if (x.ativo && !(await ui.confirmar('Desativar ' + x.nome + '?', 'A chave deste tablet para de funcionar na hora. Para usar de novo, gere um novo código ou libere pelo QR.', 'Desativar', 'Cancelar'))) return;
+        j.fechar(true);
+        try { await q(sb.rpc('tablet_ativar', { p_tablet: x.id, p_ativo: !x.ativo })); carregar(); } catch (e) { erro(e); }
+      });
     }
     function form(x) {
       ui.janela({ titulo: x ? 'Editar tablet' : 'Cadastrar tablet', largura: 520,

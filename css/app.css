@@ -1792,3 +1792,25 @@ html[data-tema="escuro"] .menu a .menu-sel { background: #4a2c1b; color: #ffcfae
 .ms-mesa .pm-sw.ms-bt.on { border: 0 !important; }
 .ms-mesa .pm-sw.ms-bt.on:not(.sens) { background: linear-gradient(180deg, #ffb27f, #ee7330 45%, #c85a1e) !important; color: #2a1205 !important; }
 .ms-mesa .pm-sw.ms-bt.sens.on { background: linear-gradient(180deg, #ffa59c, #e2483c 45%, #a82d22) !important; color: #2a1205 !important; }
+
+/* 4.19.5 · Tela de Tablets organizada em abas */
+.tb-kp { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.tb-k { text-align: left; background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; padding: 12px 14px; cursor: pointer; font: inherit; color: var(--texto); box-shadow: inset 0 -3px 0 var(--c), 0 6px 16px rgba(0,0,0,.05); }
+.tb-k b { display: block; font-size: 26px; line-height: 1.1; } .tb-k span { font-size: 12.5px; color: var(--texto-2); } .tb-k:hover { transform: translateY(-1px); }
+.tb-abas { display: flex; gap: 4px; border-bottom: 1px solid var(--borda); margin-bottom: 14px; overflow-x: auto; }
+.tb-abas button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; font: 700 14px Poppins, system-ui, sans-serif; color: var(--texto-2); cursor: pointer; white-space: nowrap; }
+.tb-abas button.on { color: var(--texto); border-color: var(--laranja); }
+.tb-abas em { font-style: normal; margin-left: 6px; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #fdeee3; color: #a54c12; }
+html[data-tema="escuro"] .tb-abas em { background: #4a2c1b; color: #ffcfae; }
+.tb-fl input[type="search"] { margin-left: 0; }
+.tb-gr { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tb-c { background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; padding: 12px 14px; box-shadow: inset 5px 0 0 var(--c), 0 6px 16px rgba(0,0,0,.05); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tb-h { display: flex; align-items: center; gap: 10px; min-width: 0; } .tb-h > div { min-width: 0; } .tb-h b { display: block; font-size: 15px; } .tb-h small { color: var(--texto-3); font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-num { flex: none; min-width: 44px; height: 44px; padding: 0 6px; border-radius: 12px; background: linear-gradient(135deg, #f08a4b, #e0631f); color: #1b1111; font: 800 18px CodigoCracha, ui-monospace, monospace; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(238,115,48,.3); }
+.tb-st { align-self: flex-start; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.tb-li { font-size: 12.5px; color: var(--texto-2); line-height: 1.6; overflow-wrap: anywhere; } .tb-li i { font-style: normal; color: var(--texto-3); font-size: 10.5px; font-weight: 800; letter-spacing: .04em; margin-right: 6px; }
+.tb-ac { display: flex; gap: 6px; margin-top: auto; } .tb-ac .btn { flex: 1; justify-content: center; } .tb-ac .tb-mais { flex: 0 0 44px; font-size: 18px; letter-spacing: .1em; }
+.tb-menu { display: flex; flex-direction: column; gap: 8px; } .tb-menu .btn { justify-content: flex-start; width: 100%; }
+@media (max-width: 900px) { .tb-kp { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .tb-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tb-k b { font-size: 22px; } }
+@media (max-width: 640px) { .seg-g:has(> :nth-child(5)) { flex-wrap: wrap; } .seg-g:has(> :nth-child(5)) > * { flex: 1 1 30%; } }
