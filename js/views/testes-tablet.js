@@ -15,10 +15,14 @@
     ['contar', 'Contar diferenças', '#ee7330', 'Original × cópia; o jovem diz quantos erros há na linha', true],
     ['marcar', 'Marcar o que mudou', '#2f6fd0', 'Cartão original × cópia; marca X nos campos diferentes', true],
     ['escolha', 'Múltipla escolha', '#8b6fd6', 'Pergunta com alternativas, com figura ou texto de apoio', true],
-    ['tabela', 'Preencher tabela', '#3FA66B', 'Texto, número, data ou valor por célula', false],
-    ['associar', 'Associar à imagem', '#8b6fd6', 'Liga código ou nome à imagem certa', false],
-    ['ordem', 'Colocar em ordem', '#e0a100', 'O jovem define a ordem dos itens', false],
-    ['aberta', 'Resposta aberta', '#8a8486', 'Texto livre; o avaliador corrige', false],
+    ['tabela', 'Preencher tabela', '#3FA66B', 'Texto, número, data ou valor por célula', true],
+    ['fotos', 'Código na foto', '#8b6fd6', 'Digita o código embaixo de cada foto de produto', true],
+    ['varias', 'Marcar várias', '#ee7330', 'Toca em todas as opções certas (ex.: cartas)', true],
+    ['grade', 'Grade de marcar', '#2f6fd0', 'Situações × opções, marca um ou mais X por linha', true],
+    ['ordem', 'Colocar em ordem', '#e0a100', 'O jovem define a ordem dos itens', true],
+    ['agrupar', 'Separar em grupos e ordenar', '#3f8f9a', 'Itens em setores, em ordem alfabética', true],
+    ['memoria', 'Memorização', '#c2416f', 'Memoriza rostos e depois escreve nome e profissão', true],
+    ['aberta', 'Resposta aberta', '#8a8486', 'Texto livre; o avaliador lê', true],
     ['especial', 'Atividade especial', '#5b6b8a', 'Exercício interativo próprio (ex.: Programação)', false]
   ];
   function tipo(t) { return TIPOS.filter(function (x) { return x[0] === t; })[0] || TIPOS[0]; }
@@ -47,6 +51,7 @@
           '<div class="botoes-topo"><button type="button" class="btn" id="tt-prev">👁 Pré-visualizar</button><button type="button" class="btn" id="tt-imp">⬆ Importar da planilha</button><button type="button" class="btn" id="tt-sal">Salvar rascunho</button><button type="button" class="btn btn-pri" id="tt-pub">Publicar versão ' + (versoes.length ? versoes[0].versao + 1 : 1) + '</button></div></header>' +
         '<section class="card bloco"><h2 class="tt-h">Dados do teste <label class="tt-tab"><input type="checkbox" id="tt-ativo"' + (tablet ? ' checked' : '') + '> 📱 Aplicado no tablet</label></h2>' +
           '<div class="tt-grade"><label class="campo"><span>Tempo do teste (minutos)</span><input class="entrada" id="tt-tempo" inputmode="numeric" value="' + esc(est.tempo_min) + '"></label></div>' +
+          '<div class="tt-qx"><label><input type="checkbox" id="tt-calc"' + (est.calculadora ? ' checked' : '') + '> calculadora no teste</label><label><input type="checkbox" id="tt-abas"' + (est.abas ? ' checked' : '') + '> partes em abas (tarefas)</label><label>Tela <select class="entrada" id="tt-ori"><option value="">automática</option><option value="paisagem"' + (est.orientacao === 'paisagem' ? ' selected' : '') + '>deitada</option><option value="livre"' + (est.orientacao === 'livre' ? ' selected' : '') + '>livre</option></select></label></div>' +
           '<label class="campo"><span>Instruções para o jovem</span><textarea class="entrada" id="tt-instr" rows="3">' + esc(est.instrucoes || '') + '</textarea></label></section>' +
         explicacaoEd() +
         '<section class="card bloco"><h2 class="tt-h">Partes do teste <small class="dica">total possível: ' + String(total).replace('.', ',') + ' pontos</small></h2><div id="tt-partes">' +
@@ -84,6 +89,57 @@
             return '<tr data-l="' + k + '"><td>' + (k + 1) + '</td>' + cols.map(function (c, j) { return '<td>' + inp((l.original || [])[j], ' data-o="' + j + '"') + '</td>'; }).join('') + cols.map(function (c, j) { return '<td>' + inp((l.copia || [])[j], ' data-cp="' + j + '"') + '</td>'; }).join('') +
               '<td>' + inp(l.gabarito, ' data-g style="width:56px"') + '</td><td>' + inp(l.pontos == null ? 1 : l.pontos, ' data-pts style="width:56px"') + '</td><td><button type="button" class="ico perigo" data-rl="' + k + '" aria-label="Remover linha">×</button></td></tr>';
           }).join('') + '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-linha="' + i + '">+ Linha</button><button type="button" class="btn btn-p" data-auto="' + i + '" title="Conta quantas colunas da cópia estão diferentes do original">Calcular gabarito pelas diferenças</button></div>';
+      } else if (p.tipo === 'fotos') {
+        h += '<div class="tt-qs">' + (p.itens || []).map(function (x, k) { return '<div class="tt-q" data-fi="' + k + '"><div class="tt-qm"><div class="tt-qimg">' + (x.imagem ? '<img src="' + esc(x.imagem) + '" alt="">' : '<span class="dica">sem foto</span>') + '<label class="btn btn-p">' + (x.imagem ? 'Trocar foto' : '+ Foto') + '<input type="file" accept="image/*" data-ffoto hidden></label></div>' +
+          '<div class="tt-grade"><label class="campo"><span>Código certo (vazio = produto que não foi pedido)</span>' + inp(x.gabarito, ' data-fg') + '</label><label class="campo"><span>Penalidade se preencher (só para vazio)</span>' + inp(x.penalidade || 0, ' data-fp inputmode="decimal"') + '</label></div></div><button type="button" class="ico perigo" data-rfi="' + k + '" aria-label="Remover">×</button></div>'; }).join('') +
+          '</div><div class="tt-add"><button type="button" class="btn btn-p" data-nfi="' + i + '">+ Foto</button><span class="dica">Código certo vale 1 ponto (comparação exata).</span></div>';
+      } else if (p.tipo === 'varias') {
+        h += '<label class="campo"><span>Pergunta</span>' + inp(p.enunciado, ' data-ve') + '</label><label><input type="checkbox" data-vv' + (p.visual === 'envelope' ? ' checked' : '') + '> mostrar como envelopes (cartas)</label>' +
+          '<div class="tm-rolar"><table class="tt-tab sem-vista"><thead><tr><th>Opção (uma linha por linha de texto)</th><th>Certa</th><th>Pontos</th><th></th></tr></thead><tbody>' + (p.opcoes || []).map(function (o, k) {
+            return '<tr data-vo="' + k + '"><td><textarea class="entrada" data-vt rows="2">' + esc((o.linhas || [o.texto || '']).join('\n')) + '</textarea></td><td><input type="checkbox" data-vc' + (o.correta ? ' checked' : '') + '></td><td>' + inp(o.pontos == null ? 1 : o.pontos, ' data-vp style="width:70px"') + '</td><td><button type="button" class="ico perigo" data-rvo="' + k + '" aria-label="Remover">×</button></td></tr>'; }).join('') +
+          '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-nvo="' + i + '">+ Opção</button><span class="dica">Ganha os pontos de cada opção certa que marcar.</span></div>';
+      } else if (p.tipo === 'grade') {
+        var gcol = p.colunas || [];
+        h += '<label class="campo"><span>Pergunta</span>' + inp(p.enunciado, ' data-ge') + '</label><div class="tt-grade"><label class="campo"><span>Colunas (vírgula)</span>' + inp(gcol.join(', '), ' data-gcs') + '</label><label class="campo"><span>Pontos por acerto</span>' + inp(p.pontos_acerto == null ? 1 : p.pontos_acerto, ' data-gpa') + '</label></div>' +
+          '<div class="tm-rolar"><table class="tt-tab sem-vista"><thead><tr><th>Situação</th>' + gcol.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' + (p.linhas || []).map(function (l, li) {
+            return '<tr data-gli="' + li + '"><td>' + inp(l, ' data-gl2') + '</td>' + gcol.map(function (c, ci) { return '<td><input type="checkbox" data-gok="' + ci + '"' + (((p.certas || [])[li] || []).indexOf(ci) >= 0 ? ' checked' : '') + '></td>'; }).join('') + '<td><button type="button" class="ico perigo" data-rgl="' + li + '" aria-label="Remover">×</button></td></tr>'; }).join('') +
+          '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-ngl="' + i + '">+ Situação</button><span class="dica">Marque as opções certas de cada linha.</span></div>';
+      } else if (p.tipo === 'aberta') {
+        h += '<label class="campo"><span>Pergunta</span><textarea class="entrada" data-ap rows="2">' + esc(p.pergunta || '') + '</textarea></label><label class="campo"><span>Pontos (o avaliador dá a nota da resposta)</span>' + inp(p.pontos || 0, ' data-apt style="width:90px"') + '</label>';
+      } else if (p.tipo === 'ordem') {
+        h += '<label class="campo"><span>Contexto (um por linha, aparece em destaque para o jovem)</span><textarea class="entrada" data-od="ctx" rows="2">' + esc((p.contexto || []).join('\n')) + '</textarea></label>' +
+          '<div class="tm-rolar"><table class="tt-tab sem-vista"><thead><tr><th>Item</th><th>Posição certa</th><th></th></tr></thead><tbody>' + (p.itens || []).map(function (t2, k) {
+            return '<tr data-oi="' + k + '"><td>' + inp(t2, ' data-ot') + '</td><td>' + inp((p.gabarito || [])[k], ' data-og inputmode="numeric" style="width:70px"') + '</td><td><button type="button" class="ico perigo" data-roi="' + k + '" aria-label="Remover">×</button></td></tr>'; }).join('') +
+          '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-noi="' + i + '">+ Item</button><span class="dica">1 ponto para cada item na posição certa.</span></div>';
+      } else if (p.tipo === 'agrupar') {
+        h += '<div class="tt-grade"><label class="campo"><span>Lugares em cada grupo</span><input class="entrada" data-ag="vagas" inputmode="numeric" value="' + esc(p.vagas || 6) + '"></label></div>' +
+          '<div class="tm-rolar"><table class="tt-tab sem-vista"><thead><tr><th>Grupo / setor</th><th>Cor</th><th></th></tr></thead><tbody>' + (p.grupos || []).map(function (g, gi) { return '<tr data-gi="' + gi + '"><td>' + inp(g.nome, ' data-gn') + '</td><td><input type="color" data-gc value="' + esc(g.cor || '#3f8f9a') + '"></td><td><button type="button" class="ico perigo" data-rgi="' + gi + '" aria-label="Remover">×</button></td></tr>'; }).join('') +
+          '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-ngi="' + i + '">+ Grupo</button></div>' +
+          '<div class="tm-rolar"><table class="tt-tab sem-vista"><thead><tr><th>Item (na ordem da prateleira)</th><th>Grupo certo</th><th></th></tr></thead><tbody>' + (p.itens || []).map(function (it, k) {
+            return '<tr data-ai="' + k + '"><td>' + inp(it.texto, ' data-at') + '</td><td><select class="entrada" data-ag2>' + (p.grupos || []).map(function (g, gi) { return '<option value="' + gi + '"' + (+it.grupo === gi ? ' selected' : '') + '>' + esc(g.nome) + '</option>'; }).join('') + '</select></td><td><button type="button" class="ico perigo" data-rai="' + k + '" aria-label="Remover">×</button></td></tr>'; }).join('') +
+          '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-nai="' + i + '">+ Item</button><span class="dica">Vale ponto o item no grupo certo e na posição alfabética certa dentro do grupo (a ordem é calculada sozinha).</span></div>';
+      } else if (p.tipo === 'memoria') {
+        h += '<div class="tt-grade"><label class="campo"><span>Tempo para memorizar (segundos)</span><input class="entrada" data-mm="memo_seg" inputmode="numeric" value="' + esc(p.memo_seg || 180) + '"></label><label class="campo"><span>&nbsp;</span><span><input type="checkbox" data-mm="embaralhar"' + (p.embaralhar ? ' checked' : '') + '> embaralhar a ordem dos rostos na hora de responder</span></label></div>' +
+          '<p class="dica">O tempo do teste (no alto) é o total: memorizar + responder. Correção flexível: ignora acentos, maiúsculas e pontuação, e aceita uma letra trocada, a mais ou a menos em palavras com mais de 4 letras.</p>' +
+          '<div class="tt-qs">' + (p.pessoas || []).map(function (pe, k) {
+            return '<div class="tt-q" data-pe="' + k + '"><div class="tt-qm"><div class="tt-qimg">' + (pe.foto ? '<img src="' + esc(pe.foto) + '" alt="">' : '<span class="dica">sem foto</span>') + '<label class="btn btn-p">' + (pe.foto ? 'Trocar foto' : '+ Foto') + '<input type="file" accept="image/*" data-pfoto hidden></label></div>' +
+              '<div class="tt-grade"><label class="campo"><span>Nome</span>' + inp(pe.nome, ' data-pn') + '</label><label class="campo"><span>Sobrenome</span>' + inp(pe.sobrenome, ' data-ps') + '</label><label class="campo"><span>Profissão</span>' + inp(pe.profissao, ' data-pp') + '</label>' +
+              '<label class="campo"><span>Também aceitar na profissão (vírgula)</span>' + inp(((pe.aceitas || {}).profissao || []).join(', '), ' data-pap') + '</label></div></div><button type="button" class="ico perigo" data-rpe="' + k + '" aria-label="Remover">×</button></div>'; }).join('') +
+          '</div><div class="tt-add"><button type="button" class="btn btn-p" data-npe="' + i + '">+ Pessoa</button></div>';
+      } else if (p.tipo === 'tabela') {
+        var cs = p.colunas || [], TT = [['texto', 'Texto'], ['codigo', 'Código'], ['numero', 'Número'], ['valor', 'Valor (R$)'], ['data', 'Data'], ['lista', 'Lista de opções']];
+        h += '<div class="tt-grade"><label class="campo"><span>Formato</span><select class="entrada" data-tb="estilo"><option value="linhas"' + (p.estilo !== 'cartoes' ? ' selected' : '') + '>Tabela (uma linha por item)</option><option value="cartoes"' + (p.estilo === 'cartoes' ? ' selected' : '') + '>Cartões (um lançamento por vez)</option></select></label>' +
+          '<label class="campo"><span>Situação / texto de apoio (opcional)</span><textarea class="entrada" data-tb="apoio" rows="2">' + esc((p.apoio || {}).texto || '') + '</textarea></label></div>' +
+          '<div class="tt-qx"><label><input type="checkbox" data-tb="exato"' + (p.exato ? ' checked' : '') + '> formato exato (datas, CNPJ e valores como no papel)</label><label><input type="checkbox" data-tb="sequencial"' + (p.sequencial ? ' checked' : '') + '> preencher em sequência</label><label><input type="checkbox" data-tb="auto_num"' + (p.auto_num ? ' checked' : '') + '> nº da linha vale 1 ponto</label>' +
+          '<label>Exemplo <input class="entrada" data-tb="ex_de" value="' + esc((p.exemplo || {}).de || '') + '" style="width:110px"> → <input class="entrada" data-tb="ex_para" value="' + esc((p.exemplo || {}).para || '') + '" style="width:110px"></label></div>' +
+          '<div class="tm-rolar"><table class="tt-tab sem-vista"><thead><tr><th>Coluna</th><th>Tipo</th><th>Já vem preenchida</th><th>Pode ficar vazia</th><th>Opções (lista)</th><th></th></tr></thead><tbody>' + cs.map(function (c, ci) {
+            return '<tr data-tc="' + ci + '"><td>' + inp(c.rotulo, ' data-cr') + '</td><td><select class="entrada" data-ct>' + TT.map(function (x) { return '<option value="' + x[0] + '"' + (c.tipo === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></td>' +
+              '<td><input type="checkbox" data-cf' + (c.fixo ? ' checked' : '') + '></td><td><input type="checkbox" data-cv' + (c.vazio_ok ? ' checked' : '') + '></td><td>' + inp((c.opcoes || []).join(', '), ' data-co') + '</td><td><button type="button" class="ico perigo" data-rc="' + ci + '" aria-label="Remover coluna">×</button></td></tr>';
+          }).join('') + '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-nc="' + i + '">+ Coluna</button></div>' +
+          '<p class="dica">Em cada linha: colunas "já vem preenchida" mostram o valor ao jovem; as outras guardam o gabarito.</p>' +
+          '<div class="tm-rolar"><table class="tt-tab sem-vista"><thead><tr><th>#</th>' + cs.map(function (c) { return '<th>' + esc(c.rotulo) + (c.fixo ? ' <small>(mostra)</small>' : ' <small>(gabarito)</small>') + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
+          (p.linhas || []).map(function (l, k) { return '<tr data-tl="' + k + '"><td>' + (k + 1) + '</td>' + cs.map(function (c) { var v2 = c.fixo ? (l.valores || {})[c.chave] : (l.gabarito || {})[c.chave]; return '<td>' + inp(v2, ' data-tv="' + esc(c.chave) + '"') + '</td>'; }).join('') + '<td><button type="button" class="ico perigo" data-rtl="' + k + '" aria-label="Remover linha">×</button></td></tr>'; }).join('') +
+          '</tbody></table></div><div class="tt-add"><button type="button" class="btn btn-p" data-ntl="' + i + '">+ Linha</button></div>';
       } else if (p.tipo === 'escolha') {
         var tx = p.textos || [], L = 'ABCDEFGH';
         h += '<details class="tt-txs"' + (tx.length ? ' open' : '') + '><summary>Textos de apoio (' + tx.length + ')</summary>' + tx.map(function (t2, ti) {
@@ -117,6 +173,7 @@
     function ler() {
       est.tempo_min = parseInt(area.querySelector('#tt-tempo').value, 10) || 10;
       est.instrucoes = area.querySelector('#tt-instr').value.trim();
+      est.calculadora = area.querySelector('#tt-calc').checked; est.abas = area.querySelector('#tt-abas').checked; est.orientacao = area.querySelector('#tt-ori').value || undefined;
       est.explicacao = { passos: [].map.call(area.querySelectorAll('[data-ept]'), function (x) { var i = x.getAttribute('data-ept'); return [x.value.trim(), area.querySelector('[data-epx="' + i + '"]').value.trim()]; }).filter(function (x) { return x[0] || x[1]; }),
         exemplo: area.querySelector('#tt-ex').value.trim(), dica: area.querySelector('#tt-dica').value.trim() };
       tablet = area.querySelector('#tt-ativo').checked;
@@ -132,6 +189,45 @@
           return { original: [].map.call(tr.querySelectorAll('[data-o]'), function (x) { return x.value.trim(); }), copia: [].map.call(tr.querySelectorAll('[data-cp]'), function (x) { return x.value.trim(); }),
             gabarito: tr.querySelector('[data-g]').value.trim() || '-', pontos: parseFloat(tr.querySelector('[data-pts]').value.replace(',', '.')) || 0 };
         });
+        if (p.tipo === 'fotos') { var antF = p.itens || []; p.itens = [].map.call(el.querySelectorAll('[data-fi]'), function (d) { var o = antF[+d.getAttribute('data-fi')] || {}; return { imagem: o.imagem || null, gabarito: d.querySelector('[data-fg]').value.trim().toUpperCase(), penalidade: parseFloat(d.querySelector('[data-fp]').value.replace(',', '.')) || 0 }; }); }
+        if (p.tipo === 'varias') { p.enunciado = el.querySelector('[data-ve]').value.trim(); p.visual = el.querySelector('[data-vv]').checked ? 'envelope' : ''; p.opcoes = [].map.call(el.querySelectorAll('[data-vo]'), function (tr) { var ls = tr.querySelector('[data-vt]').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return { linhas: ls, correta: tr.querySelector('[data-vc]').checked, pontos: parseFloat(tr.querySelector('[data-vp]').value.replace(',', '.')) || 0 }; }); }
+        if (p.tipo === 'grade') { p.enunciado = el.querySelector('[data-ge]').value.trim(); p.colunas = el.querySelector('[data-gcs]').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean); p.pontos_acerto = parseFloat(el.querySelector('[data-gpa]').value.replace(',', '.')) || 0;
+          var gl = [].slice.call(el.querySelectorAll('[data-gli]')); p.linhas = gl.map(function (tr) { return tr.querySelector('[data-gl2]').value.trim(); }); p.certas = gl.map(function (tr) { return [].filter.call(tr.querySelectorAll('[data-gok]'), function (x) { return x.checked; }).map(function (x) { return +x.getAttribute('data-gok'); }); }); }
+        if (p.tipo === 'aberta') { p.pergunta = el.querySelector('[data-ap]').value.trim(); p.pontos = parseFloat(el.querySelector('[data-apt]').value.replace(',', '.')) || 0; }
+        if (p.tipo === 'ordem') {
+          p.contexto = el.querySelector('[data-od="ctx"]').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+          p.itens = [].map.call(el.querySelectorAll('[data-oi]'), function (tr) { return tr.querySelector('[data-ot]').value.trim(); });
+          p.gabarito = [].map.call(el.querySelectorAll('[data-oi]'), function (tr) { return parseInt(tr.querySelector('[data-og]').value, 10) || 0; });
+        }
+        if (p.tipo === 'agrupar') {
+          p.vagas = parseInt(el.querySelector('[data-ag="vagas"]').value, 10) || 6;
+          p.grupos = [].map.call(el.querySelectorAll('[data-gi]'), function (tr) { return { nome: tr.querySelector('[data-gn]').value.trim(), cor: tr.querySelector('[data-gc]').value }; });
+          p.itens = [].map.call(el.querySelectorAll('[data-ai]'), function (tr) { return { texto: tr.querySelector('[data-at]').value.trim(), grupo: +tr.querySelector('[data-ag2]').value }; });
+        }
+        if (p.tipo === 'memoria') {
+          p.memo_seg = parseInt(el.querySelector('[data-mm="memo_seg"]').value, 10) || 180; p.embaralhar = el.querySelector('[data-mm="embaralhar"]').checked;
+          var antP = p.pessoas || [];
+          p.pessoas = [].map.call(el.querySelectorAll('[data-pe]'), function (d) { var o = antP[+d.getAttribute('data-pe')] || {};
+            return { foto: o.foto || null, nome: d.querySelector('[data-pn]').value.trim(), sobrenome: d.querySelector('[data-ps]').value.trim(), profissao: d.querySelector('[data-pp]').value.trim(),
+              aceitas: Object.assign({}, o.aceitas || {}, { profissao: d.querySelector('[data-pap]').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean) }) }; });
+        }
+        if (p.tipo === 'tabela') {
+          var g = function (k2) { return el.querySelector('[data-tb="' + k2 + '"]'); };
+          p.estilo = g('estilo').value; p.exato = g('exato').checked; p.sequencial = g('sequencial').checked; p.auto_num = g('auto_num').checked;
+          var ap = g('apoio').value.trim(); p.apoio = ap ? Object.assign({}, p.apoio || {}, { texto: ap }) : null;
+          var ed = g('ex_de').value.trim(), ep = g('ex_para').value.trim(); p.exemplo = ed || ep ? { de: ed, para: ep } : null;
+          var colsAnt = p.colunas || [];
+          p.colunas = [].map.call(el.querySelectorAll('[data-tc]'), function (tr) {
+            var o = colsAnt[+tr.getAttribute('data-tc')] || {}, rot = tr.querySelector('[data-cr]').value.trim() || 'Coluna';
+            return Object.assign({}, o, { chave: o.chave || ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)), rotulo: rot, tipo: tr.querySelector('[data-ct]').value, fixo: tr.querySelector('[data-cf]').checked, vazio_ok: tr.querySelector('[data-cv]').checked,
+              opcoes: tr.querySelector('[data-co]').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean) });
+          });
+          p.linhas = [].map.call(el.querySelectorAll('[data-tl]'), function (tr) {
+            var l = { valores: {}, gabarito: {} };
+            tr.querySelectorAll('[data-tv]').forEach(function (x) { var c = p.colunas.filter(function (y) { return y.chave === x.getAttribute('data-tv'); })[0]; if (!c) return; (c.fixo ? l.valores : l.gabarito)[c.chave] = x.value.trim(); });
+            return l;
+          });
+        }
         if (p.tipo === 'escolha') {
           p.textos = [].map.call(el.querySelectorAll('[data-tx]'), function (d, ti) { return { id: ti, titulo: d.querySelector('[data-txt="titulo"]').value.trim(), texto: d.querySelector('[data-txt="texto"]').value.trim(), autor: d.querySelector('[data-txt="autor"]').value.trim() }; });
           var antes = p.questoes || [];
@@ -160,6 +256,14 @@
       area.querySelectorAll('[data-add]').forEach(function (b) { b.addEventListener('click', function () {
         ler(); var t2 = b.getAttribute('data-add');
         est.partes.push(t2 === 'contar' ? { tipo: 'contar', colunas: ['Artigo', 'Tamanho', 'Nº', 'Entrega'], opcoes: ['–', '1', '2', '3', '4'], linhas: [{ original: [], copia: [], gabarito: '-', pontos: 1 }] }
+          : t2 === 'fotos' ? { tipo: 'fotos', itens: [{ imagem: null, gabarito: '', penalidade: 0 }] }
+          : t2 === 'varias' ? { tipo: 'varias', enunciado: '', opcoes: [{ texto: '', correta: true, pontos: 1 }, { texto: '', correta: false, pontos: 1 }] }
+          : t2 === 'grade' ? { tipo: 'grade', enunciado: '', linhas: [''], colunas: ['Opção 1', 'Opção 2'], certas: [[]], pontos_acerto: 1 }
+          : t2 === 'aberta' ? { tipo: 'aberta', pergunta: '', pontos: 0 }
+          : t2 === 'ordem' ? { tipo: 'ordem', contexto: [], itens: ['', ''], gabarito: [1, 2] }
+          : t2 === 'agrupar' ? { tipo: 'agrupar', vagas: 6, grupos: [{ nome: 'Grupo 1', cor: '#3f8f9a' }], itens: [{ texto: '', grupo: 0 }] }
+          : t2 === 'memoria' ? { tipo: 'memoria', memo_seg: 180, embaralhar: false, campos: [['nome', 'Nome'], ['sobrenome', 'Sobrenome'], ['profissao', 'Profissão']], pessoas: [{ foto: null, nome: '', sobrenome: '', profissao: '' }] }
+          : t2 === 'tabela' ? { tipo: 'tabela', estilo: 'linhas', exato: false, colunas: [{ chave: 'c1', rotulo: 'Coluna 1', tipo: 'texto' }], linhas: [{ valores: {}, gabarito: {} }] }
           : t2 === 'escolha' ? { tipo: 'escolha', textos: [], questoes: [{ enunciado: '', alternativas: ['', '', '', ''], correta: 0, pontos: 1 }] }
           : { tipo: 'marcar', blocos: [{ original: {}, copia: {} }] });
         mudou = true; desenhar();
@@ -171,6 +275,48 @@
       area.querySelectorAll('[data-rl]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.closest('.tt-parte').getAttribute('data-p')]; p.linhas.splice(+b.getAttribute('data-rl'), 1); redesenhar(); }); });
       area.querySelectorAll('[data-rb]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.closest('.tt-parte').getAttribute('data-p')]; p.blocos.splice(+b.getAttribute('data-rb'), 1); redesenhar(); }); });
       function pe(b) { return est.partes[+b.closest('.tt-parte').getAttribute('data-p')]; }
+      area.querySelectorAll('[data-nfi]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-nfi')].itens.push({ imagem: null, gabarito: '', penalidade: 0 }); redesenhar(); }); });
+      area.querySelectorAll('[data-rfi]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).itens.splice(+b.getAttribute('data-rfi'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-nvo]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-nvo')].opcoes.push({ linhas: [''], correta: false, pontos: 1 }); redesenhar(); }); });
+      area.querySelectorAll('[data-rvo]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).opcoes.splice(+b.getAttribute('data-rvo'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-ngl]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.getAttribute('data-ngl')]; p.linhas.push(''); p.certas.push([]); redesenhar(); }); });
+      area.querySelectorAll('[data-rgl]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = pe(b), k = +b.getAttribute('data-rgl'); p.linhas.splice(k, 1); p.certas.splice(k, 1); redesenhar(); }); });
+      area.querySelectorAll('[data-ffoto]').forEach(function (inpF) { inpF.addEventListener('change', function () {
+        var f = inpF.files[0]; if (!f) return; var fr = new FileReader();
+        fr.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, 300 / im.width, 240 / im.height), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+          ler(); pe(inpF).itens[+inpF.closest('[data-fi]').getAttribute('data-fi')].imagem = cv.toDataURL('image/jpeg', .8); redesenhar(); }; im.src = fr.result; };
+        fr.readAsDataURL(f);
+      }); });
+      area.querySelectorAll('[data-noi]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.getAttribute('data-noi')]; p.itens.push({ texto: '', posicao: p.itens.length + 1 }); redesenhar(); }); });
+      area.querySelectorAll('[data-roi]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).itens.splice(+b.getAttribute('data-roi'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-ngi]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.getAttribute('data-ngi')]; p.grupos.push({ nome: 'Grupo ' + (p.grupos.length + 1), itens: [] }); redesenhar(); }); });
+      area.querySelectorAll('[data-rgi]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).grupos.splice(+b.getAttribute('data-rgi'), 1); ler(); redesenhar(); }); });
+      area.querySelectorAll('[data-npk]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-npk')].pessoas.push({ nome: '', sobrenome: '', profissao: '' }); redesenhar(); }); });
+      area.querySelectorAll('[data-rpk]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).pessoas.splice(+b.getAttribute('data-rpk'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-pimg]').forEach(function (inpF) { inpF.addEventListener('change', function () {
+        var f = inpF.files[0]; if (!f) return; var fr = new FileReader();
+        fr.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, 320 / im.width, 320 / im.height), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+          ler(); pe(inpF).pessoas[+inpF.closest('[data-pk]').getAttribute('data-pk')].imagem = cv.toDataURL('image/jpeg', .8); redesenhar(); }; im.src = fr.result; };
+        fr.readAsDataURL(f);
+      }); });
+      area.querySelectorAll('[data-noi]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.getAttribute('data-noi')]; p.itens.push(''); p.gabarito.push(p.itens.length); redesenhar(); }); });
+      area.querySelectorAll('[data-roi]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = pe(b), k = +b.getAttribute('data-roi'); p.itens.splice(k, 1); p.gabarito.splice(k, 1); redesenhar(); }); });
+      area.querySelectorAll('[data-ngi]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-ngi')].grupos.push({ nome: 'Grupo', cor: '#8b6fd6' }); redesenhar(); }); });
+      area.querySelectorAll('[data-rgi]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = pe(b), gi = +b.getAttribute('data-rgi'); p.grupos.splice(gi, 1); p.itens.forEach(function (it) { if (it.grupo === gi) it.grupo = 0; else if (it.grupo > gi) it.grupo--; }); redesenhar(); }); });
+      area.querySelectorAll('[data-nai]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-nai')].itens.push({ texto: '', grupo: 0 }); redesenhar(); }); });
+      area.querySelectorAll('[data-rai]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).itens.splice(+b.getAttribute('data-rai'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-npe]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-npe')].pessoas.push({ foto: null, nome: '', sobrenome: '', profissao: '' }); redesenhar(); }); });
+      area.querySelectorAll('[data-rpe]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).pessoas.splice(+b.getAttribute('data-rpe'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-pfoto]').forEach(function (inpF) { inpF.addEventListener('change', function () {
+        var f = inpF.files[0]; if (!f) return; var fr = new FileReader();
+        fr.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, 300 / im.width, 300 / im.height), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+          ler(); pe(inpF).pessoas[+inpF.closest('[data-pe]').getAttribute('data-pe')].foto = cv.toDataURL('image/jpeg', .8); redesenhar(); }; im.src = fr.result; };
+        fr.readAsDataURL(f);
+      }); });
+      area.querySelectorAll('[data-nc]').forEach(function (b) { b.addEventListener('click', function () { ler(); var p = est.partes[+b.getAttribute('data-nc')]; p.colunas.push({ chave: 'c' + Date.now().toString(36), rotulo: 'Coluna ' + (p.colunas.length + 1), tipo: 'texto' }); redesenhar(); }); });
+      area.querySelectorAll('[data-rc]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).colunas.splice(+b.getAttribute('data-rc'), 1); redesenhar(); }); });
+      area.querySelectorAll('[data-ntl]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-ntl')].linhas.push({ valores: {}, gabarito: {} }); redesenhar(); }); });
+      area.querySelectorAll('[data-rtl]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).linhas.splice(+b.getAttribute('data-rtl'), 1); redesenhar(); }); });
       function qi(b) { return +b.closest('.tt-q').getAttribute('data-q'); }
       area.querySelectorAll('[data-nq]').forEach(function (b) { b.addEventListener('click', function () { ler(); est.partes[+b.getAttribute('data-nq')].questoes.push({ enunciado: '', alternativas: ['', '', '', ''], correta: 0, pontos: 1 }); redesenhar(); }); });
       area.querySelectorAll('[data-rq]').forEach(function (b) { b.addEventListener('click', function () { ler(); pe(b).questoes.splice(+b.getAttribute('data-rq'), 1); redesenhar(); }); });
@@ -194,7 +340,7 @@
       area.querySelector('#tt-sal').addEventListener('click', function () { salvar(this); });
       area.querySelector('#tt-pub').addEventListener('click', function () { publicar(this); });
       area.querySelector('#tt-prev').addEventListener('click', function () { ler(); previa(est, t); });
-      area.querySelector('#tt-imp').addEventListener('click', function () { importar(function (novo) { ler(); est.partes = est.partes.concat(novo.partes); if (novo.faixas) { est.faixas = novo.faixas; est.modo_nota = novo.modo_nota; } if (novo.tempo_min) est.tempo_min = novo.tempo_min; if (novo.instrucoes && !est.instrucoes) est.instrucoes = novo.instrucoes; if (novo.explicacao && !(est.explicacao && est.explicacao.passos && est.explicacao.passos.length)) est.explicacao = novo.explicacao; mudou = true; desenhar(); }); });
+      area.querySelector('#tt-imp').addEventListener('click', function () { importar(function (novo) { ler(); est.partes = est.partes.concat(novo.partes); if (novo.faixas) { est.faixas = novo.faixas; est.modo_nota = novo.modo_nota; } if (novo.tempo_min) est.tempo_min = novo.tempo_min; if (novo.instrucoes && !est.instrucoes) est.instrucoes = novo.instrucoes; if (novo.explicacao && !(est.explicacao && est.explicacao.passos && est.explicacao.passos.length)) est.explicacao = novo.explicacao; if (novo.orientacao) est.orientacao = novo.orientacao; if (novo.calculadora) est.calculadora = true; if (novo.abas) est.abas = true; mudou = true; desenhar(); }); });
     }
     async function salvar(bt) {
       ler(); bt.disabled = true;
@@ -234,8 +380,8 @@
       var f = this.files[0]; if (!f) return; res.innerHTML = '<div class="girando"></div>';
       try {
         var wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' });
-        achado = lerCartoes(wb) || (await lerModeloT31(wb)) || lerConferencia(wb);
-        if (!achado) { res.innerHTML = '<div class="aviso aviso-erro">Não reconheci esta planilha. Por enquanto o sistema lê a Conferência de Mercadoria, os Cartões de Crédito, o Raciocínio Lógico, os Conhecimentos Gerais e o Português; os outros modelos entram nas próximas partes da T3.</div>'; return; }
+        achado = lerCartoes(wb) || (await lerModeloT31(wb)) || (await lerModeloT32(wb)) || (await lerModeloT33(wb)) || (await lerModeloT34(wb)) || lerConferencia(wb);
+        if (!achado) { res.innerHTML = '<div class="aviso aviso-erro">Não reconheci esta planilha. Por enquanto o sistema lê a Conferência de Mercadoria, os Cartões de Crédito, o Raciocínio Lógico, os Conhecimentos Gerais, o Português, a Alteração de Códigos, a Logística, o Controle Financeiro, a Habilidade de Retenção, a Priorização de Tarefas, a Organização de Produtos, o Recebimento de Materiais e o Administrativo I.</div>'; return; }
         res.innerHTML = '<table class="tabela mini"><tbody>' + achado.resumo.map(function (r) { return '<tr><td>' + (r[2] ? '⚠️' : '✅') + '</td><td><b>' + esc(r[0]) + '</b></td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</tbody></table>';
       } catch (e) { console.error(e); res.innerHTML = '<div class="aviso aviso-erro">Não foi possível ler a planilha.</div>'; }
     });
@@ -269,6 +415,53 @@
     return { partes: m.partes, modo_nota: m.modo_nota, faixas: m.faixas, tempo_min: m.tempo_min, instrucoes: m.instrucoes, explicacao: m.explicacao,
       resumo: [['Teste', NOME], ['Tipo', 'Múltipla escolha' + (cod === 'RL' ? ' com figura (figuras recortadas de cada exercício)' : cod === 'LP' ? ' com textos de apoio' : '')], ['Perguntas', qs.length + ' · total ' + tot + ' pontos'],
         ['Gabarito', 'lido da aba de correção da planilha'], ['Faixas da nota', m.faixas.map(function (f) { return f.nota + ': ' + f.min; }).join(' · ')], ['Tempo', m.tempo_min + ' minutos'], ['Explicação', 'rascunho dos passos, exemplo e dica incluído (revise)']] };
+  }
+  // Alteração de Códigos, Logística e Controle Financeiro: reconhece a planilha e usa o modelo pronto (dados, gabarito e faixas)
+  async function lerModeloT32(wb) {
+    var nomes = wb.SheetNames.join('|'), cod = /Alterar C[oó]digos/i.test(nomes) ? 'COD' : /Controle de Estoque/i.test(nomes) ? 'LOG' : /Controle Financeiro/i.test(nomes) ? 'CF' : null;
+    if (!cod) return null;
+    var r = await fetch('assets/modelos/t32.json', { cache: 'no-cache' }); if (!r.ok) throw new Error('modelo');
+    var m = (await r.json())[cod], p = m.partes[0], tot = M.total(m);
+    var NOME = { COD: 'Alteração de Códigos', LOG: 'Logística (Controle de Estoque)', CF: 'Controle Financeiro' }[cod];
+    return { partes: m.partes, modo_nota: m.modo_nota, faixas: m.faixas, tempo_min: m.tempo_min, instrucoes: m.instrucoes, explicacao: m.explicacao, orientacao: m.orientacao,
+      resumo: [['Teste', NOME], ['Tipo', 'Preencher tabela' + (p.estilo === 'cartoes' ? ' · lançamentos em cartões, em sequência' : '')], ['Linhas', p.linhas.length + ' · total ' + tot + ' pontos'],
+        ['Correção', p.exato ? 'formato exato (datas DD/MM/AAAA, CNPJ com pontuação, valores com vírgula e 2 casas)' : 'pelo conteúdo (68,9 = 68,90 = R$ 68,90; Branca = Branco)'],
+        ['Gabarito', 'lido da aba de correção da planilha'], ['Faixas da nota', m.faixas.map(function (f) { return f.nota + ': ' + f.min; }).join(' · ')], ['Tempo', m.tempo_min + ' minutos'], ['Explicação', 'rascunho incluído (revise)']] };
+  }
+  // Habilidade de Retenção, Priorização de Tarefas e Organização de Produtos: reconhece a planilha e usa o modelo pronto
+  async function lerModeloT33(wb) {
+    var nomes = wb.SheetNames.join('|'), cod = /Reten[cç][aã]o/i.test(nomes) ? 'RET' : /Prioriza/i.test(nomes) ? 'PRI' : /ORGANIZA[CÇ][AÃ]O DE PRODUTOS/i.test(nomes) ? 'ORG' : null;
+    if (!cod) return null;
+    var r = await fetch('assets/modelos/t33.json', { cache: 'no-cache' }); if (!r.ok) throw new Error('modelo');
+    var m = (await r.json())[cod], p = m.partes[0], tot = M.total(m);
+    var INFO = { RET: ['Habilidade de Retenção', 'Memorização: 8 rostos com fotos da planilha, ' + Math.round(p.memo_seg / 60) + ' min para memorizar, correção flexível'], PRI: ['Priorização de Tarefas', 'Colocar em ordem: 10 tarefas'], ORG: ['Organização de Produtos', 'Separar em grupos: 30 produtos em 5 setores, em ordem alfabética'] }[cod];
+    return { partes: m.partes, modo_nota: m.modo_nota, faixas: m.faixas, tempo_min: m.tempo_min, instrucoes: m.instrucoes, explicacao: m.explicacao, orientacao: m.orientacao,
+      resumo: [['Teste', INFO[0]], ['Tipo', INFO[1]], ['Pontos', 'total ' + tot], ['Gabarito', cod === 'ORG' ? 'setores da aba de correção; ordem alfabética calculada pelo sistema (corrigidos "Tefefone" → Telefone e "Grampiador" → Grampeador)' : 'lido da aba de correção da planilha'],
+        ['Faixas da nota', m.faixas.map(function (f) { return f.nota + ': ' + f.min; }).join(' · ')], ['Tempo', m.tempo_min + ' minutos' + (cod === 'RET' ? ' (3 para memorizar + 7 para responder)' : '')], ['Explicação', 'rascunho incluído (revise)']] };
+  }
+  // Habilidade de Retenção, Priorização de Tarefas e Organização de Produtos
+  async function lerModeloT33(wb) {
+    var nomes = wb.SheetNames.join('|'), cod = /Reten[cç][aã]o/i.test(nomes) ? 'RET' : /Prioriza/i.test(nomes) ? 'PRI' : /ORGANIZA/i.test(nomes) ? 'ORG' : null;
+    if (!cod) return null;
+    var r = await fetch('assets/modelos/t33.json', { cache: 'no-cache' }); if (!r.ok) throw new Error('modelo');
+    var m = (await r.json())[cod], tot = M.total(m);
+    var NOME = { RET: 'Habilidade de Retenção', PRI: 'Priorização de Tarefas', ORG: 'Organização de Produtos' }[cod];
+    var TIPO = { RET: 'Memorização (8 rostos com as fotos da planilha · 3 min para memorizar + 7 min para responder)', PRI: 'Colocar em ordem (10 tarefas)', ORG: 'Separar em 5 setores e ordenar (30 produtos)' }[cod];
+    return { partes: m.partes, modo_nota: m.modo_nota, faixas: m.faixas, tempo_min: m.tempo_min, instrucoes: m.instrucoes, explicacao: m.explicacao, orientacao: m.orientacao,
+      resumo: [['Teste', NOME], ['Tipo', TIPO], ['Total', tot + ' pontos'], ['Gabarito', cod === 'ORG' ? 'setor de cada produto lido da planilha; a ordem alfabética é calculada sozinha (corrigidos "Tefefone" e "Grampiador")' : 'lido da aba de correção da planilha'],
+        ['Faixas da nota', m.faixas.map(function (f) { return f.nota + ': ' + f.min; }).join(' · ')], ['Tempo', m.tempo_min + ' minutos'], ['Explicação', 'rascunho incluído (revise)']] };
+  }
+  // Recebimento de Materiais e Administrativo I
+  async function lerModeloT34(wb) {
+    var nomes = wb.SheetNames.join('|'), cod = /Recebimento/i.test(nomes) ? 'REC' : /ADMINISTRATIVO/i.test(nomes) ? 'ADM' : null;
+    if (!cod) return null;
+    var r = await fetch('assets/modelos/t34.json', { cache: 'no-cache' }); if (!r.ok) throw new Error('modelo');
+    var m = (await r.json())[cod], tot = M.total(m);
+    var NOME = { REC: 'Recebimento de Materiais', ADM: 'Administrativo I' }[cod];
+    var TIPO = { REC: 'Tarefas em abas: nota fiscal (quantidades e totais), códigos nas 11 fotos e resposta aberta · com calculadora', ADM: 'Tarefas em abas: cartas (marcar várias), grade de comunicação e pedido de compra · com calculadora' }[cod];
+    return { partes: m.partes, modo_nota: m.modo_nota, faixas: m.faixas, tempo_min: m.tempo_min, instrucoes: m.instrucoes, explicacao: m.explicacao, orientacao: m.orientacao, calculadora: m.calculadora, abas: m.abas,
+      resumo: [['Teste', NOME], ['Tipo', TIPO], ['Total', String(Math.round(tot * 100) / 100).replace('.', ',') + ' pontos'], ['Gabarito', 'lido da aba de correção da planilha'],
+        ['Faixas da nota', m.faixas.map(function (f) { return f.nota + ': ' + String(f.min).replace('.', ','); }).join(' · ')], ['Tempo', m.tempo_min + ' minutos'], ['Explicação', 'rascunho incluído (revise)']] };
   }
   function lerConferencia(wb) {
     var ws = wb.Sheets[wb.SheetNames[0]], cor = wb.Sheets[wb.SheetNames[1]]; if (!ws || !cor) return null;
@@ -439,6 +632,7 @@
         (est.partes || []).forEach(function (p, pi) {
           var rr = (r.respostas || {})[pi] || {};
           if (p.tipo === 'contar') h += '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Linha</th><th>Resposta</th><th>Gabarito</th><th></th></tr></thead><tbody>' + (p.linhas || []).map(function (l, k) { var x = rr[k], ok = x != null && String(x).trim().toUpperCase() === String(l.gabarito).trim().toUpperCase(); return '<tr><td>' + (k + 1) + ' · ' + esc((l.original || [])[0] || '') + '</td><td>' + (x == null ? '<span class="dica">em branco</span>' : esc(x)) + '</td><td>' + esc(l.gabarito) + '</td><td>' + (ok ? '✓' : '✗') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+          else if (p.tipo === 'aberta') h += '<div class="card bloco"><b>' + esc(p.pergunta || 'Resposta aberta') + '</b><p style="white-space:pre-line;margin:8px 0 0">' + (rr.texto ? esc(rr.texto) : '<span class="dica">em branco</span>') + '</p></div>';
           else if (p.tipo === 'marcar') h += '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Bloco</th><th>Marcou</th><th>Diferenças certas</th></tr></thead><tbody>' + (p.blocos || []).map(function (bl, k) { var m = Object.keys(rr[k] || {}).filter(function (c) { return rr[k][c]; }); return '<tr><td>' + (k + 1) + '</td><td>' + (m.join(', ') || '<span class="dica">nada</span>') + '</td><td>' + (M ? M.diferencas(bl).join(', ') : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
         });
         ui.janela({ titulo: 'Respostas do tablet', largura: 760, corpo: h, botoes: [{ texto: 'Fechar', acao: 'fechar' }] });

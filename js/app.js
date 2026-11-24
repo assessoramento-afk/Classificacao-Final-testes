@@ -46,7 +46,7 @@
   window.CF.avisoPedidos = avisoPedidos;
   function montarShell() {
     var p = estado.perfil;
-    var menu = MENUS[p.perfil] || [];
+    var menu = (MENUS[p.perfil] || []).filter(function (m) { return m[0] !== 'agenda' || (window.CF_CONFIG || {}).agendaAtiva; });
     raiz.innerHTML =
       '<div class="shell">' +
         '<aside class="lateral" id="lateral" aria-label="Menu">' +
