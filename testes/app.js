@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.7.0';
+  var VERSAO_APP = '1.8.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -54,6 +54,7 @@
     try {
       var p = await rpc('tablet_baixar', { p_chave: E.chave, p_versao_app: VERSAO_APP });
       E.pacote = p; E.ultimaSinc = new Date().toISOString();
+      if (p && p.gerado_em) { E.desvio = Date.parse(p.gerado_em) - Date.now(); try { localStorage.setItem('golt_desvio', String(E.desvio)); } catch (e) {} }
       await kv.gravar('pacote', p); await kv.gravar('ultimaSinc', E.ultimaSinc);
       if (!silencioso) aviso('Testes e turmas atualizados.');
       return true;
@@ -70,9 +71,13 @@
     var lista = await fila.todos(); if (!lista.length) { atualizarStatus(); return; }
     E.enviando = true;
     try {
+      atualizarStatus();
       var r = await rpc('tablet_enviar', { p_chave: E.chave, p_lista: lista.slice(0, 20), p_pendentes: Math.max(0, lista.length - 20), p_versao_app: VERSAO_APP });
-      for (var i = 0; i < (r.recebidos || []).length; i++) await fila.tirar(r.recebidos[i]);
-    } catch (e) { /* tenta de novo depois */ }
+      if (r.servidor_em) { E.desvio = Date.parse(r.servidor_em) - Date.now(); try { localStorage.setItem('golt_desvio', String(E.desvio)); } catch (e2) {} }
+      var envs = confLer('golt_enviados');
+      for (var i = 0; i < (r.recebidos || []).length; i++) { var it = lista.filter(function (x) { return x.uid === r.recebidos[i]; })[0]; if (it) envs.push({ uid: it.uid, nome: it.jovem_nome || '', teste: it.teste_nome || '', em: new Date().toISOString() }); await fila.tirar(r.recebidos[i]); }
+      confGravar('golt_enviados', envs.slice(-30)); E.erroEnvio = null;
+    } catch (e) { E.erroEnvio = new Date().toISOString(); /* tenta de novo depois */ }
     finally { E.enviando = false; atualizarStatus(); }
   }
   setInterval(function () { enviar(); }, 30000);
@@ -90,7 +95,7 @@
     if (E.demo) { el.className = 'pil av'; el.textContent = 'MODO DE TESTES · nada é enviado'; return; }
     var n = (await fila.todos()).length;
     el.className = 'pil ' + (!online() ? 'av' : n ? 'av' : 'ok');
-    el.textContent = !online() ? 'Sem internet' + (n ? ' · ' + n + ' a enviar' : '') : (n ? n + ' a enviar' : 'Tudo enviado');
+    el.textContent = !online() ? 'Sem internet' + (n ? ' · ' + n + ' pendente' + (n > 1 ? 's' : '') : '') : E.enviando && n ? '⟳ Sincronizando · ' + n : (n ? (E.erroEnvio ? '⚠ Erro no envio · ' : '⏳ ') + n + ' pendente' + (n > 1 ? 's' : '') : 'Tudo enviado');
   }
 
   /* ---------- Feitos (no banco + neste tablet) ---------- */
@@ -285,11 +290,32 @@
       (ts.length ? ts.map(function (t, i) {
         var est = t.estrutura || {}, ft = f[t.id];
         return '<div class="tst' + (ft ? ' feito' : '') + '" style="--c:' + (ft ? '#3FA66B' : '#ee7330') + '"><b>' + esc(t.nome) + '</b><small>⏱ ' + (est.tempo_min || '?') + ' minutos' + (est.orientacao === 'paisagem' ? ' · tela deitada' : '') + '</small>' +
-          (ft ? '<small>✓ Feito' + (ft.fim ? ' às ' + hora(ft.fim) : '') + (ft.tablet ? ' · ' + esc(ft.tablet) : '') + '</small>' : '<button type="button" class="bpri" data-t="' + t.id + '">Abrir</button>') + '</div>';
+          (ft ? '<small>' + (ft.fim ? 'feito às ' + hora(ft.fim) : 'feito') + (ft.tablet ? ' · ' + esc(ft.tablet) : '') + '</small><span class="ja">✓ JÁ PREENCHIDO</span><button type="button" class="bsec bref" data-ref="' + t.id + '">🔒 Liberar refazer</button>' : '<button type="button" class="bpri" data-t="' + t.id + '">Abrir</button>') + '</div>';
       }).join('') : '<div class="bx">Nenhum teste no tablet para esta turma. Chame o avaliador.</div>') + '</div></div></div>';
     atualizarStatus();
     document.getElementById('sair').addEventListener('click', telaEntrada);
     app.querySelectorAll('[data-t]').forEach(function (b) { b.addEventListener('click', function () { telaExplicacao(ts.filter(function (x) { return x.id === b.getAttribute('data-t'); })[0]); }); });
+    app.querySelectorAll('[data-ref]').forEach(function (b) { b.addEventListener('click', function () { liberarRefazer(ts.filter(function (x) { return x.id === b.getAttribute('data-ref'); })[0]); }); });
+  }
+  // Refazer só com o PIN do avaliador e justificativa; o resultado anterior fica guardado como "substituído"
+  function liberarRefazer(t) {
+    var h = E.pacote && E.pacote.pin_hash, jv = E.jovem;
+    if (!h) { aviso('O PIN do avaliador ainda não foi definido em Configurações › Tablets.', 'erro'); return; }
+    var c = cofre({ tam: 4, numeros: true, rotulo: 'PIN DO AVALIADOR', aoCompletar: async function (cod, ui) {
+      ui.lendo();
+      if ((await sha('cfpin:' + cod)) !== h) { ui.erro('PIN INCORRETO'); return; }
+      ui.ok('AUTORIZADO');
+      setTimeout(function () {
+        app.innerHTML = topo('Liberar refazer', jv.nome) + '<div class="cdados"><h1>Por que refazer?</h1><p class="sub">' + esc(t.nome) + ' · o resultado anterior fica guardado.</p>' +
+          '<textarea id="rf-mot" class="rf-mot" rows="4" maxlength="300" placeholder="Ex.: o tablet desligou no meio do teste"></textarea><div class="conf-b" style="margin-top:12px"><button type="button" class="bpri" id="rf-ok" disabled>Liberar e abrir o teste</button><button type="button" class="bsec" id="rf-canc">Cancelar</button></div></div>';
+        var m = document.getElementById('rf-mot'), okb = document.getElementById('rf-ok');
+        m.addEventListener('input', function () { okb.disabled = m.value.trim().length < 5; }); m.focus();
+        document.getElementById('rf-canc').addEventListener('click', telaTestes);
+        okb.addEventListener('click', function () { E.refazer = { teste: t.id, motivo: m.value.trim() }; telaExplicacao(t); });
+      }, 600);
+    } });
+    app.innerHTML = '<div class="entrada"><h1>Liberar refazer</h1><p class="sub">' + esc(t.nome) + ' · digite o PIN do avaliador.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
+    c.ligar(); document.getElementById('canc').addEventListener('click', telaTestes);
   }
 
   // 4) Explicação + Iniciar
@@ -396,7 +422,9 @@
       var tr = document.createElement('div'); tr.className = 'trava'; tr.textContent = porTempo ? '⏱ Tempo encerrado' : 'Salvando…'; document.body.appendChild(tr);
       var c = ctl.corrigir(), fim = new Date();
       var res = { uid: uid(), participacao_id: E.jovem.participacao_id, teste_id: t.id, versao: t.versao, respostas: ctl.respostas(), pontos: c.pontos, total: c.total, nota: c.nota,
-        inicio: inicio.toISOString(), fim: fim.toISOString(), tempo_seg: Math.round((fim - inicio) / 1000), por_tempo: !!porTempo, saidas: saidas };
+        inicio: inicio.toISOString(), fim: fim.toISOString(), tempo_seg: Math.round((fim - inicio) / 1000), por_tempo: !!porTempo, saidas: saidas,
+        desvio_ms: E.desvio == null ? null : Math.round(E.desvio), jovem_nome: E.jovem.nome, teste_nome: t.nome, refazer_motivo: E.refazer && E.refazer.teste === t.id ? E.refazer.motivo : null };
+      if (E.refazer && E.refazer.teste === t.id) E.refazer = null;
       if (E.demo) { E.demoFeitos.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'modo de testes', nota: res.nota, pontos: res.pontos, total: res.total }); }
       else {
         await fila.por(res);
@@ -484,6 +512,12 @@
     app.innerHTML = '<div class="entrada"><h1>Modo avaliador</h1><p class="sub">Digite o PIN do avaliador.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
     c.ligar(); document.getElementById('canc').addEventListener('click', telaEntrada);
   }
+  function listaEnvios(pend) {
+    var st = E.enviando ? ['⟳ Sincronizando', 'sinc'] : E.erroEnvio && online() ? ['⚠ Erro · tenta de novo sozinho', 'erro'] : ['⏳ Pendente' + (online() ? '' : ' (sem internet)'), 'pend'];
+    var h = pend.map(function (x) { return '<div class="env-r"><span>' + esc((x.jovem_nome || 'Jovem') + ' · ' + (x.teste_nome || 'teste')) + '</span><i class="' + st[1] + '">' + st[0] + '</i></div>'; }).join('') +
+      confLer('golt_enviados').slice(-8).reverse().map(function (x) { return '<div class="env-r"><span>' + esc((x.nome || 'Jovem') + ' · ' + (x.teste || 'teste')) + '</span><i class="ok">✓ Sincronizado</i></div>'; }).join('');
+    return h || '<div class="env-r"><span>Nenhum envio ainda.</span></div>';
+  }
   async function telaAvaliador() {
     var n = (await fila.todos()).length, p = E.pacote || {}, hoje = hojeISO(), tb = p.tablet || {};
     var tur = (p.turmas || []).filter(function (t) { return (t.dias || []).some(function (d) { return d.data === hoje; }); });
@@ -494,6 +528,7 @@
       '<div class="lin" style="--c:#2f6fd0"><b>Testes no tablet</b>' + (p.testes || []).length + '</div>' +
       '<div class="lin" style="--c:#2f6fd0"><b>Turmas de hoje</b>' + (tur.length ? tur.map(function (t) { return esc(t.nome + ' · ' + t.empresa); }).join('<br>') : 'nenhuma') + '</div>' +
       '<div class="lin" style="--c:#8a8486"><b>Última atualização</b>' + (E.ultimaSinc ? new Date(E.ultimaSinc).toLocaleString('pt-BR') : '—') + '</div>' +
+      '<div class="envs"><b>Envios deste tablet</b>' + listaEnvios(await fila.todos()) + '</div>' +
       '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
       '<p style="text-align:center;color:var(--texto-3);font-size:12.5px">Os outros recursos do avaliador (liberar refazer, jovem sem cadastro, adicionar tempo…) chegam na próxima etapa.</p></div></div>';
     atualizarStatus();
@@ -512,6 +547,7 @@
       if (lig === true) { E.demo = true; E.chave = 'demo'; E.pacote = DEMO; if (!(await retomarAndamento())) { telaEntrada(); aviso('Modo de testes: use TEST-01 ou TEST-02. PIN do avaliador: 1234.'); } return; }
       app.innerHTML = '<div class="entrada"><h1>Modo de testes desligado</h1><p class="sub">O modo de testes do app está desligado em Configurações › Tablets' + (online() ? '' : ' (ou o aparelho está sem internet)') + '.</p></div>'; return;
     }
+    try { var dv = localStorage.getItem('golt_desvio'); if (dv != null && dv !== '') E.desvio = +dv; } catch (e) {}
     E.chave = await kv.ler('chave'); E.pacote = (await kv.ler('pacote')) || null; E.ultimaSinc = await kv.ler('ultimaSinc');
     if (!E.chave) { telaLigar(); return; }
     if (!(await retomarAndamento())) telaEntrada();

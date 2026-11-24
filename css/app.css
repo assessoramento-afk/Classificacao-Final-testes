@@ -1939,3 +1939,8 @@ html[data-tema="escuro"] .tb-abas em { background: #4a2c1b; color: #ffcfae; }
 html[data-tema="escuro"] .jov-cpf { color: #ffd27a !important; }
 .jov-corr { display: inline-flex !important; align-items: center; gap: 6px; } .jov-resolver { padding: 2px 9px !important; font-size: 11px !important; min-height: 0 !important; }
 .jx-fora { display: none !important; }
+/* Q3 · conflitos dos tablets */
+.tb-conf { box-shadow: inset 4px 0 0 #e0a100, var(--sombra, 0 6px 16px rgba(0,0,0,.06)); margin-bottom: 12px; }
+.tb-conf-op { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.tb-op { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--borda); border-radius: 12px; padding: 10px 12px; cursor: pointer; font-size: 13px; line-height: 1.55; }
+.tb-op:has(input:checked) { border-color: var(--laranja); background: color-mix(in srgb, var(--laranja) 8%, var(--cartao)); }

@@ -606,7 +606,7 @@
     async function resultados() {
       var box = area.querySelector('#tb-res'), rs = [];
       try {
-        rs = await q(sb.from('tablet_resultados').select('id,participacao_id,teste_id,tablet_id,pontos,total,nota,inicio,fim,tempo_seg,por_tempo,situacao,motivo,recebido_em,respostas,versao,saidas').order('recebido_em', { ascending: false }).limit(200));
+        rs = await q(sb.from('tablet_resultados').select('id,participacao_id,teste_id,tablet_id,pontos,total,nota,inicio,fim,tempo_seg,por_tempo,situacao,motivo,recebido_em,respostas,versao,saidas,inicio_srv,refazer_motivo,decisao_motivo,decidido_em').order('recebido_em', { ascending: false }).limit(200));
       } catch (e) { box.innerHTML = '<h2>Resultados recebidos dos tablets</h2><p class="dica">Ainda não há resultados (ou falta rodar o SQL da T2).</p>'; return; }
       if (!rs.length) { box.innerHTML = '<h2>Resultados recebidos dos tablets</h2><p class="dica">Nenhum resultado recebido ainda. Eles aparecem aqui assim que os tablets enviam.</p>'; return; }
       var pids = rs.map(function (r) { return r.participacao_id; }).filter(Boolean), tids = rs.map(function (r) { return r.teste_id; }).filter(Boolean);
@@ -617,8 +617,37 @@
       function nm(r) { var p = parts.filter(function (x) { return x.id === r.participacao_id; })[0]; return p ? ((p.jovens && p.jovens.nome) || '') + ' · ' + (p.codigo || '') : '—'; }
       function tn(id) { var t = tests.filter(function (x) { return x.id === id; })[0]; return t ? t.nome : '—'; }
       function tbn(id) { var t = lista.filter(function (x) { return x.id === id; })[0]; return t ? t.nome : '—'; }
-      var COR = { gravado: '#3FA66B', repetido: '#e0a100', recusado: '#D9534F' }, NOME = { gravado: 'Nota lançada', repetido: 'Repetido', recusado: 'Não lançado' };
-      box.innerHTML = '<h2>Resultados recebidos dos tablets</h2><p class="dica" style="margin:0 0 8px">A nota de cada teste entra sozinha no teste do jovem (Avaliar). "Repetido": o jovem já tinha feito o teste, vale o primeiro.</p><div class="tabela-rolar"><table class="tabela"><thead><tr><th>Jovem</th><th>Teste</th><th>Nota</th><th>Pontos</th><th>Tempo</th><th>Situação</th><th>Tablet</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
+      var COR = { gravado: '#3FA66B', repetido: '#e0a100', recusado: '#D9534F', conflito: '#e0a100', substituido: '#8a8486', descartado: '#8a8486', anulado: '#D9534F' },
+        NOME = { gravado: 'Nota lançada', repetido: 'Repetido', recusado: 'Não lançado', conflito: '⚠ Conflito', substituido: 'Substituído (refeito)', descartado: 'Descartado', anulado: 'Anulado' };
+      var conf = rs.filter(function (r) { return r.situacao === 'conflito'; }), refs = rs.filter(function (r) { return r.situacao === 'substituido' || r.refazer_motivo; });
+      contaAba('res', conf.length || null);
+      var sub = box.getAttribute('data-sub') || (conf.length ? 'conf' : 'rec');
+      var SUBS = [['rec', 'Recebidos'], ['conf', '⚠ Conflitos' + (conf.length ? ' · ' + conf.length : '')], ['ref', 'Refeitos' + (refs.length ? ' · ' + refs.length : '')]];
+      var subNav = '<div class="pt-filtros">' + SUBS.map(function (x) { return '<button type="button" class="pt-chip' + (sub === x[0] ? ' on' : '') + '" data-sub="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+      function hm(d) { return d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'; }
+      if (sub === 'conf') {
+        var grupos = {}; conf.forEach(function (r) { var k = r.participacao_id + '|' + r.teste_id; (grupos[k] = grupos[k] || []).push(r); });
+        box.innerHTML = '<h2>Resultados recebidos dos tablets</h2>' + subNav + (Object.keys(grupos).length ? Object.keys(grupos).map(function (k) {
+          var g = grupos[k];
+          return '<section class="card bloco tb-conf" data-gk="' + k + '"><b>' + esc(nm(g[0])) + ' · ' + esc(tn(g[0].teste_id)) + '</b><p class="dica" style="margin:2px 0 10px">A nota fica parada até a decisão. O processo não pode ser liberado com conflito em aberto.</p><div class="tb-conf-op">' +
+            g.map(function (r) { return '<label class="tb-op"><input type="radio" name="op-' + k + '" value="' + r.id + '"><span><b>' + esc(tbn(r.tablet_id)) + '</b><br>começou ' + hm(r.inicio_srv || r.inicio) + (r.inicio_srv ? '' : ' <small>(relógio sem acerto)</small>') + ' · terminou ' + hm(r.fim) + '<br>' + (r.pontos == null ? '—' : r.pontos + ' de ' + r.total + ' pontos') + ' · nota ' + (r.nota == null ? '—' : r.nota) + '</span></label>'; }).join('') +
+            '<label class="tb-op"><input type="radio" name="op-' + k + '" value="anular"><span><b>Anular os dois</b><br>o teste fica com a nota mínima</span></label></div>' +
+            '<label class="campo" style="margin-top:10px"><span>Motivo da decisão <span class="obrig">*</span></span><input class="entrada" data-mot maxlength="300"></label><div class="tt-add"><button type="button" class="btn btn-pri" data-decidir="' + k + '">Confirmar decisão</button></div></section>';
+        }).join('') : '<p class="dica">Nenhum conflito. 🎉</p>');
+      } else if (sub === 'ref') {
+        box.innerHTML = '<h2>Resultados recebidos dos tablets</h2>' + subNav + (refs.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Jovem</th><th>Teste</th><th>Situação</th><th>Justificativa</th><th>Tablet</th></tr></thead><tbody>' +
+          refs.map(function (r) { return '<tr><td>' + esc(nm(r)) + '</td><td>' + esc(tn(r.teste_id)) + '</td><td>' + (NOME[r.situacao] || r.situacao) + '</td><td>' + esc(r.refazer_motivo || r.motivo || '') + '</td><td>' + esc(tbn(r.tablet_id)) + '<br><small class="dica">' + (r.fim ? new Date(r.fim).toLocaleString('pt-BR') : '') + '</small></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="dica">Nenhum teste refeito.</p>');
+      }
+      box.querySelectorAll('[data-sub]').forEach(function (b) { b.addEventListener('click', function () { box.setAttribute('data-sub', b.getAttribute('data-sub')); resultados(); }); });
+      box.querySelectorAll('[data-decidir]').forEach(function (b) { b.addEventListener('click', async function () {
+        var sec = b.closest('[data-gk]'), k = sec.getAttribute('data-gk').split('|'), op = sec.querySelector('input[type=radio]:checked'), mot = sec.querySelector('[data-mot]').value.trim();
+        if (!op) { ui.toast('Escolha qual resultado vale (ou anular).', 'erro'); return; }
+        if (!mot) { ui.toast('Escreva o motivo da decisão.', 'erro'); return; }
+        try { await q(sb.rpc('tablet_conflito_decidir', { p_participacao: k[0], p_teste: k[1], p_manter: op.value === 'anular' ? null : op.value, p_motivo: mot })); ui.toast('Decisão registrada.', 'ok'); resultados(); } catch (e) { erro(e); }
+      }); });
+      if (sub !== 'rec') return;
+      rs = rs.filter(function (r) { return r.situacao !== 'conflito'; });
+      box.innerHTML = '<h2>Resultados recebidos dos tablets</h2>' + subNav + '<p class="dica" style="margin:0 0 8px">A nota de cada teste entra sozinha no teste do jovem (Avaliar). "Repetido": o jovem já tinha feito o teste, vale o primeiro.</p><div class="tabela-rolar"><table class="tabela"><thead><tr><th>Jovem</th><th>Teste</th><th>Nota</th><th>Pontos</th><th>Tempo</th><th>Situação</th><th>Tablet</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         rs.map(function (r, i) {
           return '<tr style="--c:' + (COR[r.situacao] || '#8a8486') + '"><td>' + esc(nm(r)) + '</td><td>' + esc(tn(r.teste_id)) + '</td><td class="num"><b>' + (r.nota == null ? '—' : r.nota) + '</b></td><td class="num">' + (r.pontos == null ? '—' : r.pontos + ' de ' + r.total) + '</td>' +
             '<td>' + (r.tempo_seg != null ? Math.floor(r.tempo_seg / 60) + ' min ' + (r.tempo_seg % 60) + ' s' : '—') + (r.por_tempo ? ' · <small>terminou por tempo</small>' : '') + '</td>' +
