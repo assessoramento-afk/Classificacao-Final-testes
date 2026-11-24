@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.1.2';
+  var VERSAO_APP = '1.8.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -54,6 +54,7 @@
     try {
       var p = await rpc('tablet_baixar', { p_chave: E.chave, p_versao_app: VERSAO_APP });
       E.pacote = p; E.ultimaSinc = new Date().toISOString();
+      if (p && p.gerado_em) { E.desvio = Date.parse(p.gerado_em) - Date.now(); try { localStorage.setItem('golt_desvio', String(E.desvio)); } catch (e) {} }
       await kv.gravar('pacote', p); await kv.gravar('ultimaSinc', E.ultimaSinc);
       if (!silencioso) aviso('Testes e turmas atualizados.');
       return true;
@@ -65,12 +66,18 @@
   }
   async function enviar() {
     if (E.demo || !E.chave || E.enviando || !online()) return;
+    var cfs = confLer('golt_conf_fila');
+    if (cfs.length) { try { var rc = await rpc('tablet_conferir', { p_chave: E.chave, p_lista: cfs.slice(0, 50) }); var rec = rc.recebidos || []; confGravar('golt_conf_fila', confLer('golt_conf_fila').filter(function (x) { return rec.indexOf(x.uid) < 0; })); } catch (e) { /* tenta de novo depois */ } }
     var lista = await fila.todos(); if (!lista.length) { atualizarStatus(); return; }
     E.enviando = true;
     try {
+      atualizarStatus();
       var r = await rpc('tablet_enviar', { p_chave: E.chave, p_lista: lista.slice(0, 20), p_pendentes: Math.max(0, lista.length - 20), p_versao_app: VERSAO_APP });
-      for (var i = 0; i < (r.recebidos || []).length; i++) await fila.tirar(r.recebidos[i]);
-    } catch (e) { /* tenta de novo depois */ }
+      if (r.servidor_em) { E.desvio = Date.parse(r.servidor_em) - Date.now(); try { localStorage.setItem('golt_desvio', String(E.desvio)); } catch (e2) {} }
+      var envs = confLer('golt_enviados');
+      for (var i = 0; i < (r.recebidos || []).length; i++) { var it = lista.filter(function (x) { return x.uid === r.recebidos[i]; })[0]; if (it) envs.push({ uid: it.uid, nome: it.jovem_nome || '', teste: it.teste_nome || '', em: new Date().toISOString() }); await fila.tirar(r.recebidos[i]); }
+      confGravar('golt_enviados', envs.slice(-30)); E.erroEnvio = null;
+    } catch (e) { E.erroEnvio = new Date().toISOString(); /* tenta de novo depois */ }
     finally { E.enviando = false; atualizarStatus(); }
   }
   setInterval(function () { enviar(); }, 30000);
@@ -88,7 +95,7 @@
     if (E.demo) { el.className = 'pil av'; el.textContent = 'MODO DE TESTES · nada é enviado'; return; }
     var n = (await fila.todos()).length;
     el.className = 'pil ' + (!online() ? 'av' : n ? 'av' : 'ok');
-    el.textContent = !online() ? 'Sem internet' + (n ? ' · ' + n + ' a enviar' : '') : (n ? n + ' a enviar' : 'Tudo enviado');
+    el.textContent = !online() ? 'Sem internet' + (n ? ' · ' + n + ' pendente' + (n > 1 ? 's' : '') : '') : E.enviando && n ? '⟳ Sincronizando · ' + n : (n ? (E.erroEnvio ? '⚠ Erro no envio · ' : '⏳ ') + n + ' pendente' + (n > 1 ? 's' : '') : 'Tudo enviado');
   }
 
   /* ---------- Feitos (no banco + neste tablet) ---------- */
@@ -126,8 +133,10 @@
     var cod = '', ocupado = false;
     var teclas = opts.numeros ? '1234567890'.split('') : 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
     var h = '<div class="cofre"><div class="lt" id="lt">' + SVG_LEITOR + '<div class="letr" id="letr">' + (opts.rotulo || (opts.numeros ? 'DIGITE O CÓDIGO' : 'DIGITE SEU CÓDIGO')) + '</div></div><div class="painel"><div class="cod" id="cod"></div>' +
-      '<div class="kb' + (opts.numeros ? ' so-num' : '') + '" id="kb">' + teclas.map(function (t) { return '<button type="button" data-t="' + t + '"' + (/\d/.test(t) ? ' class="num"' : '') + '>' + t + '</button>'; }).join('') +
-      '<button type="button" class="ap" data-t="⌫" aria-label="Apagar">⌫</button></div></div></div>';
+      (opts.numeros ? '<div class="kb so-num" id="kb">' + teclas.map(function (t) { return '<button type="button" data-t="' + t + '" class="num">' + t + '</button>'; }).join('') + '<button type="button" class="ap" data-t="⌫" aria-label="Apagar">⌫</button></div>'
+        : '<div class="kb qw" id="kb">' + ['1234567890', 'QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'].map(function (l, li) {   // teclado QWERTY, números em cima
+            return '<div class="kr">' + l.split('').map(function (t) { return '<button type="button" data-t="' + t + '"' + (/\d/.test(t) ? ' class="num"' : '') + '>' + t + '</button>'; }).join('') + (li === 3 ? '<button type="button" class="ap" data-t="⌫" aria-label="Apagar">⌫<span class="ap-t"> Apagar</span></button>' : '') + '</div>';
+          }).join('') + '</div>') + '</div></div>';
     function desenha() {
       var c = document.getElementById('cod'); if (!c) return; var s = '';
       for (var i = 0; i < opts.tam; i++) { if (opts.formato && i === 4) s += '<i>-</i>'; var ch = cod[i]; s += '<span class="' + (ch ? 'f' + (/\d/.test(ch) ? ' n' : '') : '') + '">' + (ch || '•') + '</span>'; }
@@ -225,7 +234,7 @@
       setTimeout(function () {
         var j = ((E.pacote && E.pacote.jovens) || []).filter(function (x) { return normCod(x.codigo) === cod; })[0];
         if (!j) { ui.erro(); aviso('Código não encontrado. Confira o crachá ou chame o avaliador.', 'erro'); return; }
-        ui.ok(); E.jovem = j; setTimeout(telaTestes, 900);
+        ui.ok(); E.jovem = j; setTimeout(function () { (precisaConferir(j) ? telaConferir : telaTestes)(); }, 900);
       }, 900);
     } });
     app.innerHTML = topo('Projeto Gol Testes', (tb.nome || 'Tablet') + (tb.etiqueta ? ' · ' + tb.etiqueta : '')) +
@@ -247,6 +256,30 @@
     });
   }
 
+  // 2b) Conferência no 1º acesso (Q2): o jovem só confere nome, empresa e turma; não edita nada
+  function confLer(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } }
+  function confGravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function precisaConferir(j) { return !E.demo && !j.conferido && confLer('golt_conf_feitos').indexOf(j.participacao_id) < 0; }
+  function telaConferir() {
+    var j = E.jovem, tu = ((E.pacote && E.pacote.turmas) || []).filter(function (t) { return t.id === j.turma_id; })[0] || {};
+    var dia = (tu.dias || [])[0] ? new Date(tu.dias[0].data + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+    app.innerHTML = topo('Projeto Gol Testes', j.nome) + '<div class="cdados"><h1>Olá! Confira seus dados</h1><p class="sub">É só uma vez. Se algo estiver errado, avise o avaliador.</p>' +
+      '<div class="conf-c"><div><small>NOME</small><b>' + esc(j.nome) + '</b></div><div><small>EMPRESA</small><b>' + esc(tu.empresa || '—') + '</b></div><div><small>TURMA</small><b>' + esc((tu.nome || '') + (dia ? ' · ' + dia : '')) + '</b></div></div>' +
+      '<div class="conf-b"><button type="button" class="bpri" id="cf-ok">✓ Sou eu, está tudo certo</button><button type="button" class="bsec" id="cf-erro">Tem algo errado</button></div>' +
+      '<div class="conf-p" id="cf-p" hidden><b>O que está errado?</b><div class="conf-ch">' + [['nome', 'Nome'], ['empresa', 'Empresa'], ['turma', 'Turma'], ['outro', 'Outro']].map(function (x) { return '<button type="button" data-cc="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+      '</div><p>O pedido vai para a equipe. Você pode fazer os testes normalmente.</p><button type="button" class="bpri" id="cf-env" disabled>Enviar e continuar</button></div></div>';
+    function registrar(ok, campos) {
+      var fila2 = confLer('golt_conf_fila'); fila2.push({ uid: 'cf-' + j.participacao_id + '-' + Date.now().toString(36), participacao_id: j.participacao_id, ok: ok, campos: campos || [], em: new Date().toISOString() }); confGravar('golt_conf_fila', fila2);
+      var fe = confLer('golt_conf_feitos'); fe.push(j.participacao_id); confGravar('golt_conf_feitos', fe);
+      enviar(); telaTestes();
+    }
+    document.getElementById('cf-ok').addEventListener('click', function () { registrar(true); });
+    document.getElementById('cf-erro').addEventListener('click', function () { document.getElementById('cf-p').hidden = false; this.disabled = true; });
+    var sel = [];
+    app.querySelectorAll('[data-cc]').forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-cc'), i = sel.indexOf(k); if (i >= 0) sel.splice(i, 1); else sel.push(k); b.classList.toggle('on', i < 0); document.getElementById('cf-env').disabled = !sel.length; }); });
+    document.getElementById('cf-env').addEventListener('click', function () { registrar(false, sel.slice()); aviso('Pedido de correção registrado. Avise o avaliador.', 'ok'); });
+  }
+
   // 3) Lista de testes do jovem
   async function telaTestes() {
     var j = E.jovem, tu = ((E.pacote && E.pacote.turmas) || []).filter(function (t) { return t.id === j.turma_id; })[0] || {};
@@ -257,11 +290,32 @@
       (ts.length ? ts.map(function (t, i) {
         var est = t.estrutura || {}, ft = f[t.id];
         return '<div class="tst' + (ft ? ' feito' : '') + '" style="--c:' + (ft ? '#3FA66B' : '#ee7330') + '"><b>' + esc(t.nome) + '</b><small>⏱ ' + (est.tempo_min || '?') + ' minutos' + (est.orientacao === 'paisagem' ? ' · tela deitada' : '') + '</small>' +
-          (ft ? '<small>✓ Feito' + (ft.fim ? ' às ' + hora(ft.fim) : '') + (ft.tablet ? ' · ' + esc(ft.tablet) : '') + '</small>' : '<button type="button" class="bpri" data-t="' + t.id + '">Abrir</button>') + '</div>';
+          (ft ? '<small>' + (ft.fim ? 'feito às ' + hora(ft.fim) : 'feito') + (ft.tablet ? ' · ' + esc(ft.tablet) : '') + '</small><span class="ja">✓ JÁ PREENCHIDO</span><button type="button" class="bsec bref" data-ref="' + t.id + '">🔒 Liberar refazer</button>' : '<button type="button" class="bpri" data-t="' + t.id + '">Abrir</button>') + '</div>';
       }).join('') : '<div class="bx">Nenhum teste no tablet para esta turma. Chame o avaliador.</div>') + '</div></div></div>';
     atualizarStatus();
     document.getElementById('sair').addEventListener('click', telaEntrada);
     app.querySelectorAll('[data-t]').forEach(function (b) { b.addEventListener('click', function () { telaExplicacao(ts.filter(function (x) { return x.id === b.getAttribute('data-t'); })[0]); }); });
+    app.querySelectorAll('[data-ref]').forEach(function (b) { b.addEventListener('click', function () { liberarRefazer(ts.filter(function (x) { return x.id === b.getAttribute('data-ref'); })[0]); }); });
+  }
+  // Refazer só com o PIN do avaliador e justificativa; o resultado anterior fica guardado como "substituído"
+  function liberarRefazer(t) {
+    var h = E.pacote && E.pacote.pin_hash, jv = E.jovem;
+    if (!h) { aviso('O PIN do avaliador ainda não foi definido em Configurações › Tablets.', 'erro'); return; }
+    var c = cofre({ tam: 4, numeros: true, rotulo: 'PIN DO AVALIADOR', aoCompletar: async function (cod, ui) {
+      ui.lendo();
+      if ((await sha('cfpin:' + cod)) !== h) { ui.erro('PIN INCORRETO'); return; }
+      ui.ok('AUTORIZADO');
+      setTimeout(function () {
+        app.innerHTML = topo('Liberar refazer', jv.nome) + '<div class="cdados"><h1>Por que refazer?</h1><p class="sub">' + esc(t.nome) + ' · o resultado anterior fica guardado.</p>' +
+          '<textarea id="rf-mot" class="rf-mot" rows="4" maxlength="300" placeholder="Ex.: o tablet desligou no meio do teste"></textarea><div class="conf-b" style="margin-top:12px"><button type="button" class="bpri" id="rf-ok" disabled>Liberar e abrir o teste</button><button type="button" class="bsec" id="rf-canc">Cancelar</button></div></div>';
+        var m = document.getElementById('rf-mot'), okb = document.getElementById('rf-ok');
+        m.addEventListener('input', function () { okb.disabled = m.value.trim().length < 5; }); m.focus();
+        document.getElementById('rf-canc').addEventListener('click', telaTestes);
+        okb.addEventListener('click', function () { E.refazer = { teste: t.id, motivo: m.value.trim() }; telaExplicacao(t); });
+      }, 600);
+    } });
+    app.innerHTML = '<div class="entrada"><h1>Liberar refazer</h1><p class="sub">' + esc(t.nome) + ' · digite o PIN do avaliador.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
+    c.ligar(); document.getElementById('canc').addEventListener('click', telaTestes);
   }
 
   // 4) Explicação + Iniciar
@@ -323,13 +377,14 @@
       '<div class="miolo" id="mi"></div><div class="rodape"><span class="cont" id="cont"></span><div class="nav" id="nav"></div><button type="button" class="bpri" id="fin">✓ Finalizar teste</button></div>' +
       '<div class="girar"><svg viewBox="0 0 64 64"><rect x="18" y="8" width="28" height="48" rx="5"/><path d="M28 50h8"/></svg><b style="font-size:20px">Gire o tablet para a horizontal</b><span style="color:#cfc7c7">Este teste é feito com a tela deitada. O tempo continua contando.</span></div>';
     var ctl = M.desenhar(document.getElementById('mi'), est); atualizarStatus();
+    if (est.calculadora) calculadora();
     if (ret) { ctl.restaurar(ret.resp); aviso('Teste retomado de onde parou. O tempo continuou contando.'); }
     function guardar() { if (acabou) return; kv.gravar('andamento', { demo: E.demo, jovem: E.jovem, teste_id: t.id, versao: t.versao, inicio: inicio.toISOString(), fimTs: fimTs, saidas: saidas, resp: ctl.respostas(), salvoEm: new Date().toISOString() }).catch(function () {}); }
     guardar(); var guarda = setInterval(guardar, 15000);
-    var itens = [].slice.call(app.querySelectorAll('#mi tr[data-l], #mi .tm-bloco'));
+    var itens = [].slice.call(app.querySelectorAll('#mi tr[data-l], #mi .tm-bloco, #mi [data-item]'));
     function respondidas() {
       var r = ctl.respostas(), n = 0;
-      (est.partes || []).forEach(function (p, i) { var x = r[i] || {}; if (p.tipo === 'contar') n += Object.keys(x).length; else if (p.tipo === 'marcar') n += Object.keys(x).filter(function (k) { return Object.keys(x[k]).some(function (c) { return x[k][c]; }); }).length; });
+      (est.partes || []).forEach(function (p, i) { var x = r[i] || {}; if (p.tipo === 'contar' || p.tipo === 'escolha') n += Object.keys(x).length; else if (['tabela', 'memoria', 'ordem', 'agrupar', 'fotos', 'varias', 'grade', 'aberta'].indexOf(p.tipo) >= 0) n += document.querySelectorAll('#mi [data-parte="' + i + '"] [data-item].feito').length; else if (p.tipo === 'marcar') n += Object.keys(x).filter(function (k) { return Object.keys(x[k]).some(function (c) { return x[k][c]; }); }).length; });
       return n;
     }
     function contar() {
@@ -338,12 +393,13 @@
       document.getElementById('barra').style.width = Math.min(100, n / tot * 100) + '%';
       var nav = document.getElementById('nav'); if (!nav.childNodes.length) nav.innerHTML = itens.map(function (x, i) { return '<button type="button" data-n="' + i + '">' + (i + 1) + '</button>'; }).join('');
       var r = ctl.respostas();
-      itens.forEach(function (x, i) { var feito = x.matches('tr') ? x.querySelector('.tm-ops .on') : x.querySelector('.tm-cmp .on'); var b = nav.querySelector('[data-n="' + i + '"]'); if (b) b.classList.toggle('ok', !!feito); });
+      itens.forEach(function (x, i) { var feito = x.hasAttribute('data-item') ? x.classList.contains('feito') : x.matches('tr') ? x.querySelector('.tm-ops .on') : x.querySelector('.tm-cmp .on'); var b = nav.querySelector('[data-n="' + i + '"]'); if (b) b.classList.toggle('ok', !!feito); });
     }
     document.getElementById('mi').addEventListener('click', function () { setTimeout(function () { contar(); guardar(); }, 0); });
-    document.getElementById('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-n]'); if (b) itens[+b.getAttribute('data-n')].scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    var tDig = null; document.getElementById('mi').addEventListener('input', function () { clearTimeout(tDig); tDig = setTimeout(function () { contar(); guardar(); }, 250); });
+    document.getElementById('nav').addEventListener('click', function (e) { var b = e.target.closest('[data-n]'); if (b) (function (it) { var sec = it.closest('.tm-parte'); if (sec && sec.hidden) { var ab = document.querySelector('.tm-aba[data-aba="' + sec.getAttribute('data-parte') + '"]'); if (ab) ab.click(); } return it; })(itens[+b.getAttribute('data-n')]).scrollIntoView({ behavior: 'smooth', block: 'center' }); });
     document.getElementById('maior').addEventListener('click', function () { document.body.classList.toggle('grande'); });
-    document.getElementById('ouvir').addEventListener('click', function () { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(est.instrucoes || t.nome); u.lang = 'pt-BR'; speechSynthesis.speak(u); } catch (e) {} });
+    document.getElementById('ouvir').addEventListener('click', function () { try { speechSynthesis.cancel(); var qe = document.querySelector('#mi .tm-q.atual') || document.querySelector('#mi .tm-q:not(.feito)'); var txt = qe ? qe.innerText.replace(/\n+/g, '. ') : (est.instrucoes || t.nome); var u = new SpeechSynthesisUtterance(txt); u.lang = 'pt-BR'; speechSynthesis.speak(u); } catch (e) {} });
     contar();
     // tempo: relógio (não pausa ao fechar o app)
     var tick = setInterval(function () {
@@ -366,7 +422,9 @@
       var tr = document.createElement('div'); tr.className = 'trava'; tr.textContent = porTempo ? '⏱ Tempo encerrado' : 'Salvando…'; document.body.appendChild(tr);
       var c = ctl.corrigir(), fim = new Date();
       var res = { uid: uid(), participacao_id: E.jovem.participacao_id, teste_id: t.id, versao: t.versao, respostas: ctl.respostas(), pontos: c.pontos, total: c.total, nota: c.nota,
-        inicio: inicio.toISOString(), fim: fim.toISOString(), tempo_seg: Math.round((fim - inicio) / 1000), por_tempo: !!porTempo, saidas: saidas };
+        inicio: inicio.toISOString(), fim: fim.toISOString(), tempo_seg: Math.round((fim - inicio) / 1000), por_tempo: !!porTempo, saidas: saidas,
+        desvio_ms: E.desvio == null ? null : Math.round(E.desvio), jovem_nome: E.jovem.nome, teste_nome: t.nome, refazer_motivo: E.refazer && E.refazer.teste === t.id ? E.refazer.motivo : null };
+      if (E.refazer && E.refazer.teste === t.id) E.refazer = null;
       if (E.demo) { E.demoFeitos.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'modo de testes', nota: res.nota, pontos: res.pontos, total: res.total }); }
       else {
         await fila.por(res);
@@ -376,6 +434,32 @@
       await kv.apagar('andamento');
       setTimeout(function () { tr.remove(); document.body.classList.remove('pede-paisagem', 'grande'); try { screen.orientation.unlock(); } catch (e) {} telaConclusao(t, res, respondidas(), itens.length); }, porTempo ? 1600 : 400);
     }
+  }
+
+  // Calculadora do teste (Recebimento, Administrativo): o resultado não pode ser colado, o jovem digita
+  function calculadora() {
+    var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'calc-b'; bt.innerHTML = '🧮 Calculadora';
+    var c = document.createElement('div'); c.className = 'calc'; c.hidden = true;
+    var T = [['C', 'C', 'fn'], ['⌫', '⌫', 'fn'], ['%', '%', 'fn'], ['/', '÷', 'op'], ['7', '7'], ['8', '8'], ['9', '9'], ['*', '×', 'op'], ['4', '4'], ['5', '5'], ['6', '6'], ['-', '−', 'op'], ['1', '1'], ['2', '2'], ['3', '3'], ['+', '+', 'op'], ['0', '0', 'zero'], [',', ','], ['=', '=', 'ig']];
+    c.innerHTML = '<header><b>⠿ Calculadora · arraste</b><button type="button" class="calc-x" aria-label="Fechar">×</button></header><div class="vis"><small class="cx-e"> </small><span class="cx-v">0</span></div><div class="teclas">' +
+      T.map(function (k) { return '<button type="button" data-k="' + k[0] + '" class="' + (k[2] || '') + '">' + k[1] + '</button>'; }).join('') + '</div>';
+    app.appendChild(bt); app.appendChild(c);
+    var ex = '';
+    function mostra(v) { c.querySelector('.cx-v').textContent = v; }
+    function bonito(x) { return x.replace(/\*/g, '×').replace(/\//g, '÷').replace(/\./g, ','); }
+    bt.addEventListener('click', function () { c.hidden = false; bt.hidden = true; });
+    c.querySelector('.calc-x').addEventListener('click', function () { c.hidden = true; bt.hidden = false; });
+    c.querySelector('.teclas').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-k]'); if (!b) return; var k = b.getAttribute('data-k');
+      if (k === 'C') { ex = ''; c.querySelector('.cx-e').textContent = ' '; mostra('0'); return; }
+      if (k === '⌫') { ex = ex.slice(0, -1); mostra(bonito(ex) || '0'); return; }
+      if (k === '=') { try { if (!/^[\d.+\-*/%() ]+$/.test(ex)) throw 0; var r = Function('return (' + ex.replace(/%/g, '/100') + ')')(); if (!isFinite(r)) throw 0; c.querySelector('.cx-e').textContent = bonito(ex) + ' ='; r = Math.round(r * 100) / 100; ex = String(r); mostra(r.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); } catch (er) { mostra('Erro'); ex = ''; } return; }
+      ex += (k === ',' ? '.' : k); mostra(bonito(ex));
+    });
+    var h = c.querySelector('header'), ox, oy, arr = false;
+    h.addEventListener('pointerdown', function (e) { if (e.target.closest('button')) return; arr = true; var r = c.getBoundingClientRect(); ox = e.clientX - r.left; oy = e.clientY - r.top; c.style.right = 'auto'; c.style.bottom = 'auto'; c.style.left = r.left + 'px'; c.style.top = r.top + 'px'; h.setPointerCapture(e.pointerId); });
+    h.addEventListener('pointermove', function (e) { if (!arr) return; c.style.left = Math.max(0, Math.min(innerWidth - c.offsetWidth, e.clientX - ox)) + 'px'; c.style.top = Math.max(0, Math.min(innerHeight - c.offsetHeight, e.clientY - oy)) + 'px'; });
+    h.addEventListener('pointerup', function () { arr = false; });
   }
 
   // 6) Conclusão
@@ -428,6 +512,12 @@
     app.innerHTML = '<div class="entrada"><h1>Modo avaliador</h1><p class="sub">Digite o PIN do avaliador.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
     c.ligar(); document.getElementById('canc').addEventListener('click', telaEntrada);
   }
+  function listaEnvios(pend) {
+    var st = E.enviando ? ['⟳ Sincronizando', 'sinc'] : E.erroEnvio && online() ? ['⚠ Erro · tenta de novo sozinho', 'erro'] : ['⏳ Pendente' + (online() ? '' : ' (sem internet)'), 'pend'];
+    var h = pend.map(function (x) { return '<div class="env-r"><span>' + esc((x.jovem_nome || 'Jovem') + ' · ' + (x.teste_nome || 'teste')) + '</span><i class="' + st[1] + '">' + st[0] + '</i></div>'; }).join('') +
+      confLer('golt_enviados').slice(-8).reverse().map(function (x) { return '<div class="env-r"><span>' + esc((x.nome || 'Jovem') + ' · ' + (x.teste || 'teste')) + '</span><i class="ok">✓ Sincronizado</i></div>'; }).join('');
+    return h || '<div class="env-r"><span>Nenhum envio ainda.</span></div>';
+  }
   async function telaAvaliador() {
     var n = (await fila.todos()).length, p = E.pacote || {}, hoje = hojeISO(), tb = p.tablet || {};
     var tur = (p.turmas || []).filter(function (t) { return (t.dias || []).some(function (d) { return d.data === hoje; }); });
@@ -438,6 +528,7 @@
       '<div class="lin" style="--c:#2f6fd0"><b>Testes no tablet</b>' + (p.testes || []).length + '</div>' +
       '<div class="lin" style="--c:#2f6fd0"><b>Turmas de hoje</b>' + (tur.length ? tur.map(function (t) { return esc(t.nome + ' · ' + t.empresa); }).join('<br>') : 'nenhuma') + '</div>' +
       '<div class="lin" style="--c:#8a8486"><b>Última atualização</b>' + (E.ultimaSinc ? new Date(E.ultimaSinc).toLocaleString('pt-BR') : '—') + '</div>' +
+      '<div class="envs"><b>Envios deste tablet</b>' + listaEnvios(await fila.todos()) + '</div>' +
       '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
       '<p style="text-align:center;color:var(--texto-3);font-size:12.5px">Os outros recursos do avaliador (liberar refazer, jovem sem cadastro, adicionar tempo…) chegam na próxima etapa.</p></div></div>';
     atualizarStatus();
@@ -456,6 +547,7 @@
       if (lig === true) { E.demo = true; E.chave = 'demo'; E.pacote = DEMO; if (!(await retomarAndamento())) { telaEntrada(); aviso('Modo de testes: use TEST-01 ou TEST-02. PIN do avaliador: 1234.'); } return; }
       app.innerHTML = '<div class="entrada"><h1>Modo de testes desligado</h1><p class="sub">O modo de testes do app está desligado em Configurações › Tablets' + (online() ? '' : ' (ou o aparelho está sem internet)') + '.</p></div>'; return;
     }
+    try { var dv = localStorage.getItem('golt_desvio'); if (dv != null && dv !== '') E.desvio = +dv; } catch (e) {}
     E.chave = await kv.ler('chave'); E.pacote = (await kv.ler('pacote')) || null; E.ultimaSinc = await kv.ler('ultimaSinc');
     if (!E.chave) { telaLigar(); return; }
     if (!(await retomarAndamento())) telaEntrada();

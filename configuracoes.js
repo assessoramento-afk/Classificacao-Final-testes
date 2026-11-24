@@ -40,8 +40,11 @@
   }
 
   window.CF.telas = window.CF.telas || {};
+  window.CF.paginaEscolas = function (area) { return paginaEscolas(area); };
   window.CF.telas.config = function (area, ctx) {
     var sub = subAtual();
+    if (sub === 'empresas' || sub === 'avaliadores') { location.replace('#/cadastros/' + sub); return; }
+    if (sub === 'escolas-cks') { location.replace('#/cadastros/escolas'); return; }
     if (sub && ['empresas', 'avaliadores', 'areas', 'testes', 'competencias', 'materiais'].indexOf(sub) >= 0) { window.CF.configPaginas.render(area, sub, ctx); return; }
     if (sub === 'notas') return paginaNotas(area);
     if (sub === 'prereserva') { window.location.hash = '#/config'; return; }
@@ -64,12 +67,12 @@
       '<span class="ic">' + icone(chave) + '</span><div><b>' + esc(titulo) + '</b><small>' + resumo + '</small></div><span class="vai">' + seta() + '</span></a>';
   }
   async function paginaInicial(area) {
-    area.innerHTML = '<header class="cabecalho"><div><h1>Configurações</h1><p>Tudo o que prepara o sistema: empresas, equipe, banco de testes e padrões dos processos</p></div></header><div id="cfg-cards"><div class="girando" style="margin:30px auto"></div></div>';
+    area.innerHTML = '<header class="cabecalho"><div><h1>Configurações</h1><p>Tudo o que prepara o sistema: banco de testes, padrões dos processos e documentos</p></div></header><div id="cfg-cards"><div class="girando" style="margin:30px auto"></div></div>';
     var r = await Promise.all([
       dados.empresas.listar().catch(function () { return []; }), dados.pessoas.listar().catch(function () { return []; }),
       dados.banco.carregarTudo().catch(function () { return null; }), dados.config.carregar().catch(function () { return null; })
     ]);
-    var emp = r[0], pes = r[1], b = r[2], cfg = r[3];
+    var emp = r[0] || [], pes = r[1] || [], b = r[2], cfg = r[3];
     var empAtivas = emp.filter(function (e) { return e.ativa; }).length;
     var comAcesso = pes.filter(function (p) { return p.aprovado && p.ativo; }).length, pend = pes.filter(function (p) { return !p.aprovado && p.ativo; }).length;
     var resumoBanco = { areas: '', testes: '', competencias: '', materiais: '' };
@@ -86,11 +89,7 @@
       resumoBanco.materiais = nMat + (nMat === 1 ? ' material' : ' materiais') + ' · ' + Object.keys(tComMat).length + ' testes com lista';
     }
     area.querySelector('#cfg-cards').innerHTML =
-      '<section class="grupo"><h2>Pessoas e empresas</h2><div class="cards-cfg">' +
-        card('empresas', 'empresa', 'Empresas', empAtivas + (empAtivas === 1 ? ' empresa ativa' : ' empresas ativas')) +
-        card('escolas-cks', 'escola', 'Escolas e CKs', 'De onde vêm os alunos do Profiling Escolas') +
-        card('avaliadores', 'aval', 'Avaliadores', comAcesso + (comAcesso === 1 ? ' pessoa' : ' pessoas') + ' com acesso' + (pend ? ' · ' + pend + ' aguardando aprovação' : ''), pend || '') +
-        '</div></section>' +
+      '<section class="grupo"><h2>Cadastros</h2><p class="dica">Empresas, Comunidades Kolping e Escolas e Avaliadores agora ficam em <a href="#/cadastros">Cadastros</a>.' + (pend ? ' <b>' + pend + (pend === 1 ? ' pessoa aguardando' : ' pessoas aguardando') + ' aprovação.</b>' : '') + '</p></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
         card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
@@ -427,7 +426,7 @@
   /* ---------- Escolas e CKs (origem dos alunos do Profiling Escolas) ---------- */
   async function paginaEscolas(area) {
     var aba = 'escolas', lista = { escolas: [], cks: [] }, pode = window.CF.perm.pode('config_empresas');
-    area.innerHTML = cabecalho('Escolas e CKs', 'De onde vêm os alunos das turmas de profiling. Aparecem para escolher na "Nova turma de profiling" e no cadastro do aluno.') + '<div id="ec"></div>';
+    area.innerHTML = cabecalho('Comunidades Kolping e Escolas', 'De onde vêm os jovens. Aparecem para escolher na nova turma e no cadastro do jovem.') + '<div id="ec"></div>';
     var box = area.querySelector('#ec');
     var CAMPOS = { escolas: [['nome', 'Nome da escola *', 160], ['cidade', 'Cidade', 80], ['telefone', 'Telefone', 20], ['contato_nome', 'Contato na escola', 80], ['contato_email', 'E-mail do contato', 120], ['inep', 'Código INEP (opcional)', 12]],
                    cks: [['nome', 'Nome da CK *', 160], ['cidade', 'Cidade', 80], ['responsavel', 'Responsável', 80], ['telefone', 'Telefone', 20]] };

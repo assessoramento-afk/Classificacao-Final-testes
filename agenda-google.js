@@ -9,6 +9,7 @@
   'use strict';
   var ui = window.CF.ui, ultima = 0, emCurso = null;
   async function sincronizar(silencioso, extra) {
+    if (!(window.CF_CONFIG || {}).agendaAtiva) return null;   // Agenda desativada: não busca nem envia nada ao Google
     if (!navigator.onLine || !window.CF.drive) return null;
     var pf = window.CF.perfilAtual || {}; if (pf.perfil === 'empresa') return null;
     if (emCurso && !extra) return emCurso;

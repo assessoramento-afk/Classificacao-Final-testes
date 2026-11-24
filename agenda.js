@@ -73,6 +73,10 @@
      ================================================================ */
   window.CF.telas = window.CF.telas || {};
   window.CF.telas.agenda = async function (area) {
+    if (!(window.CF_CONFIG || {}).agendaAtiva) {
+      area.innerHTML = '<header class="cabecalho"><div><h1>Agenda</h1><p>Desativada temporariamente</p></div></header><section class="card bloco"><p>A Agenda está <b>desativada temporariamente</b>: ela não aparece no menu e não sincroniza com o Google. Os dados, os eventos e as configurações continuam guardados e voltam quando ela for reativada.</p><p class="dica">As datas das turmas, os feriados e as Próximas turmas dos Gráficos continuam funcionando normalmente.</p></section>';
+      return;
+    }
     var G = window.CF.agendaG, hojeS = D.hoje(), hojeD = D.data(hojeS);
     var ano = hojeD.getFullYear(), mes = hojeD.getMonth(), a = null, gev = [], linkG = null, esp = [], cores = {};
     var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];

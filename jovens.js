@@ -8,43 +8,99 @@
   'use strict';
   /* ---------- Dados completos do jovem (escola/CK, série, contato, endereço, CPF, PcD) ---------- */
   var origensCache = null;
-  async function origens() { if (!origensCache) origensCache = window.CF.origensDados ? await window.CF.origensDados().catch(function () { return { escolas: [], cks: [] }; }) : { escolas: [], cks: [] }; return origensCache; }
-  function extraHTML(j, aberto, ori, comResp) {
+  async function origens() { if (!origensCache) { origensCache = window.CF.origensDados ? await window.CF.origensDados().catch(function () { return { escolas: [], cks: [] }; }) : { escolas: [], cks: [] }; origensCache.pessoas = await window.CF.dados.pessoas.listar().catch(function () { return []; }); } return origensCache; }
+  /* Q2 · Cadastro em abas: Dados pessoais · Projeto · Contato e escola · Responsável · Restrito (LGPD) */
+  var ESCOLARIDADE = ['Ensino fundamental · cursando', 'Ensino fundamental · completo', 'Ensino médio · cursando', 'Ensino médio · completo', 'Técnico · cursando', 'Técnico · completo', 'Superior · cursando', 'Superior · completo'];
+  function podeSens() { return !window.CF.perm || window.CF.perm.pode('cadastros_sensiveis'); }
+  function cpfValido(c) {
+    c = String(c || '').replace(/\D/g, ''); if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+    var s = 0, i; for (i = 0; i < 9; i++) s += +c[i] * (10 - i); var d1 = (s * 10) % 11 % 10;
+    s = 0; for (i = 0; i < 10; i++) s += +c[i] * (11 - i); var d2 = (s * 10) % 11 % 10;
+    return d1 === +c[9] && d2 === +c[10];
+  }
+  function extraHTML(j, aberto, ori, comResp, cpfObrig) {
     var esc2 = window.CF.ui.esc;
     function sel(id, lista, atual, vazio) { return '<select class="entrada" id="' + id + '"><option value="">' + vazio + '</option>' + lista.filter(function (x) { return x.ativa !== false || x.id === atual; }).map(function (x) { return '<option value="' + x.id + '"' + (x.id === atual ? ' selected' : '') + '>' + esc2(x.nome) + '</option>'; }).join('') + '</select>'; }
     var PER = [['', 'Período…'], ['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite'], ['integral', 'Integral']];
     function cpfFmt(c) { c = String(c || '').replace(/\D/g, ''); return c.length === 11 ? c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9) : c; }
-    return '<details class="jx"' + (aberto ? ' open' : '') + '><summary>Dados completos <small>escola ou CK, contato, endereço, documentos e PcD</small></summary>' +
-      '<p class="jx-t">Origem</p><div class="form-grade"><label class="campo"><span>Escola</span>' + sel('jx-esc', ori.escolas || [], j.escola_id, 'Nenhuma') + '</label><label class="campo"><span>CK (Comunidade Kolping)</span>' + sel('jx-ck', ori.cks || [], j.ck_id, 'Nenhuma') + '</label></div>' +
-      '<div class="form-grade jx-3"><label class="campo"><span>Série/ano</span><input class="entrada" id="jx-serie" maxlength="30" value="' + esc2(j.serie || '') + '" placeholder="Ex.: 2º ANO EM"></label>' +
-        '<label class="campo"><span>Período</span><select class="entrada" id="jx-per">' + PER.map(function (x) { return '<option value="' + x[0] + '"' + ((j.periodo || '') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
-        '<label class="campo"><span>RA</span><input class="entrada" id="jx-ra" maxlength="20" value="' + esc2(j.ra || '') + '"></label></div>' +
-      '<p class="jx-t">Contato</p><div class="form-grade"><label class="campo"><span>E-mail do aluno</span><input class="entrada" id="jx-email" type="email" maxlength="120" value="' + esc2(j.email || '') + '"></label>' +
-        '<label class="campo"><span>Telefone do responsável</span><input class="entrada" id="jx-rtel" inputmode="tel" maxlength="15" value="' + esc2(j.responsavel_telefone || '') + '" placeholder="(11) 00000-0000"></label></div>' +
-      (comResp ? '<div class="form-grade"><label class="campo"><span>Nome do responsável</span><input class="entrada" id="jx-rnome" maxlength="120" value="' + esc2(j.responsavel_nome || '') + '"></label><label class="campo"><span>Parentesco</span><input class="entrada" id="jx-rpar" maxlength="40" value="' + esc2(j.responsavel_parentesco || '') + '" placeholder="MÃE, PAI, AVÓ…"></label></div>' : '') +
-      '<p class="jx-t">Endereço e documentos</p><div class="form-grade jx-3"><label class="campo"><span>Bairro</span><input class="entrada" id="jx-bairro" maxlength="80" value="' + esc2(j.bairro || '') + '"></label>' +
+    var pessoas = (ori.pessoas || []).filter(function (x) { return x.aprovado && x.ativo && x.perfil !== 'empresa'; });
+    return '<div class="jx-sec" data-aba="pessoal"><div class="form-grade"><label class="campo"><span>Nome social</span><input class="entrada" id="jx-social" maxlength="120" value="' + esc2(j.nome_social || '') + '" placeholder="como prefere ser chamado(a) · opcional"></label>' +
+        '<label class="campo"><span>CPF' + (cpfObrig ? ' <span class="obrig">*</span>' : ' <small>(opcional)</small>') + '</span><input class="entrada" id="jx-cpf" inputmode="numeric" maxlength="14" value="' + esc2(cpfFmt(j.cpf)) + '" placeholder="000.000.000-00"></label>' +
+        '<label class="campo"><span>Escolaridade</span><select class="entrada" id="jx-escol"><option value="">—</option>' + ESCOLARIDADE.map(function (x) { return '<option' + (j.escolaridade === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></label>' +
         '<label class="campo"><span>Cidade</span><input class="entrada" id="jx-cidade" maxlength="80" value="' + esc2(j.cidade || '') + '"></label>' +
-        '<label class="campo"><span>CPF</span><input class="entrada" id="jx-cpf" inputmode="numeric" maxlength="14" value="' + esc2(cpfFmt(j.cpf)) + '" placeholder="000.000.000-00"></label></div>' +
-      '<p class="jx-t">Pessoa com deficiência (PcD)</p><label class="marca"><input type="checkbox" id="jx-pcd"' + (j.pcd ? ' checked' : '') + '> <span>Sim, é pessoa com deficiência</span></label>' +
-        '<label class="campo' + (j.pcd ? '' : ' oculto') + '" id="jx-pcdo-l" style="margin-top:6px"><span>Observação (tipo ou adaptação necessária)</span><input class="entrada" id="jx-pcdo" maxlength="200" value="' + esc2(j.pcd_obs || '') + '"></label>' +
-        '<div class="aviso aviso-info" style="margin-top:8px"><span>Dado sensível (LGPD): registre só com a autorização do responsável no termo de consentimento. Visível só para a equipe da Kolping.</span></div></details>';
+        '<label class="campo"><span>Bairro</span><input class="entrada" id="jx-bairro" maxlength="80" value="' + esc2(j.bairro || '') + '"></label></div></div>' +
+      '<div class="jx-sec" data-aba="projeto"><div class="form-grade"><label class="campo"><span>Avaliador responsável</span><select class="entrada" id="jx-aval"><option value="">—</option>' + pessoas.map(function (x) { return '<option value="' + x.id + '"' + (x.id === j.avaliador_responsavel ? ' selected' : '') + '>' + esc2(x.nome) + '</option>'; }).join('') + '</select></label></div></div>' +
+      '<div class="jx-sec" data-aba="contato"><div class="form-grade"><label class="campo"><span>E-mail</span><input class="entrada" id="jx-email" type="email" maxlength="120" value="' + esc2(j.email || '') + '" placeholder="nome@exemplo.com"></label>' +
+        '<label class="campo"><span>Escola</span>' + sel('jx-esc', ori.escolas || [], j.escola_id, 'Nenhuma') + '</label><label class="campo"><span>CK (Comunidade Kolping)</span>' + sel('jx-ck', ori.cks || [], j.ck_id, 'Nenhuma') + '</label></div>' +
+        '<div class="form-grade jx-3"><label class="campo"><span>Série/ano</span><input class="entrada" id="jx-serie" maxlength="30" value="' + esc2(j.serie || '') + '" placeholder="Ex.: 2º ANO EM"></label>' +
+        '<label class="campo"><span>Período</span><select class="entrada" id="jx-per">' + PER.map(function (x) { return '<option value="' + x[0] + '"' + ((j.periodo || '') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
+        '<label class="campo"><span>RA</span><input class="entrada" id="jx-ra" maxlength="20" value="' + esc2(j.ra || '') + '"></label></div></div>' +
+      '<div class="jx-sec" data-aba="resp"><div class="form-grade"><label class="campo"><span>Telefone do responsável</span><input class="entrada" id="jx-rtel" inputmode="tel" maxlength="15" value="' + esc2(j.responsavel_telefone || '') + '" placeholder="(11) 00000-0000"></label>' +
+        (comResp ? '<label class="campo"><span>Nome do responsável</span><input class="entrada" id="jx-rnome" maxlength="120" value="' + esc2(j.responsavel_nome || '') + '"></label><label class="campo"><span>Parentesco</span><input class="entrada" id="jx-rpar" maxlength="40" value="' + esc2(j.responsavel_parentesco || '') + '" placeholder="MÃE, PAI, AVÓ…"></label>' : '') + '</div></div>' +
+      (podeSens() ? '<div class="jx-sec" data-aba="restrito"><div class="aviso aviso-info" style="margin-bottom:10px"><span>🔒 Dados restritos (LGPD): só aparecem para quem tem a permissão "Ver e editar dados restritos do jovem". Registre só com a autorização do termo de consentimento.</span></div>' +
+        '<label class="marca"><input type="checkbox" id="jx-acess"> <span>Precisa de apoio de acessibilidade</span></label>' +
+        '<label class="campo oculto" id="jx-acess-l" style="margin-top:6px"><span>Qual apoio ou adaptação</span><input class="entrada" id="jx-acesso" maxlength="200"></label>' +
+        '<label class="campo" style="margin-top:8px"><span>Observações restritas</span><textarea class="entrada" id="jx-obs" rows="3" maxlength="1000"></textarea></label></div>' : '');
   }
-  function ligarExtra(el) {
+  function ligarExtra(el, jovemId) {
     var cpf = el.querySelector('#jx-cpf'); if (cpf) cpf.addEventListener('input', function () { var c = cpf.value.replace(/\D/g, '').slice(0, 11); cpf.value = c.length > 9 ? c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9) : (c.length > 6 ? c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6) : (c.length > 3 ? c.slice(0, 3) + '.' + c.slice(3) : c)); });
     var rt = el.querySelector('#jx-rtel'); if (rt) rt.addEventListener('input', function () { rt.value = window.CF.ui.formatarTelefone(rt.value); });
-    var pc = el.querySelector('#jx-pcd'); if (pc) pc.addEventListener('change', function () { el.querySelector('#jx-pcdo-l').classList.toggle('oculto', !pc.checked); });
+    var ac = el.querySelector('#jx-acess'); if (ac) ac.addEventListener('change', function () { el.querySelector('#jx-acess-l').classList.toggle('oculto', !ac.checked); });
+    if (ac && jovemId) window.CF.sb.from('jovens_restrito').select('*').eq('jovem_id', jovemId).maybeSingle().then(function (r) {
+      var x = r && r.data; if (!x) return; ac.checked = !!x.acessibilidade; el.querySelector('#jx-acesso').value = x.acessibilidade_obs || ''; el.querySelector('#jx-obs').value = x.observacoes || ''; el.querySelector('#jx-acess-l').classList.toggle('oculto', !ac.checked); el.setAttribute('data-restrito-lido', '1');
+    });
+  }
+  // Abas do cadastro: organiza os blocos da janela por data-aba
+  function abasJovem(jn) {
+    var corpo = jn.querySelector('.janela-corpo'); if (!corpo || corpo.querySelector('.jx-abas')) return;
+    var topo = corpo.querySelector('.jovem-topo'); if (topo) topo.setAttribute('data-aba', 'pessoal');
+    [].forEach.call(corpo.children, function (b) {
+      if (b.getAttribute('data-aba') || b.classList.contains('jx-abas')) return;
+      if (b.querySelector && (b.querySelector('#fj-turma') || b.querySelector('#fj-conv'))) b.setAttribute('data-aba', 'projeto');
+      else if (b.id === 'fj-resp' || (b.querySelector && (b.querySelector('#fj-termo') || b.querySelector('#fj-rnome')))) b.setAttribute('data-aba', 'resp');
+      else if (b.classList && b.classList.contains('dica')) b.setAttribute('data-aba', 'projeto');
+    });
+    var AB = [['pessoal', 'Dados pessoais'], ['projeto', 'Projeto'], ['contato', 'Contato e escola'], ['resp', 'Responsável']];
+    if (corpo.querySelector('[data-aba="restrito"]')) AB.push(['restrito', 'Restrito 🔒']);
+    var nav = document.createElement('nav'); nav.className = 'jx-abas'; nav.innerHTML = AB.map(function (a, i) { return '<button type="button" data-jab="' + a[0] + '" class="' + (i ? '' : 'on') + '">' + a[1] + '</button>'; }).join('');
+    corpo.insertBefore(nav, corpo.firstChild);
+    function ir(a) { nav.querySelectorAll('[data-jab]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-jab') === a); }); corpo.querySelectorAll('[data-aba]').forEach(function (b) { b.classList.toggle('jx-fora', b.getAttribute('data-aba') !== a); }); }
+    nav.addEventListener('click', function (e) { var b = e.target.closest('[data-jab]'); if (b) ir(b.getAttribute('data-jab')); });
+    corpo.irAba = ir; ir('pessoal');
+  }
+  // Validação antes de salvar: devolve a lista do que falta (e marca os campos)
+  function validarJovem(el, ids, cpfObrig) {
+    var falta = [], q = function (s2) { return el.querySelector(s2); };
+    el.querySelectorAll('.campo.erro').forEach(function (c) { c.classList.remove('erro'); });
+    function marca(sel2, txt) { var x = q(sel2); if (x) { var c = x.closest('.campo'); if (c) c.classList.add('erro'); } falta.push([sel2, txt]); }
+    var nasc = q(ids.nasc) ? q(ids.nasc).value : '';
+    if (!nasc) marca(ids.nasc, 'data de nascimento');
+    var cpf = q('#jx-cpf') ? q('#jx-cpf').value.replace(/\D/g, '') : '';
+    if (q('#jx-cpf')) { if (!cpf && cpfObrig) marca('#jx-cpf', 'CPF'); else if (cpf && !cpfValido(cpf)) marca('#jx-cpf', 'CPF inválido'); }
+    var em = q('#jx-email') ? q('#jx-email').value.trim() : ''; if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) marca('#jx-email', 'e-mail');
+    [ids.tel, '#jx-rtel'].forEach(function (t) { var x = q(t); if (x && x.value && x.value.replace(/\D/g, '').length < 10) marca(t, 'telefone incompleto'); });
+    if (falta.length) {
+      var x0 = q(falta[0][0]), sec = x0 && x0.closest('[data-aba]'), corpo = el.querySelector('.janela-corpo');
+      if (sec && corpo && corpo.irAba) corpo.irAba(sec.getAttribute('data-aba'));
+      window.CF.ui.toast('Revise antes de salvar: ' + falta.map(function (f) { return f[1]; }).join(', ') + '.', 'erro');
+    }
+    return falta.length === 0;
   }
   function lerExtra(el, extra) {
     if (!el.querySelector('#jx-esc')) return null;
     var M = window.CF.ui.maiusculas, v = function (id) { var x = el.querySelector(id); return x ? x.value.trim() : ''; };
-    var cpf = v('#jx-cpf').replace(/\D/g, '');
-    if (cpf && cpf.length !== 11) { window.CF.ui.toast('CPF incompleto: são 11 números.', 'erro'); return false; }
-    return Object.assign({ escola_id: v('#jx-esc') || null, ck_id: v('#jx-ck') || null, serie: M(v('#jx-serie')) || null, periodo: v('#jx-per') || null, ra: v('#jx-ra') || null,
+    var o = Object.assign({ escola_id: v('#jx-esc') || null, ck_id: v('#jx-ck') || null, serie: M(v('#jx-serie')) || null, periodo: v('#jx-per') || null, ra: v('#jx-ra') || null,
       email: v('#jx-email').toLowerCase() || null, responsavel_telefone: v('#jx-rtel') || null, responsavel_nome: el.querySelector('#jx-rnome') ? M(v('#jx-rnome')) || null : undefined,
-      responsavel_parentesco: el.querySelector('#jx-rpar') ? M(v('#jx-rpar')) || null : undefined, bairro: M(v('#jx-bairro')) || null, cidade: M(v('#jx-cidade')) || null, cpf: cpf || null,
-      pcd: el.querySelector('#jx-pcd').checked, pcd_obs: v('#jx-pcdo') || null }, extra || {});
+      responsavel_parentesco: el.querySelector('#jx-rpar') ? M(v('#jx-rpar')) || null : undefined, bairro: M(v('#jx-bairro')) || null, cidade: M(v('#jx-cidade')) || null, cpf: v('#jx-cpf').replace(/\D/g, '') || null,
+      nome_social: M(v('#jx-social')) || null, escolaridade: v('#jx-escol') || null, avaliador_responsavel: v('#jx-aval') || null }, extra || {});
+    if (el.querySelector('#jx-acess')) o._restrito = { acess: el.querySelector('#jx-acess').checked, acessObs: v('#jx-acesso'), obs: v('#jx-obs') };
+    return o;
   }
-  async function salvarExtra(jovemId, obj) { if (!obj || !jovemId) return; var r = await window.CF.sb.rpc('jovem_dados_salvar', { p_jovem: jovemId, p: obj }); if (r.error) throw r.error; }
+  async function salvarExtra(jovemId, obj) {
+    if (!obj || !jovemId) return; var rs = obj._restrito; delete obj._restrito;
+    var r = await window.CF.sb.rpc('jovem_dados_salvar', { p_jovem: jovemId, p: obj }); if (r.error) throw r.error;
+    if (rs) { var r2 = await window.CF.sb.rpc('jovem_restrito_salvar', { p_jovem: jovemId, p_acess: rs.acess, p_acess_obs: rs.acessObs || null, p_obs: rs.obs || null }); if (r2.error) throw r2.error; }
+  }
 
   var ui = window.CF.ui, api = window.CF.api, dados = window.CF.dados, esc = ui.esc, D = window.CF.datas;
   var GENEROS = [['feminino', 'Feminino'], ['masculino', 'Masculino'], ['outro', 'Outro'], ['nao_informado', 'Prefiro não informar']];
@@ -193,7 +249,7 @@
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: 'Salvar cadastro', principal: true, aoClicar: salvar }]
       });
       var el = jn.elemento;
-      origens().then(function (ori) { var bx = el.querySelector('#fj-extra'); if (!bx) return; bx.innerHTML = extraHTML(j, p.tipo === 'escola', ori, false); ligarExtra(bx); });
+      origens().then(function (ori) { var bx = el.querySelector('#fj-extra'); if (!bx) return; bx.innerHTML = extraHTML(j, p.tipo === 'escola', ori, false, p.tipo !== 'escola'); ligarExtra(bx, j.id); abasJovem(el); });
       if (j.foto_path) dados.jovens.urlFoto(j.foto_path).then(function (u) { if (u) el.querySelector('#fj-foto').innerHTML = '<img src="' + esc(u) + '" alt="">'; });
       el.querySelectorAll('[data-gen]').forEach(function (b) { b.addEventListener('click', function () { genero = b.getAttribute('data-gen'); el.querySelectorAll('[data-gen]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); }); });
       var tel = el.querySelector('#fj-tel'); tel.addEventListener('input', function () { tel.value = ui.formatarTelefone(tel.value); });
@@ -229,6 +285,7 @@
       el.querySelector('#fj-nome').focus();
 
       async function salvar(f) {
+        if (!validarJovem(el, { nasc: '#fj-nasc', tel: '#fj-tel' }, p.tipo !== 'escola')) return false;
         var nome = ui.maiusculas(f.querySelector('#fj-nome').value.trim().replace(/\s+/g, ' '));
         var nasc = f.querySelector('#fj-nasc').value;
         if (!nome) { ui.toast('Informe o nome completo.', 'erro'); return false; }
@@ -536,7 +593,12 @@
     var js = [], parts = [], ag = null;
     try { var r = await Promise.all([dados.jovens.todos(), dados.jovens.todasParticipacoes(), dados.agenda.carregarTudo()]); js = r[0]; parts = r[1]; ag = r[2]; }
     catch (e) { erro(e); return; }
-    var busca = '', aba = 'ainda';
+    var correcoes = [];
+    try { var rc = await window.CF.sb.from('jovem_correcoes').select('*').eq('situacao', 'pendente').order('criado_em'); correcoes = (rc && rc.data) || []; } catch (e) { correcoes = []; }
+    function corrDe(j) { var ids = parts.filter(function (x) { return x.jovem_id === j.id; }).map(function (x) { return x.id; }); return correcoes.filter(function (c) { return ids.indexOf(c.participacao_id) >= 0; }); }
+    function faltaCpf(j) { if (j.cpf) return false; return parts.some(function (x) { var pr = porId(ag.processos, x.processo_id) || {}; return x.jovem_id === j.id && pr.tipo !== 'escola'; }); }
+    var NOMEC = { nome: 'Nome', empresa: 'Empresa', turma: 'Turma', outro: 'Outro' };
+    var busca = '', aba = correcoes.length ? 'correcoes' : 'ainda';
     // Momento de cada jovem: ainda não passou (sem processo ou com processo em andamento) × já passou (todos os processos encerrados)
     var FIM = { liberado: 1, concluido: 1, cancelado: 1 };
     function momento(j) {
@@ -551,20 +613,29 @@
     var nomes = {}; js.forEach(function (j) { var k = ui.normalizar(j.nome); nomes[k] = (nomes[k] || 0) + 1; });
     function repetido(j) { return nomes[ui.normalizar(j.nome)] > 1; }
     function desenhar() {
-      var cont = { ainda: 0, passou: 0, todos: js.length, repetidos: 0 }; js.forEach(function (j) { cont[mom[j.id].m]++; if (repetido(j)) cont.repetidos++; });
+      var cont = { ainda: 0, passou: 0, todos: js.length, repetidos: 0, correcoes: 0 }; js.forEach(function (j) { cont[mom[j.id].m]++; if (repetido(j)) cont.repetidos++; if (corrDe(j).length) cont.correcoes++; });
       var abas = area.querySelector('#tj-abas');
-      if (abas) abas.innerHTML = [['ainda', 'Ainda não passaram'], ['passou', 'Já passaram'], ['todos', 'Todos']].concat(cont.repetidos ? [['repetidos', '⚠ Possíveis repetidos']] : []).map(function (a) { return '<button type="button" class="pt-chip' + (aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + ' <span class="pt-n">' + cont[a[0]] + '</span></button>'; }).join('');
-      var itens = js.filter(function (j) { return (busca ? ui.normalizar(j.nome).indexOf(busca) >= 0 : (aba === 'todos' || (aba === 'repetidos' ? repetido(j) : mom[j.id].m === aba))); });
+      if (abas) abas.innerHTML = [['ainda', 'Ainda não passaram'], ['passou', 'Já passaram'], ['todos', 'Todos']].concat(cont.repetidos ? [['repetidos', '⚠ Possíveis repetidos']] : []).concat(cont.correcoes ? [['correcoes', '⚠ Correções pedidas · ' + cont.correcoes]] : []).map(function (a) { return '<button type="button" class="pt-chip' + (aba === a[0] ? ' on' : '') + '" data-aba="' + a[0] + '">' + a[1] + ' <span class="pt-n">' + cont[a[0]] + '</span></button>'; }).join('');
+      var itens = js.filter(function (j) { return (busca ? ui.normalizar(j.nome).indexOf(busca) >= 0 : (aba === 'todos' || (aba === 'repetidos' ? repetido(j) : aba === 'correcoes' ? corrDe(j).length > 0 : mom[j.id].m === aba))); });
       if (aba === 'repetidos') itens.sort(function (a, b) { return ui.normalizar(a.nome).localeCompare(ui.normalizar(b.nome)); });
       var box = area.querySelector('#tj');
       if (!itens.length) { box.innerHTML = '<div class="card vazio">' + (js.length ? 'Nenhum jovem encontrado.' : 'Nenhum jovem cadastrado ainda. Os jovens são cadastrados dentro de cada processo.') + '</div>'; return; }
       box.innerHTML = '<div class="card tabela-card"><table class="tabela jov-tab"><thead><tr><th>Jovem</th><th>Nascimento</th><th>Processos</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' +
         itens.slice(0, 300).map(function (j) {
           var n = parts.filter(function (x) { return x.jovem_id === j.id; }).length, i = idade(j.nascimento);
-          return '<tr><td><div class="cel-j">' + fotoHTML(j) + '<div><b>' + esc(j.nome) + '</b>' + (repetido(j) ? '<span class="jov-rep" title="Existe outro cadastro com o mesmo nome">⚠ Possível repetido</span>' : '') + '<small>' + esc(NOME_G[j.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '<span class="jov-nasc">' + (j.nascimento ? ' · ' + String(j.nascimento).slice(8, 10) + '/' + String(j.nascimento).slice(5, 7) + '/' + String(j.nascimento).slice(0, 4) : '') + '</span></small></div></div></td>' +
+          return '<tr><td><div class="cel-j">' + fotoHTML(j) + '<div><b>' + esc(j.nome) + '</b>' + (repetido(j) ? '<span class="jov-rep" title="Existe outro cadastro com o mesmo nome">⚠ Possível repetido</span>' : '') + (faltaCpf(j) ? '<span class="jov-rep jov-cpf" title="O Profiling Empresas exige CPF">Falta CPF</span>' : '') +
+            corrDe(j).map(function (c) { return '<span class="jov-rep jov-corr" title="Pedido pelo tablet em ' + new Date(c.criado_em).toLocaleString('pt-BR') + '">⚠ Pediu correção: ' + esc((c.campos || []).map(function (x) { return NOMEC[x] || x; }).join(', ')) + ' <button type="button" class="btn btn-p jov-resolver" data-corr="' + c.id + '">Resolver</button></span>'; }).join('') + '<small>' + esc(NOME_G[j.genero] || '') + (i != null ? ' · ' + i + ' anos' : '') + '<span class="jov-nasc">' + (j.nascimento ? ' · ' + String(j.nascimento).slice(8, 10) + '/' + String(j.nascimento).slice(5, 7) + '/' + String(j.nascimento).slice(0, 4) : '') + '</span></small></div></div></td>' +
             '<td>' + (j.nascimento ? D.completa(j.nascimento) : '—') + '</td><td class="num">' + n + '</td><td><span class="pill" style="background:color-mix(in srgb,' + mom[j.id].cor + ' 15%,transparent);color:' + mom[j.id].cor + '">' + esc(ui.titulo(mom[j.id].txt)) + '</span>' + (busca && aba !== 'todos' && mom[j.id].m !== aba ? ' <small class="dica">(' + (mom[j.id].m === 'passou' ? 'em Já passaram' : 'em Ainda não passaram') + ')</small>' : '') + '</td><td><div class="acoes"><button type="button" class="btn btn-p" data-ed="' + j.id + '">Editar</button><button type="button" class="btn btn-p" data-hist="' + j.id + '">Histórico</button>' + (window.CF.perm.pode('cadastros_historico') ? '<button type="button" class="btn btn-p" data-hpdf="' + j.id + '" title="Histórico deste jovem em PDF">⬇ PDF</button>' : '') + '</div></td></tr>';
         }).join('') + '</tbody></table></div>' + (itens.length > 300 ? '<p class="dica">Mostrando os 300 primeiros. Use a busca para encontrar outros.</p>' : '');
       carregarFotos(box);
+      box.querySelectorAll('[data-corr]').forEach(function (b) { b.addEventListener('click', async function (e) {
+        e.stopPropagation();
+        if (!(await ui.confirmar('Marcar a correção como resolvida?', 'Corrija o cadastro do jovem (botão de editar) e depois marque aqui. Fica registrado quem resolveu e quando.', 'Marcar como resolvida', 'Cancelar'))) return;
+        var r = await window.CF.sb.rpc('correcao_resolver', { p_id: b.getAttribute('data-corr'), p_resposta: null });
+        if (r.error) { erro(r.error); return; }
+        correcoes = correcoes.filter(function (c) { return c.id !== b.getAttribute('data-corr'); }); if (aba === 'correcoes' && !correcoes.length) aba = 'ainda';
+        ui.toast('Correção marcada como resolvida.', 'ok'); desenhar();
+      }); });
       box.querySelectorAll('[data-hist]').forEach(function (b) {
         b.addEventListener('click', function () {
           var j = porId(js, b.getAttribute('data-hist')), hs = parts.filter(function (x) { return x.jovem_id === j.id; });
@@ -606,6 +677,7 @@
             ui.toast('Jovem excluído.', 'ok'); recarregar(); return true;
           } catch (e) { erro(e); return false; }
         } }] : []).concat([{ texto: 'Cancelar', acao: 'fechar' }, { texto: novo ? 'Cadastrar jovem' : 'Salvar', principal: true, aoClicar: async function (f) {
+          if (!validarJovem(jn.elemento, { nasc: '#fp-nasc', tel: '#fp-tel' }, !(jn.elemento.querySelector('#jx-esc') || {}).value)) return false;
           var nome = ui.maiusculas(f.querySelector('#fp-nome').value.trim().replace(/\s+/g, ' ')), nasc = f.querySelector('#fp-nasc').value;
           if (!nome) { ui.toast('Informe o nome completo.', 'erro'); return false; }
           if (!genero) { ui.toast('Escolha o gênero.', 'erro'); return false; }
@@ -626,7 +698,7 @@
           });
         } }]) });
       var el = jn.elemento;
-      origens().then(function (ori) { var bx = el.querySelector('#fp-extra'); if (!bx) return; bx.innerHTML = extraHTML(j, !!(j.escola_id || j.ck_id), ori, true); ligarExtra(bx); });
+      origens().then(function (ori) { var bx = el.querySelector('#fp-extra'); if (!bx) return; bx.innerHTML = extraHTML(j, !!(j.escola_id || j.ck_id), ori, true, !j.escola_id); ligarExtra(bx, j.id); abasJovem(el); });
       if (j.foto_path) dados.jovens.urlFoto(j.foto_path).then(function (u) { if (u) el.querySelector('#fp-foto').innerHTML = '<img src="' + esc(u) + '" alt="">'; });
       el.querySelectorAll('[data-gen]').forEach(function (b) { b.addEventListener('click', function () { genero = b.getAttribute('data-gen'); el.querySelectorAll('[data-gen]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); el.querySelector('.janela-corpo').dispatchEvent(new Event('input', { bubbles: true })); }); });
       var tel = el.querySelector('#fp-tel'); tel.addEventListener('input', function () { tel.value = ui.formatarTelefone(tel.value); });
