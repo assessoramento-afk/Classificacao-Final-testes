@@ -1929,3 +1929,13 @@ html[data-tema="escuro"] .tb-abas em { background: #4a2c1b; color: #ffcfae; }
 @media (max-width: 760px) { .tm-vs { grid-template-columns: 1fr; } }
 
 .tm-port.tm-empilha { grid-template-columns: 1fr; } .tm-port.tm-empilha .tm-apoio { position: static; }
+/* Q2 · cadastro do jovem em abas, campos com erro e etiquetas */
+.jx-abas { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--borda); margin: -4px 0 14px; position: sticky; top: -16px; z-index: 2; background: var(--cartao); }
+.jx-abas button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 12px; font: 700 13.5px Poppins, system-ui, sans-serif; color: var(--texto-2); cursor: pointer; }
+.jx-abas button.on { color: var(--texto); border-color: var(--laranja); }
+.jx-sec { margin-bottom: 10px; }
+.campo.erro .entrada { border-color: #D9534F; box-shadow: 0 0 0 3px rgba(217,83,79,.18); } .campo.erro > span { color: #D9534F; }
+.jov-cpf { background: color-mix(in srgb, #e0a100 16%, transparent) !important; color: #8a6200 !important; }
+html[data-tema="escuro"] .jov-cpf { color: #ffd27a !important; }
+.jov-corr { display: inline-flex !important; align-items: center; gap: 6px; } .jov-resolver { padding: 2px 9px !important; font-size: 11px !important; min-height: 0 !important; }
+.jx-fora { display: none !important; }

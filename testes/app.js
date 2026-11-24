@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.6.0';
+  var VERSAO_APP = '1.7.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -65,6 +65,8 @@
   }
   async function enviar() {
     if (E.demo || !E.chave || E.enviando || !online()) return;
+    var cfs = confLer('golt_conf_fila');
+    if (cfs.length) { try { var rc = await rpc('tablet_conferir', { p_chave: E.chave, p_lista: cfs.slice(0, 50) }); var rec = rc.recebidos || []; confGravar('golt_conf_fila', confLer('golt_conf_fila').filter(function (x) { return rec.indexOf(x.uid) < 0; })); } catch (e) { /* tenta de novo depois */ } }
     var lista = await fila.todos(); if (!lista.length) { atualizarStatus(); return; }
     E.enviando = true;
     try {
@@ -227,7 +229,7 @@
       setTimeout(function () {
         var j = ((E.pacote && E.pacote.jovens) || []).filter(function (x) { return normCod(x.codigo) === cod; })[0];
         if (!j) { ui.erro(); aviso('Código não encontrado. Confira o crachá ou chame o avaliador.', 'erro'); return; }
-        ui.ok(); E.jovem = j; setTimeout(telaTestes, 900);
+        ui.ok(); E.jovem = j; setTimeout(function () { (precisaConferir(j) ? telaConferir : telaTestes)(); }, 900);
       }, 900);
     } });
     app.innerHTML = topo('Projeto Gol Testes', (tb.nome || 'Tablet') + (tb.etiqueta ? ' · ' + tb.etiqueta : '')) +
@@ -247,6 +249,30 @@
         })();
       } catch (e) { aviso('Não foi possível abrir a câmera.', 'erro'); }
     });
+  }
+
+  // 2b) Conferência no 1º acesso (Q2): o jovem só confere nome, empresa e turma; não edita nada
+  function confLer(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } }
+  function confGravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function precisaConferir(j) { return !E.demo && !j.conferido && confLer('golt_conf_feitos').indexOf(j.participacao_id) < 0; }
+  function telaConferir() {
+    var j = E.jovem, tu = ((E.pacote && E.pacote.turmas) || []).filter(function (t) { return t.id === j.turma_id; })[0] || {};
+    var dia = (tu.dias || [])[0] ? new Date(tu.dias[0].data + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+    app.innerHTML = topo('Projeto Gol Testes', j.nome) + '<div class="cdados"><h1>Olá! Confira seus dados</h1><p class="sub">É só uma vez. Se algo estiver errado, avise o avaliador.</p>' +
+      '<div class="conf-c"><div><small>NOME</small><b>' + esc(j.nome) + '</b></div><div><small>EMPRESA</small><b>' + esc(tu.empresa || '—') + '</b></div><div><small>TURMA</small><b>' + esc((tu.nome || '') + (dia ? ' · ' + dia : '')) + '</b></div></div>' +
+      '<div class="conf-b"><button type="button" class="bpri" id="cf-ok">✓ Sou eu, está tudo certo</button><button type="button" class="bsec" id="cf-erro">Tem algo errado</button></div>' +
+      '<div class="conf-p" id="cf-p" hidden><b>O que está errado?</b><div class="conf-ch">' + [['nome', 'Nome'], ['empresa', 'Empresa'], ['turma', 'Turma'], ['outro', 'Outro']].map(function (x) { return '<button type="button" data-cc="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+      '</div><p>O pedido vai para a equipe. Você pode fazer os testes normalmente.</p><button type="button" class="bpri" id="cf-env" disabled>Enviar e continuar</button></div></div>';
+    function registrar(ok, campos) {
+      var fila2 = confLer('golt_conf_fila'); fila2.push({ uid: 'cf-' + j.participacao_id + '-' + Date.now().toString(36), participacao_id: j.participacao_id, ok: ok, campos: campos || [], em: new Date().toISOString() }); confGravar('golt_conf_fila', fila2);
+      var fe = confLer('golt_conf_feitos'); fe.push(j.participacao_id); confGravar('golt_conf_feitos', fe);
+      enviar(); telaTestes();
+    }
+    document.getElementById('cf-ok').addEventListener('click', function () { registrar(true); });
+    document.getElementById('cf-erro').addEventListener('click', function () { document.getElementById('cf-p').hidden = false; this.disabled = true; });
+    var sel = [];
+    app.querySelectorAll('[data-cc]').forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-cc'), i = sel.indexOf(k); if (i >= 0) sel.splice(i, 1); else sel.push(k); b.classList.toggle('on', i < 0); document.getElementById('cf-env').disabled = !sel.length; }); });
+    document.getElementById('cf-env').addEventListener('click', function () { registrar(false, sel.slice()); aviso('Pedido de correção registrado. Avise o avaliador.', 'ok'); });
   }
 
   // 3) Lista de testes do jovem
