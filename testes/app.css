@@ -378,3 +378,13 @@ button { font-family: inherit; }
 .env-r i { font-style: normal; font-weight: 800; font-size: 11px; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
 .env-r i.ok { background: #e8f5ec; color: #1f6b40; } .env-r i.sinc { background: #e6efff; color: #2f5fb0; } .env-r i.pend { background: #fff4dc; color: #8a6200; } .env-r i.erro { background: #fde9e8; color: #a83a36; }
 .rf-mot { width: 100%; padding: 12px; border-radius: 14px; border: 1.5px solid var(--borda); font: 500 15px Poppins, sans-serif; background: var(--entrada); color: var(--texto); }
+/* Q4 · quem está usando, fotos e câmera */
+.avs { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; max-width: 720px; margin: 0 auto 14px; }
+.av-b { display: flex; align-items: center; gap: 10px; text-align: left; padding: 12px; border-radius: 14px; border: 1.5px solid var(--borda); background: var(--cartao); font: 700 14px Poppins, sans-serif; color: var(--texto); cursor: pointer; box-shadow: 0 6px 14px rgba(0,0,0,.06); }
+.av-b i { flex: none; width: 36px; height: 36px; border-radius: 50%; background: #231f1f; color: #ffb27f; font-style: normal; display: flex; align-items: center; justify-content: center; font-size: 12.5px; }
+.av-b small { display: block; font-weight: 500; color: var(--texto-3); font-size: 11.5px; } .av-b:disabled { opacity: .45; cursor: not-allowed; }
+.fts { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.ft-j { text-align: left; padding: 14px; border-radius: 14px; border: 1.5px solid var(--borda); background: var(--cartao); font: 700 14px Poppins, sans-serif; color: var(--texto); cursor: pointer; } .ft-j small { display: block; font-weight: 500; color: var(--texto-3); margin-top: 3px; }
+.cam { position: relative; background: #0e0c0c; border-radius: 18px; overflow: hidden; aspect-ratio: 4 / 5; max-height: 56vh; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; }
+.cam video, .cam img { width: 100%; height: 100%; object-fit: cover; } .cam-o { position: absolute; inset: 12% 20%; border: 3px dashed rgba(255,178,127,.85); border-radius: 50% 50% 45% 45%; pointer-events: none; }
+.cam-b { display: flex; gap: 10px; justify-content: center; } .cam-b button { padding: 13px 18px; }

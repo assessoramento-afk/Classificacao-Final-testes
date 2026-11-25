@@ -449,6 +449,6 @@
   }
 
   window.CF = window.CF || {};
-  window.CF.testesMotor = { desenhar: desenhar, corrigir: corrigir, totalParte: totalParte, diferencas: diferencas, CAMPOS_CARTAO: CAMPOS_CARTAO,
+  window.CF.testesMotor = { desenhar: desenhar, corrigir: corrigir, nota: nota, totalParte: totalParte, diferencas: diferencas, CAMPOS_CARTAO: CAMPOS_CARTAO,
     total: function (est) { return Math.round((est.partes || []).reduce(function (a, p) { return a + totalParte(p); }, 0) * 100) / 100; } };
 })();

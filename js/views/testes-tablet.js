@@ -482,7 +482,7 @@
   /* =================== Configurações › Tablets =================== */
   async function tablets(area) {
     if (window.CF.avisoPedidos) window.CF.avisoPedidos();
-    var ABAS = [['lista', 'Tablets'], ['ped', 'Pedidos'], ['res', 'Resultados recebidos'], ['hist', 'Histórico'], ['conf', 'Instalar e configurar']];
+    var ABAS = [['lista', 'Tablets'], ['ped', 'Pedidos'], ['res', 'Resultados recebidos'], ['fotos', 'Fotos para aprovar'], ['hist', 'Histórico'], ['conf', 'Instalar e configurar']];
     var abaTb = 'lista'; try { abaTb = localStorage.getItem('cf_tb_aba') || 'lista'; } catch (e) {}
     area.innerHTML = '<header class="cabecalho"><div><h1>Tablets</h1><p>Projeto Gol Testes · tablets liberados, pedidos, resultados e configurações do app</p></div>' +
       '<div class="botoes-topo"><button type="button" class="btn" id="tb-etq">🖨 Imprimir etiquetas</button><button type="button" class="btn" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar com código</button><button type="button" class="btn btn-pri" id="tb-qr">📷 Ler QR do tablet</button></div></header>' +
@@ -491,6 +491,7 @@
       '<div class="tb-pn" data-pn="lista"><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div><p class="dica">Se um tablet sumir, use "⋯ › Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p></div>' +
       '<div class="tb-pn" data-pn="ped"><section class="card pt-tab" id="tb-ped"></section></div>' +
       '<div class="tb-pn" data-pn="res"><section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section></div>' +
+      '<div class="tb-pn" data-pn="fotos"><section class="card pt-tab" id="tb-fotos"></section></div>' +
       '<div class="tb-pn" data-pn="hist"><section class="card pt-tab" id="tb-hist"></section></div>' +
       '<div class="tb-pn" data-pn="conf"><div class="tb-duas"><section class="card bloco" id="tb-inst"></section><div style="display:flex;flex-direction:column;gap:16px"><section class="card bloco" id="tb-pin"></section><section class="card bloco" id="tb-modo"></section></div></div></div>';
     function irAba(a) {
@@ -587,6 +588,30 @@
     }
     /* ---------- Histórico ---------- */
     var filtroHist = null;
+    // Q4 · Fotos tiradas no tablet, aguardando aprovação
+    async function fotosTablet() {
+      var b = area.querySelector('#tb-fotos'), fs = [];
+      try { fs = await q(sb.from('tablet_fotos').select('id,participacao_id,tablet_id,tirada_por,imagem,tirada_em').eq('situacao', 'pendente').order('tirada_em')); } catch (e) { b.innerHTML = '<h2>Fotos para aprovar</h2><p class="dica">Falta rodar o SQL da Q4 (fase6_25).</p>'; return; }
+      contaAba('fotos', fs.length || null);
+      if (!fs.length) { b.innerHTML = '<h2>Fotos para aprovar</h2><p class="dica">Nenhuma foto esperando. As fotos tiradas no tablet (com o PIN de um avaliador) aparecem aqui antes de entrar no cadastro.</p>'; return; }
+      var parts = [], pes = [];
+      try { parts = await q(sb.from('participacoes').select('id,jovem_id,jovens(nome)').in('id', fs.map(function (f) { return f.participacao_id; }))); } catch (e) {}
+      try { pes = await window.CF.dados.pessoas.listar(); } catch (e) {}
+      function pt(id) { return parts.filter(function (x) { return x.id === id; })[0] || {}; }
+      function quem(id) { var x = pes.filter(function (y) { return y.id === id; })[0]; return x ? x.nome : '—'; }
+      function tbn2(id) { var t = lista.filter(function (x) { return x.id === id; })[0]; return t ? t.nome : '—'; }
+      b.innerHTML = '<h2>Fotos para aprovar · ' + fs.length + '</h2><p class="dica" style="margin:0 0 10px">Tiradas no tablet por um avaliador identificado pelo PIN. "Usar no cadastro" coloca a foto no jovem; "Recusar" descarta.</p><div class="tb-fts">' +
+        fs.map(function (f) { var pa = pt(f.participacao_id); return '<div class="tb-ft"><img src="data:image/jpeg;base64,' + f.imagem + '" alt=""><div><b>' + esc((pa.jovens && pa.jovens.nome) || '—') + '</b><small>' + esc(tbn2(f.tablet_id)) + ' · ' + esc(quem(f.tirada_por)) + ' · ' + new Date(f.tirada_em).toLocaleString('pt-BR') + '</small></div>' +
+          '<div class="tb-ft-b"><button type="button" class="btn" data-fr="' + f.id + '">Recusar</button><button type="button" class="btn btn-pri" data-fa="' + f.id + '">Usar no cadastro</button></div></div>'; }).join('') + '</div>';
+      b.querySelectorAll('[data-fa],[data-fr]').forEach(function (bt) { bt.addEventListener('click', async function () {
+        var id = bt.getAttribute('data-fa') || bt.getAttribute('data-fr'), ap = bt.hasAttribute('data-fa'), f = fs.filter(function (x) { return x.id === id; })[0];
+        try {
+          if (ap) { var bin = atob(f.imagem), u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+            await window.CF.dados.jovens.salvarFoto(pt(f.participacao_id).jovem_id, new File([u8], 'foto.jpg', { type: 'image/jpeg' })); }
+          await q(sb.rpc('tablet_foto_decidir', { p_id: id, p_aprovar: ap })); ui.toast(ap ? 'Foto colocada no cadastro.' : 'Foto recusada.', 'ok'); fotosTablet();
+        } catch (e) { erro(e); }
+      }); });
+    }
     async function historico() {
       var b = area.querySelector('#tb-hist'), hs = [], pessoas = [];
       try { hs = await q(sb.from('tablet_historico').select('*').order('em', { ascending: false }).limit(40)); } catch (e) { b.innerHTML = ''; return; }
@@ -600,7 +625,7 @@
     }
     area.querySelector('#tb-qr').addEventListener('click', lerQR);
     area.querySelector('#tb-etq').addEventListener('click', etiquetas);
-    modoBox(); pedidos();
+    modoBox(); pedidos(); fotosTablet();
     var pedTimer = setInterval(function () { if (!document.body.contains(area.querySelector('#tb-ped'))) { clearInterval(pedTimer); return; } pedidos(); }, 20000);
     // Resultados recebidos (últimos 200) com "Ver respostas"
     async function resultados() {

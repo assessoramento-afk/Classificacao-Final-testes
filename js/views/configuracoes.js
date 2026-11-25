@@ -57,6 +57,7 @@
     if (sub === 'integracoes') return paginaIntegracoes(area);
     if (sub === 'feriados') return paginaFeriados(area);
     if (sub === 'escolas-cks') return paginaEscolas(area);
+    if (sub === 'qualidade' && window.CF.qualidade) return window.CF.qualidade(area);
     if (sub === 'tablets') { location.hash = '#/tablets'; return; }
     paginaInicial(area);
   };
@@ -91,7 +92,7 @@
     area.querySelector('#cfg-cards').innerHTML =
       '<section class="grupo"><h2>Cadastros</h2><p class="dica">Empresas, Comunidades Kolping e Escolas e Avaliadores agora ficam em <a href="#/cadastros">Cadastros</a>.' + (pend ? ' <b>' + pend + (pend === 1 ? ' pessoa aguardando' : ' pessoas aguardando') + ' aprovação.</b>' : '') + '</p></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
-        card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + '</div></section>' +
+        card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + card('qualidade', 'ok', 'Qualidade', 'Checklists, aprovação e publicação dos testes') + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'nota', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
         '</div></section>' +

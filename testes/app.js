@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.8.0';
+  var VERSAO_APP = '1.9.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -66,6 +66,10 @@
   }
   async function enviar() {
     if (E.demo || !E.chave || E.enviando || !online()) return;
+    var evs = confLer('golt_eventos');
+    if (evs.length) { try { var re = await rpc('tablet_eventos', { p_chave: E.chave, p_lista: evs.slice(0, 50) }); var rr = re.recebidos || []; confGravar('golt_eventos', confLer('golt_eventos').filter(function (x) { return rr.indexOf(x.uid) < 0; })); } catch (e) {} }
+    var fts = confLer('golt_fotos_fila');
+    if (fts.length) { try { var rf = await rpc('tablet_foto_enviar', { p_chave: E.chave, p_lista: fts.slice(0, 3) }); var rr2 = rf.recebidos || []; confGravar('golt_fotos_fila', confLer('golt_fotos_fila').filter(function (x) { return rr2.indexOf(x.uid) < 0; })); } catch (e) {} }
     var cfs = confLer('golt_conf_fila');
     if (cfs.length) { try { var rc = await rpc('tablet_conferir', { p_chave: E.chave, p_lista: cfs.slice(0, 50) }); var rec = rc.recebidos || []; confGravar('golt_conf_fila', confLer('golt_conf_fila').filter(function (x) { return rec.indexOf(x.uid) < 0; })); } catch (e) { /* tenta de novo depois */ } }
     var lista = await fila.todos(); if (!lista.length) { atualizarStatus(); return; }
@@ -299,24 +303,17 @@
   }
   // Refazer só com o PIN do avaliador e justificativa; o resultado anterior fica guardado como "substituído"
   function liberarRefazer(t) {
-    var h = E.pacote && E.pacote.pin_hash, jv = E.jovem;
-    if (!h) { aviso('O PIN do avaliador ainda não foi definido em Configurações › Tablets.', 'erro'); return; }
-    var c = cofre({ tam: 4, numeros: true, rotulo: 'PIN DO AVALIADOR', aoCompletar: async function (cod, ui) {
-      ui.lendo();
-      if ((await sha('cfpin:' + cod)) !== h) { ui.erro('PIN INCORRETO'); return; }
-      ui.ok('AUTORIZADO');
-      setTimeout(function () {
-        app.innerHTML = topo('Liberar refazer', jv.nome) + '<div class="cdados"><h1>Por que refazer?</h1><p class="sub">' + esc(t.nome) + ' · o resultado anterior fica guardado.</p>' +
-          '<textarea id="rf-mot" class="rf-mot" rows="4" maxlength="300" placeholder="Ex.: o tablet desligou no meio do teste"></textarea><div class="conf-b" style="margin-top:12px"><button type="button" class="bpri" id="rf-ok" disabled>Liberar e abrir o teste</button><button type="button" class="bsec" id="rf-canc">Cancelar</button></div></div>';
-        var m = document.getElementById('rf-mot'), okb = document.getElementById('rf-ok');
-        m.addEventListener('input', function () { okb.disabled = m.value.trim().length < 5; }); m.focus();
-        document.getElementById('rf-canc').addEventListener('click', telaTestes);
-        okb.addEventListener('click', function () { E.refazer = { teste: t.id, motivo: m.value.trim() }; telaExplicacao(t); });
-      }, 600);
-    } });
-    app.innerHTML = '<div class="entrada"><h1>Liberar refazer</h1><p class="sub">' + esc(t.nome) + ' · digite o PIN do avaliador.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
-    c.ligar(); document.getElementById('canc').addEventListener('click', telaTestes);
+    var jv = E.jovem;
+    identificar('Liberar refazer', telaTestes, function () {
+      app.innerHTML = topo('Liberar refazer', jv.nome) + '<div class="cdados"><h1>Por que refazer?</h1><p class="sub">' + esc(t.nome) + ' · o resultado anterior fica guardado.' + (E.avaliador ? ' Autorizado por ' + esc(E.avaliador.nome) + '.' : '') + '</p>' +
+        '<textarea id="rf-mot" class="rf-mot" rows="4" maxlength="300" placeholder="Ex.: o tablet desligou no meio do teste"></textarea><div class="conf-b" style="margin-top:12px"><button type="button" class="bpri" id="rf-ok" disabled>Liberar e abrir o teste</button><button type="button" class="bsec" id="rf-canc">Cancelar</button></div></div>';
+      var m = document.getElementById('rf-mot'), okb = document.getElementById('rf-ok');
+      m.addEventListener('input', function () { okb.disabled = m.value.trim().length < 5; }); m.focus();
+      document.getElementById('rf-canc').addEventListener('click', telaTestes);
+      okb.addEventListener('click', function () { E.refazer = { teste: t.id, motivo: m.value.trim(), por: E.avaliador ? E.avaliador.id : null }; evento('refazer', jv.nome + ' · ' + t.nome + ' · ' + m.value.trim()); telaExplicacao(t); });
+    });
   }
+
 
   // 4) Explicação + Iniciar
   function paisagem(est) { return est.orientacao ? est.orientacao === 'paisagem' : (est.partes || []).some(function (p) { return p.tipo === 'contar' || p.tipo === 'marcar'; }); }
@@ -423,7 +420,7 @@
       var c = ctl.corrigir(), fim = new Date();
       var res = { uid: uid(), participacao_id: E.jovem.participacao_id, teste_id: t.id, versao: t.versao, respostas: ctl.respostas(), pontos: c.pontos, total: c.total, nota: c.nota,
         inicio: inicio.toISOString(), fim: fim.toISOString(), tempo_seg: Math.round((fim - inicio) / 1000), por_tempo: !!porTempo, saidas: saidas,
-        desvio_ms: E.desvio == null ? null : Math.round(E.desvio), jovem_nome: E.jovem.nome, teste_nome: t.nome, refazer_motivo: E.refazer && E.refazer.teste === t.id ? E.refazer.motivo : null };
+        desvio_ms: E.desvio == null ? null : Math.round(E.desvio), jovem_nome: E.jovem.nome, teste_nome: t.nome, refazer_motivo: E.refazer && E.refazer.teste === t.id ? E.refazer.motivo : null, autorizado_por: E.refazer && E.refazer.teste === t.id ? E.refazer.por : null };
       if (E.refazer && E.refazer.teste === t.id) E.refazer = null;
       if (E.demo) { E.demoFeitos.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'modo de testes', nota: res.nota, pontos: res.pontos, total: res.total }); }
       else {
@@ -502,15 +499,78 @@
 
   // 7) Modo avaliador (PIN)
   async function sha(t) { var b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [].map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
-  function pedirPIN() {
-    var h = E.pacote && E.pacote.pin_hash;
-    if (!h) { aviso('O PIN do avaliador ainda não foi definido em Configurações › Tablets.', 'erro'); return; }
-    var c = cofre({ tam: 4, numeros: true, rotulo: 'DIGITE O PIN', aoCompletar: async function (cod, ui) {
-      ui.lendo();
-      if ((await sha('cfpin:' + cod)) === h) { ui.ok('MODO AVALIADOR'); setTimeout(telaAvaliador, 700); } else ui.erro('PIN INCORRETO');
-    } });
-    app.innerHTML = '<div class="entrada"><h1>Modo avaliador</h1><p class="sub">Digite o PIN do avaliador.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
-    c.ligar(); document.getElementById('canc').addEventListener('click', telaEntrada);
+  async function pbkdf2(pin, salt, iter) {
+    var k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+    var b = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: iter }, k, 256);
+    return [].map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
+  function evento(acao, detalhe) { var l = confLer('golt_eventos'); l.push({ uid: 'ev-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), acao: acao, detalhe: detalhe || '', avaliador: E.avaliador ? E.avaliador.id : null, em: new Date().toISOString() }); confGravar('golt_eventos', l.slice(-200)); }
+  // Q4 · Quem está usando? + PIN próprio (6 números). 5 erros = bloqueado 15 min neste tablet.
+  function identificar(titulo, voltar, aoOk) {
+    var p = E.pacote || {}, avs = (p.avaliadores || []), comPin = avs.filter(function (a) { return a.hash; });
+    if (!comPin.length) {   // transição: enquanto ninguém criou o PIN próprio, vale o PIN geral
+      var h = p.pin_geral_valido === false ? null : p.pin_hash;
+      if (!h) { aviso('Nenhum avaliador criou o PIN ainda (Classificação Final › Minha conta › PIN do tablet).', 'erro'); return; }
+      var c0 = cofre({ tam: 4, numeros: true, rotulo: 'DIGITE O PIN', aoCompletar: async function (cod, ui) { ui.lendo(); if ((await sha('cfpin:' + cod)) === h) { E.avaliador = null; ui.ok('AUTORIZADO'); setTimeout(aoOk, 600); } else ui.erro('PIN INCORRETO'); } });
+      app.innerHTML = '<div class="entrada"><h1>' + esc(titulo) + '</h1><p class="sub">Digite o PIN do avaliador.</p>' + c0.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
+      c0.ligar(); document.getElementById('canc').addEventListener('click', voltar); return;
+    }
+    function falhas() { try { return JSON.parse(localStorage.getItem('golt_pin_falhas') || '{}'); } catch (e) { return {}; } }
+    app.innerHTML = '<div class="entrada"><h1>' + esc(titulo) + '</h1><p class="sub">Quem está usando? Toque no seu nome.</p><div class="avs">' +
+      avs.map(function (a) { var ini = String(a.nome || '?').split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join(''); return '<button type="button" class="av-b"' + (a.hash ? ' data-av="' + a.id + '"' : ' disabled') + '><i>' + esc(ini) + '</i><span>' + esc(a.nome) + '<small>' + (a.hash ? 'PIN cadastrado' : 'sem PIN ainda') + '</small></span></button>'; }).join('') +
+      '</div><p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
+    document.getElementById('canc').addEventListener('click', voltar);
+    app.querySelectorAll('[data-av]').forEach(function (b) { b.addEventListener('click', function () {
+      var a = avs.filter(function (x) { return x.id === b.getAttribute('data-av'); })[0], f = falhas()[a.id] || { n: 0, ate: 0 };
+      if (f.ate > Date.now()) { aviso('PIN bloqueado neste tablet até ' + hora(new Date(f.ate).toISOString()) + ' (5 tentativas erradas).', 'erro'); return; }
+      var c = cofre({ tam: 6, numeros: true, rotulo: 'PIN DE ' + String(a.nome).split(' ')[0].toUpperCase(), aoCompletar: async function (cod, ui) {
+        ui.lendo();
+        var ok = (await pbkdf2(cod, a.salt, a.iter || 150000)) === a.hash, fs = falhas(), x = fs[a.id] || { n: 0, ate: 0 };
+        if (ok) { delete fs[a.id]; localStorage.setItem('golt_pin_falhas', JSON.stringify(fs)); E.avaliador = { id: a.id, nome: a.nome }; ui.ok('OLÁ, ' + String(a.nome).split(' ')[0].toUpperCase()); setTimeout(aoOk, 600); return; }
+        x.n++; if (x.n >= 5) { x.ate = Date.now() + 15 * 60000; x.n = 0; E.avaliador = { id: a.id }; evento('pin_bloqueado', a.nome + ' · 5 tentativas erradas'); E.avaliador = null; }
+        fs[a.id] = x; localStorage.setItem('golt_pin_falhas', JSON.stringify(fs));
+        ui.erro(x.ate > Date.now() ? 'BLOQUEADO 15 MIN' : 'PIN INCORRETO · RESTAM ' + (5 - x.n));
+        if (x.ate > Date.now()) setTimeout(voltar, 1500);
+      } });
+      app.innerHTML = '<div class="entrada"><h1>' + esc(titulo) + '</h1><p class="sub">' + esc(a.nome) + ' · digite o seu PIN de 6 números.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Voltar</button></p></div>';
+      c.ligar(); document.getElementById('canc').addEventListener('click', function () { identificar(titulo, voltar, aoOk); });
+    }); });
+  }
+  function pedirPIN() { identificar('Modo avaliador', telaEntrada, function () { evento('modo_avaliador', 'entrou no modo avaliador'); telaAvaliador(); }); }
+  // Q4 · Foto do jovem (vai para aprovação na Classificação Final)
+  function telaFotos() {
+    var p = E.pacote || {}, hoje = hojeISO(), tur = (p.turmas || []).filter(function (t) { return (t.dias || []).some(function (d) { return d.data === hoje; }); }).map(function (t) { return t.id; });
+    var js = (p.jovens || []).filter(function (j) { return tur.indexOf(j.turma_id) >= 0; }), tiradas = confLer('golt_fotos_feitas');
+    app.innerHTML = topo('Fotos dos jovens', (E.avaliador ? E.avaliador.nome : '') + ' · turmas de hoje') + '<div class="miolo"><div class="fts">' +
+      (js.length ? js.map(function (j) { return '<button type="button" class="ft-j" data-fj="' + j.participacao_id + '"><b>' + esc(j.nome) + '</b><small>' + (tiradas.indexOf(j.participacao_id) >= 0 ? '✓ foto enviada para aprovação' : 'sem foto nova') + '</small></button>'; }).join('') : '<div class="bx">Nenhum jovem nas turmas de hoje.</div>') +
+      '</div><div class="ini"><button type="button" class="bsec" id="ft-volta">Voltar</button></div></div>';
+    document.getElementById('ft-volta').addEventListener('click', telaAvaliador);
+    app.querySelectorAll('[data-fj]').forEach(function (b) { b.addEventListener('click', function () { camera(js.filter(function (j) { return j.participacao_id === b.getAttribute('data-fj'); })[0]); }); });
+  }
+  async function camera(j) {
+    var modo = 'user', fluxo = null;
+    app.innerHTML = topo('Foto', j.nome) + '<div class="cdados"><h1>' + esc(j.nome) + '</h1><p class="sub">Centralize o rosto no contorno.</p><div class="cam"><video id="cam-v" autoplay playsinline muted></video><canvas id="cam-c" hidden></canvas><div class="cam-o"></div></div>' +
+      '<div class="cam-b"><button type="button" class="bsec" id="cam-tr">Trocar câmera</button><button type="button" class="bpri" id="cam-ok">📷 Tirar foto</button></div><p><button type="button" class="bsec" id="cam-x">Cancelar</button></p></div>';
+    var v = document.getElementById('cam-v');
+    async function abrir() { try { if (fluxo) fluxo.getTracks().forEach(function (t) { t.stop(); }); fluxo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modo, width: { ideal: 960 } }, audio: false }); v.srcObject = fluxo; } catch (e) { aviso('Não foi possível abrir a câmera. Permita o uso da câmera para este app.', 'erro'); } }
+    function parar() { if (fluxo) fluxo.getTracks().forEach(function (t) { t.stop(); }); }
+    await abrir();
+    document.getElementById('cam-tr').addEventListener('click', function () { modo = modo === 'user' ? 'environment' : 'user'; abrir(); });
+    document.getElementById('cam-x').addEventListener('click', function () { parar(); telaFotos(); });
+    document.getElementById('cam-ok').addEventListener('click', function () {
+      var c = document.getElementById('cam-c'), w = v.videoWidth, h = v.videoHeight; if (!w) return;
+      var cw = Math.min(w, h * 0.8), ch = cw / 0.8; c.width = 480; c.height = 600;
+      c.getContext('2d').drawImage(v, (w - cw) / 2, (h - ch) / 2, cw, ch, 0, 0, 480, 600);
+      var dados = c.toDataURL('image/jpeg', 0.72).split(',')[1]; parar();
+      app.querySelector('.cam').innerHTML = '<img src="data:image/jpeg;base64,' + dados + '" alt="">';
+      app.querySelector('.cam-b').innerHTML = '<button type="button" class="bsec" id="cam-de">Tirar de novo</button><button type="button" class="bpri" id="cam-usa">✓ Usar esta foto</button>';
+      document.getElementById('cam-de').addEventListener('click', function () { camera(j); });
+      document.getElementById('cam-usa').addEventListener('click', function () {
+        var f = confLer('golt_fotos_fila'); f.push({ uid: 'ft-' + Date.now().toString(36), participacao_id: j.participacao_id, avaliador: E.avaliador ? E.avaliador.id : null, imagem: dados, em: new Date().toISOString() }); confGravar('golt_fotos_fila', f.slice(-40));
+        var ft = confLer('golt_fotos_feitas'); ft.push(j.participacao_id); confGravar('golt_fotos_feitas', ft.slice(-300));
+        aviso('Foto guardada. Ela vai para aprovação na Classificação Final.'); enviar(); telaFotos();
+      });
+    });
   }
   function listaEnvios(pend) {
     var st = E.enviando ? ['⟳ Sincronizando', 'sinc'] : E.erroEnvio && online() ? ['⚠ Erro · tenta de novo sozinho', 'erro'] : ['⏳ Pendente' + (online() ? '' : ' (sem internet)'), 'pend'];
@@ -529,10 +589,11 @@
       '<div class="lin" style="--c:#2f6fd0"><b>Turmas de hoje</b>' + (tur.length ? tur.map(function (t) { return esc(t.nome + ' · ' + t.empresa); }).join('<br>') : 'nenhuma') + '</div>' +
       '<div class="lin" style="--c:#8a8486"><b>Última atualização</b>' + (E.ultimaSinc ? new Date(E.ultimaSinc).toLocaleString('pt-BR') : '—') + '</div>' +
       '<div class="envs"><b>Envios deste tablet</b>' + listaEnvios(await fila.todos()) + '</div>' +
-      '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
-      '<p style="text-align:center;color:var(--texto-3);font-size:12.5px">Os outros recursos do avaliador (liberar refazer, jovem sem cadastro, adicionar tempo…) chegam na próxima etapa.</p></div></div>';
+      '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bpri" id="fotos">📷 Fotos dos jovens</button><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
+      '<p style="text-align:center;color:var(--texto-3);font-size:12.5px">' + (E.avaliador ? 'Você entrou como ' + esc(E.avaliador.nome) + '.' : '') + ' Liberar refazer: na lista de testes do jovem, em "🔒 Liberar refazer".</p></div></div>';
     atualizarStatus();
     var volta = setTimeout(telaEntrada, 120000);
+    document.getElementById('fotos').addEventListener('click', function () { clearTimeout(volta); telaFotos(); });
     document.getElementById('atu').addEventListener('click', async function () { await baixar(false); clearTimeout(volta); telaAvaliador(); });
     document.getElementById('env').addEventListener('click', async function () { if (!online()) { aviso('Sem internet agora.', 'erro'); return; } await enviar(); clearTimeout(volta); telaAvaliador(); aviso('Envio concluído.'); });
     document.getElementById('sairav').addEventListener('click', function () { clearTimeout(volta); telaEntrada(); });

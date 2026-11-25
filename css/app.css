@@ -1944,3 +1944,20 @@ html[data-tema="escuro"] .jov-cpf { color: #ffd27a !important; }
 .tb-conf-op { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .tb-op { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--borda); border-radius: 12px; padding: 10px 12px; cursor: pointer; font-size: 13px; line-height: 1.55; }
 .tb-op:has(input:checked) { border-color: var(--laranja); background: color-mix(in srgb, var(--laranja) 8%, var(--cartao)); }
+/* Q4 · fotos do tablet para aprovar */
+.tb-fts { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.tb-ft { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: center; background: var(--entrada); border: 1px solid var(--borda); border-radius: 14px; padding: 10px; }
+.tb-ft img { width: 84px; height: 100px; object-fit: cover; border-radius: 10px; } .tb-ft small { display: block; color: var(--texto-3); font-size: 12px; }
+.tb-ft-b { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+/* Q5 · Qualidade */
+.ql-h { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-2); margin: 16px 0 8px; }
+.ql-l { display: grid; grid-template-columns: 1.4fr 2fr 140px; gap: 14px; align-items: center; width: 100%; text-align: left; padding: 12px 14px; margin-bottom: 8px; border-radius: 14px; border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); font: inherit; cursor: pointer; box-shadow: inset 4px 0 0 var(--c), 0 6px 16px rgba(0,0,0,.05); }
+.ql-l b { display: block; font-size: 14px; } .ql-l small { display: block; font-size: 11.5px; color: var(--texto-3); margin-top: 3px; }
+.ql-bar { display: block; height: 10px; border-radius: 9px; background: var(--entrada); overflow: hidden; } .ql-bar i { display: block; height: 100%; background: var(--c, var(--laranja)); border-radius: 9px; }
+.ql-g { --c: var(--laranja); margin-bottom: 4px; }
+.ql-st { justify-self: end; font-size: 11.5px; font-weight: 800; padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+.ql-auto { background: var(--entrada); border: 1px solid var(--borda); border-radius: 12px; padding: 10px 12px; margin: 10px 0; } .ql-auto .dica { margin-top: 6px; line-height: 1.7; }
+.ql-c { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--borda); } .ql-ct { flex: 1; } .ql-ct b { display: block; font-size: 13.5px; } .ql-ct em { font-style: normal; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: rgba(217,83,79,.15); color: #D9534F; } .ql-ct small { color: var(--texto-3); font-size: 11.5px; }
+.ql-bt { display: flex; gap: 4px; } .ql-bt button { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--borda); background: var(--cartao); font: 700 12px Poppins, sans-serif; color: var(--texto-2); cursor: pointer; }
+.ql-ok .ql-bt [data-s="ok"].on { background: #3FA66B; color: #fff; border-color: transparent; } .ql-falha .ql-bt [data-s="falha"].on { background: #D9534F; color: #fff; border-color: transparent; }
+@media (max-width: 760px) { .ql-l { grid-template-columns: 1fr; } .ql-st { justify-self: start; } }
