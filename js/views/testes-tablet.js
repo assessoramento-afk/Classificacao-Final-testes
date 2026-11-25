@@ -391,7 +391,9 @@
   function lerCartoes(wb) {
     var ws = wb.Sheets['Dados Cartões']; if (!ws) return null;
     var orig = {}, blocos = [];
-    for (var r = 6; r <= 40; r++) { var n = parseInt(cel(ws, 'A' + r), 10); if (!n || !txt(cel(ws, 'B' + r))) continue; orig[n] = ['B', 'C', 'D', 'E', 'F', 'G', 'H'].map(function (c) { return txt(cel(ws, c + r)); }); if (r > 21) break; }
+    for (var r = 6; r <= 40; r++) {   // originais: da linha 6 até a primeira linha vazia (antes da tabela das cópias)
+      var n = parseInt(cel(ws, 'A' + r), 10); if (!n || !txt(cel(ws, 'B' + r))) { if (Object.keys(orig).length) break; continue; }
+      orig[n] = ['B', 'C', 'D', 'E', 'F', 'G', 'H'].map(function (c) { return txt(cel(ws, c + r)); }); }
     for (var r2 = 22; r2 <= 80; r2++) {
       var o = parseInt(cel(ws, 'B' + r2), 10), cp = ['C', 'D', 'E', 'F', 'G', 'H', 'I'].map(function (c) { return txt(cel(ws, c + r2)); });
       if (!o || !orig[o] || !cp[0]) continue;
@@ -485,7 +487,7 @@
     var ABAS = [['lista', 'Tablets'], ['ped', 'Pedidos'], ['res', 'Resultados recebidos'], ['fotos', 'Fotos para aprovar'], ['hist', 'Histórico'], ['conf', 'Instalar e configurar']];
     var abaTb = 'lista'; try { abaTb = localStorage.getItem('cf_tb_aba') || 'lista'; } catch (e) {}
     area.innerHTML = '<header class="cabecalho"><div><h1>Tablets</h1><p>Projeto Gol Testes · tablets liberados, pedidos, resultados e configurações do app</p></div>' +
-      '<div class="botoes-topo"><button type="button" class="btn" id="tb-etq">🖨 Imprimir etiquetas</button><button type="button" class="btn" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar com código</button><button type="button" class="btn btn-pri" id="tb-qr">📷 Ler QR do tablet</button></div></header>' +
+      '<div class="botoes-topo"><button type="button" class="btn" id="tb-etq">' + ui.icone('impressora', 17) + 'Imprimir etiquetas</button><button type="button" class="btn" id="tb-novo">' + ui.icone('mais', 17) + 'Cadastrar com código</button><button type="button" class="btn btn-pri" id="tb-qr">' + ui.icone('camera', 17) + 'Ler QR do tablet</button></div></header>' +
       '<div class="tb-kp" id="tb-kp"></div>' +
       '<nav class="tb-abas" role="tablist">' + ABAS.map(function (a) { return '<button type="button" role="tab" data-tbaba="' + a[0] + '">' + a[1] + '<em id="tb-n-' + a[0] + '" hidden></em></button>'; }).join('') + '</nav>' +
       '<div class="tb-pn" data-pn="lista"><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div><p class="dica">Se um tablet sumir, use "⋯ › Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p></div>' +
@@ -538,7 +540,7 @@
         '<td><span class="pill" style="background:color-mix(in srgb,' + COR[x.situacao] + ' 15%,transparent);color:' + COR[x.situacao] + '">' + x.situacao + '</span>' + (x.decidido_em ? '<br><small class="dica">' + new Date(x.decidido_em).toLocaleString('pt-BR') + '</small>' : '') + '</td>' +
         '<td>' + (x.situacao === 'pendente' ? '<button type="button" class="btn btn-p" data-ped="' + x.codigo + '">Ver pedido</button>' : '') + '</td></tr>'; }
       b.innerHTML = '<h2>Pedidos de liberação ' + (pend.length ? '<span class="pill" style="background:#fff4dc;color:#8a6200">' + pend.length + ' pendente' + (pend.length > 1 ? 's' : '') + '</span>' : '') + '</h2>' +
-        '<p class="dica" style="margin:0 0 8px">Tablets novos mostram um QR Code de pedido. Leia com "📷 Ler QR do tablet" ou abra o pedido aqui. O tablet só entra depois que você liberar.</p>' +
+        '<p class="dica" style="margin:0 0 8px">Tablets novos mostram um QR Code de pedido. Leia com "Ler QR do tablet" ou abra o pedido aqui. O tablet só entra depois que você liberar.</p>' +
         (ps.length ? '<div class="tabela-rolar"><table class="tabela"><thead><tr><th>Pedido</th><th>Aparelho</th><th>Pedido em</th><th>Situação</th><th><span class="sr">Ações</span></th></tr></thead><tbody>' + pend.concat(dec).map(lin).join('') + '</tbody></table></div>' : '<p class="dica">Nenhum pedido ainda.</p>');
       b.querySelectorAll('[data-ped]').forEach(function (x) { x.addEventListener('click', function () { abrirPedido(x.getAttribute('data-ped')); }); });
     }
@@ -559,7 +561,7 @@
     }
     function lerQR() {
       var ativo = true, stream = null;
-      var j = ui.janela({ titulo: '📷 Ler QR do tablet', largura: 520, corpo: '<p class="dica" style="margin:0 0 8px">Aponte a câmera para o QR Code que aparece na tela "Ligar este tablet".</p><video id="qv" playsinline muted style="width:100%;border-radius:14px;background:#000"></video><canvas id="qc" style="display:none"></canvas>' +
+      var j = ui.janela({ titulo: 'Ler QR do tablet', largura: 520, corpo: '<p class="dica" style="margin:0 0 8px">Aponte a câmera para o QR Code que aparece na tela "Ligar este tablet".</p><video id="qv" playsinline muted style="width:100%;border-radius:14px;background:#000"></video><canvas id="qc" style="display:none"></canvas>' +
         '<label class="campo" style="margin-top:10px"><span>Ou digite o pedido</span><input class="entrada" id="qd" placeholder="ex.: 4F7-K2Q" style="text-transform:uppercase"></label>',
         botoes: [{ texto: 'Fechar', acao: 'fechar' }, { texto: 'Abrir pedido', principal: true, aoClicar: function (f) { var v = f.querySelector('#qd').value; if (!v.trim()) { ui.toast('Digite o pedido ou leia o QR.', 'erro'); return false; } parar(); setTimeout(function () { abrirPedido(v); }, 30); return true; } }],
         aoFechar: function () { parar(); } });
@@ -702,6 +704,8 @@
       return ['Pronto', 'ok', '#3FA66B'];
     }
     var filtroTb = 'todos'; try { filtroTb = localStorage.getItem('cf_tb_filtro') || 'todos'; } catch (e) {}
+    function verMenor(a, b) { a = String(a || '0').split('.').map(Number); b = String(b || '0').split('.').map(Number); for (var i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) < (b[i] || 0); } return false; }
+    function appAntigo(x) { var atual = (window.CF_CONFIG || {}).versaoAppTablet; return x.ativo && atual && x.versao_app && verMenor(x.versao_app, atual); }
     function grupo(x) { var s = situacao(x)[0]; return s === 'Pronto' ? 'prontos' : s === 'Desativado' ? 'desativados' : s === 'Desatualizado' ? 'desatualizados' : 'pendentes'; }
     function quando(d) { if (!d) return '—'; var t = new Date(d), h = new Date(); var ontem = new Date(h); ontem.setDate(h.getDate() - 1);
       var hm = t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -713,10 +717,11 @@
       var kp = area.querySelector('#tb-kp'), nPed = +(kp.getAttribute('data-ped') || 0);
       kp.innerHTML = [['prontos', 'prontos', '#3FA66B'], ['pendentes', 'com envio pendente', '#e0a100'], ['desatualizados', 'desatualizados', '#D9534F'], ['desativados', 'desativados', '#8a8486']].map(function (k) {
         return '<button type="button" class="tb-k" data-kf="' + k[0] + '" style="--c:' + k[2] + '"><b>' + cont[k[0]] + '</b><span>' + k[1] + '</span></button>'; }).join('') +
-        '<button type="button" class="tb-k" data-kped="1" style="--c:#ee7330"><b>' + nPed + '</b><span>pedidos aguardando</span></button>';
+        '<button type="button" class="tb-k" data-kped="1" style="--c:#ee7330"><b>' + nPed + '</b><span>pedidos aguardando</span></button>' +
+        (lista.filter(appAntigo).length ? '<div class="tb-k tb-k-app" style="--c:#8b6fd6"><b>' + lista.filter(appAntigo).length + '</b><span>com app desatualizado · v' + esc(window.CF_CONFIG.versaoAppTablet) + ' é a atual</span></div>' : '');
       kp.querySelectorAll('[data-kf]').forEach(function (b) { b.addEventListener('click', function () { filtroTb = b.getAttribute('data-kf'); try { localStorage.setItem('cf_tb_filtro', filtroTb); } catch (e) {} irAba('lista'); desenhar(); }); });
       kp.querySelector('[data-kped]').addEventListener('click', function () { irAba('ped'); });
-      if (!lista.length) { box.innerHTML = '<section class="card bloco"><p class="dica">Nenhum tablet cadastrado ainda. Use "📷 Ler QR do tablet" (o tablet mostra o QR ao abrir o app) ou "Cadastrar com código".</p></section>'; return; }
+      if (!lista.length) { box.innerHTML = '<section class="card bloco"><p class="dica">Nenhum tablet cadastrado ainda. Use "Ler QR do tablet" (o tablet mostra o QR ao abrir o app) ou "Cadastrar com código".</p></section>'; return; }
       var bus = ui.normalizar(buscaTb || '');
       var vis = lista.filter(function (x) { return (filtroTb === 'todos' || grupo(x) === filtroTb) && (!bus || ui.normalizar([x.nome, x.etiqueta, x.imei, x.numero_serie, x.email_conta, x.modelo].join(' ')).indexOf(bus) >= 0); });
       var NF = [['todos', 'Todos'], ['prontos', 'Prontos'], ['pendentes', 'Pendentes'], ['desatualizados', 'Desatualizados'], ['desativados', 'Desativados']];
@@ -727,7 +732,8 @@
           var st2 = s[0] === 'Envio pendente' && x.pendentes ? x.pendentes + ' a enviar' : s[0];
           return '<article class="tb-c" style="--c:' + s[2] + '"><div class="tb-h"><span class="tb-num">' + esc(num) + '</span><div><b>' + esc(x.nome) + '</b><small>' + esc(x.modelo || 'modelo não informado') + '</small></div></div>' +
             '<span class="tb-st" style="background:color-mix(in srgb,' + s[2] + ' 14%,transparent);color:' + s[2] + '">● ' + esc(st2) + '</span>' +
-            '<div class="tb-li"><i>ÚLTIMA CONEXÃO</i>' + quando(x.ultima_conexao) + '<br><i>IMEI</i>' + esc(x.imei || '—') + '<br><i>CONTA</i>' + esc(x.email_conta || '—') + (x.liberado_por_email ? '<br><i>LIBERADO POR</i>' + esc(x.liberado_por_email) : '') + '</div>' +
+            (appAntigo(x) ? '<span class="tb-st tb-app">⬆ app desatualizado</span>' : '') +
+            '<div class="tb-li"><i>ÚLTIMA CONEXÃO</i>' + quando(x.ultima_conexao) + '<br><i>APP</i>' + (x.versao_app ? 'v' + esc(x.versao_app) : '—') + '<br><i>IMEI</i>' + esc(x.imei || '—') + '<br><i>CONTA</i>' + esc(x.email_conta || '—') + (x.liberado_por_email ? '<br><i>LIBERADO POR</i>' + esc(x.liberado_por_email) : '') + '</div>' +
             '<div class="tb-ac"><button type="button" class="btn btn-p" data-ed="' + x.id + '">Editar</button><button type="button" class="btn btn-p" data-cod="' + x.id + '">Novo código</button><button type="button" class="btn btn-p tb-mais" data-mais="' + x.id + '" aria-label="Mais opções de ' + esc(x.nome) + '">⋯</button></div></article>';
         }).join('') + '</div>' : '<p class="dica">Nenhum tablet nesse filtro ou busca.</p>');
       box.querySelectorAll('[data-tbf]').forEach(function (b) { b.addEventListener('click', function () { filtroTb = b.getAttribute('data-tbf'); try { localStorage.setItem('cf_tb_filtro', filtroTb); } catch (e) {} desenhar(); }); });
@@ -738,7 +744,7 @@
     }
     function maisOpcoes(x) {
       var j = ui.janela({ titulo: x.nome, largura: 420, confirmarDescarte: false,
-        corpo: '<div class="tb-menu"><button type="button" class="btn" data-o="etq">🖨 Imprimir a etiqueta deste tablet</button><button type="button" class="btn" data-o="hist">🕘 Ver o histórico deste tablet</button>' +
+        corpo: '<div class="tb-menu"><button type="button" class="btn" data-o="etq">' + ui.icone('impressora', 16) + 'Imprimir a etiqueta deste tablet</button><button type="button" class="btn" data-o="hist">🕘 Ver o histórico deste tablet</button>' +
           '<button type="button" class="btn ' + (x.ativo ? 'btn-perigo' : '') + '" data-o="at">' + (x.ativo ? '⛔ Desativar' : '✓ Reativar') + '</button></div>',
         botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
       var el = j.elemento;
@@ -775,7 +781,7 @@
     /* ---------- Etiquetas (modelo A2 · 75 × 38 mm, folha A4) ---------- */
     function etiquetas() {
       if (!lista.length) { ui.toast('Nenhum tablet cadastrado.', 'erro'); return; }
-      var j = ui.janela({ titulo: '🖨 Imprimir etiquetas', largura: 560, confirmarDescarte: false,
+      var j = ui.janela({ titulo: 'Imprimir etiquetas', largura: 560, confirmarDescarte: false,
         corpo: '<p class="dica" style="margin:0 0 8px">Modelo A2 · 75 × 38 mm · folha A4 (2 colunas × 7 linhas). Use papel adesivo A4 comum. Na janela de impressão, escolha <b>tamanho real (100%)</b>.</p>' +
           '<label style="font-weight:700"><input type="checkbox" id="et-todos" checked> Todos os tablets</label><div class="et-l">' +
           lista.map(function (x) { return '<label><input type="checkbox" class="et-c" value="' + x.id + '" checked> ' + esc(x.nome) + (x.etiqueta ? ' · ' + esc(x.etiqueta) : '') + '</label>'; }).join('') + '</div>',

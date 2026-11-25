@@ -19,7 +19,7 @@
     var st = { filtro: 'proximas', busca: '' }, ag, parts;
     area.innerHTML = (SO_GOOGLE ? '' : '<a class="voltar" href="#/cadastros">← Cadastros</a>') + '<div id="tt"><div class="girando" style="margin:30px auto"></div></div>';
     var box = area.querySelector('#tt');
-    var G = window.CF.agendaG, gev = [], pend = [], coresAg = {}, oriT = null;
+    var G = (window.CF_CONFIG || {}).agendaAtiva ? window.CF.agendaG : null, gev = [], pend = [], coresAg = {}, oriT = null;   // Agenda desativada: sem botão e sem eventos do Google
     async function carregar() {
       var r = await Promise.all([dados.agenda.carregarTudo(), dados.jovens.todasParticipacoes(), G ? G.eventosGoogle() : [], G ? G.pendentes() : []]);
       ag = r[0]; parts = r[1]; gev = r[2]; pend = r[3]; coresAg = G ? await G.coresAgendas() : {}; oriT = window.CF.origensDados ? await window.CF.origensDados().catch(function () { return null; }) : null;
@@ -79,7 +79,7 @@
             return '<tr style="--c:' + ((coresAg[g.agenda_id] || {}).cor || '#5b6b8c') + '"><td class="pt-nm pt-barra"><b>' + esc(g.titulo) + '</b><span class="gtag"' + (coresAg[g.agenda_id] ? ' style="background:' + coresAg[g.agenda_id].cor + ';color:' + G.textoSobre(coresAg[g.agenda_id].cor) + '"' : '') + '>' + esc(g.agenda_nome || 'na Google Agenda') + '</span></td><td>' + quando + '</td>' +
               '<td style="text-align:right;white-space:nowrap">' + (window.CF.perm.pode('processos_editar') ? '<button type="button" class="btn btn-p btn-perigo tt-ex" data-gex="' + i + '">Excluir</button> <button type="button" class="btn btn-p" data-criar="' + i + '">Criar turma a partir deste evento</button>' : '') + '</td></tr>';
           }).join('') + '</tbody></table></div>' + (gTodos.length > gVis.length ? '<div style="text-align:center;margin-top:8px"><button type="button" class="btn btn-p" id="tt-gmais">Mostrar mais 10 (' + (gTodos.length - gVis.length) + ' restantes)</button></div>' : '') + '</section>' : '') + (gVis.length ? '' : '<div class="card vazio">Nenhum evento da Google Agenda nos próximos dias.</div>')
-        : '<header class="cabecalho"><div><h1>Turmas</h1><p>Todas as turmas dos processos seletivos e do Profiling Escolas. Os eventos da Google Agenda ficam em Agenda › Eventos do Google.</p></div>' +
+        : '<header class="cabecalho"><div><h1>Turmas</h1><p>Todas as turmas dos processos seletivos e do Profiling Escolas.' + ((window.CF_CONFIG || {}).agendaAtiva ? ' Os eventos da Google Agenda ficam em Agenda › Eventos do Google.' : '') + '</p></div>' +
         (window.CF.novaTurma ? '<div class="botoes-topo" style="order:2"><button type="button" class="btn btn-pri" id="tt-nova">' + ui.icone('mais', 17) + 'Nova turma</button></div>' : '') +
         (G ? '<button type="button" class="btn btn-p" id="tt-sinc">⟳ Atualizar com o Google</button>' : '') + '</header>' + avisos +
         '<section class="card pt-tab"><div class="pt-filtros">' + [['proximas', 'Próximas e de hoje', cnt.proximas], ['encerradas', 'Encerradas', cnt.encerradas], ['todas', 'Todas', lista.length]].map(function (f) {

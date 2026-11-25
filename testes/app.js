@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.9.0';
+  var VERSAO_APP = '1.10.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -77,6 +77,7 @@
     try {
       atualizarStatus();
       var r = await rpc('tablet_enviar', { p_chave: E.chave, p_lista: lista.slice(0, 20), p_pendentes: Math.max(0, lista.length - 20), p_versao_app: VERSAO_APP });
+      setTimeout(function () { procurarAtualizacao(); }, 2000);
       if (r.servidor_em) { E.desvio = Date.parse(r.servidor_em) - Date.now(); try { localStorage.setItem('golt_desvio', String(E.desvio)); } catch (e2) {} }
       var envs = confLer('golt_enviados');
       for (var i = 0; i < (r.recebidos || []).length; i++) { var it = lista.filter(function (x) { return x.uid === r.recebidos[i]; })[0]; if (it) envs.push({ uid: it.uid, nome: it.jovem_nome || '', teste: it.teste_nome || '', em: new Date().toISOString() }); await fila.tirar(r.recebidos[i]); }
@@ -114,7 +115,7 @@
 
   /* ---------- Telas ---------- */
   function topo(titulo, sub, dir) {
-    return '<div class="topo"><img src="' + LOGO + '" alt="" id="logo"><div><b>' + esc(titulo) + '</b>' + (sub ? '<br><small>' + esc(sub) + '</small>' : '') + '</div><div class="dir">' + (dir || '') + '<span class="pil er" id="bat" hidden></span><span class="pil" id="st">…</span></div></div>';
+    return '<div class="topo"><img src="' + LOGO + '" alt="" id="logo"><div><b>' + esc(titulo) + '</b>' + (sub ? '<br><small>' + esc(sub) + ' · <span class="ver">v' + VERSAO_APP + '</span></small>' : '<br><small class="ver">v' + VERSAO_APP + '</small>') + '</div><div class="dir">' + (dir || '') + '<span class="pil er" id="bat" hidden></span><span class="pil" id="st">…</span></div></div>';
   }
   var emTeste = false;
   // modo avaliador: segurar o logo por 3 segundos
@@ -232,6 +233,7 @@
   function pararQR() { if (qrStream) { qrStream.getTracks().forEach(function (t) { t.stop(); }); qrStream = null; } }
   function telaEntrada() {
     emTeste = false; E.jovem = null; document.body.classList.remove('pede-paisagem', 'grande'); pararQR();
+    if (ATUALIZAR) { ATUALIZAR = false; setTimeout(aplicarAtualizacao, 400); }
     var tb = (E.pacote && E.pacote.tablet) || {};
     var c = cofre({ tam: 6, formato: true, aoCompletar: function (cod, ui) {
       ui.lendo();
@@ -261,8 +263,22 @@
   }
 
   // 2b) Conferência no 1º acesso (Q2): o jovem só confere nome, empresa e turma; não edita nada
-  function confLer(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } }
-  function confGravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  // Filas do tablet (fotos, pedidos de correção, eventos): ficam no armazenamento seguro do app (o mesmo dos resultados),
+  // com uma cópia na memória para leitura rápida. Nada é descartado antes de o servidor confirmar.
+  var SEGURAS = ['golt_fotos_fila', 'golt_conf_fila', 'golt_eventos', 'golt_conf_feitos', 'golt_fotos_feitas'], MEM = {};
+  function confLer(k) { if (MEM[k]) return MEM[k].slice(); try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } }
+  function confGravar(k, v) {
+    if (SEGURAS.indexOf(k) >= 0) { MEM[k] = v.slice(); kv.gravar('fila:' + k, v).catch(function () { aviso('Não foi possível guardar no tablet. Chame o avaliador.', 'erro'); }); if (k === 'golt_fotos_fila' || k === 'golt_conf_fila') return; }
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+  }
+  async function carregarFilas() {   // na abertura: lê do armazenamento seguro e traz o que ainda estiver no lugar antigo
+    for (var i = 0; i < SEGURAS.length; i++) {
+      var k = SEGURAS[i], seg = null; try { seg = await kv.ler('fila:' + k); } catch (e) {}
+      var velho = []; try { velho = JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) {}
+      var uni = (seg || []).slice(); velho.forEach(function (x) { var id = x && x.uid ? x.uid : JSON.stringify(x); if (!uni.some(function (y) { return (y && y.uid ? y.uid : JSON.stringify(y)) === id; })) uni.push(x); });
+      MEM[k] = uni; try { await kv.gravar('fila:' + k, uni); if (k === 'golt_fotos_fila' || k === 'golt_conf_fila') localStorage.removeItem(k); } catch (e) {}
+    }
+  }
   function precisaConferir(j) { return !E.demo && !j.conferido && confLer('golt_conf_feitos').indexOf(j.participacao_id) < 0; }
   function telaConferir() {
     var j = E.jovem, tu = ((E.pacote && E.pacote.turmas) || []).filter(function (t) { return t.id === j.turma_id; })[0] || {};
@@ -566,7 +582,7 @@
       app.querySelector('.cam-b').innerHTML = '<button type="button" class="bsec" id="cam-de">Tirar de novo</button><button type="button" class="bpri" id="cam-usa">✓ Usar esta foto</button>';
       document.getElementById('cam-de').addEventListener('click', function () { camera(j); });
       document.getElementById('cam-usa').addEventListener('click', function () {
-        var f = confLer('golt_fotos_fila'); f.push({ uid: 'ft-' + Date.now().toString(36), participacao_id: j.participacao_id, avaliador: E.avaliador ? E.avaliador.id : null, imagem: dados, em: new Date().toISOString() }); confGravar('golt_fotos_fila', f.slice(-40));
+        var f = confLer('golt_fotos_fila'); f.push({ uid: 'ft-' + Date.now().toString(36), participacao_id: j.participacao_id, avaliador: E.avaliador ? E.avaliador.id : null, imagem: dados, em: new Date().toISOString() }); confGravar('golt_fotos_fila', f);
         var ft = confLer('golt_fotos_feitas'); ft.push(j.participacao_id); confGravar('golt_fotos_feitas', ft.slice(-300));
         aviso('Foto guardada. Ela vai para aprovação na Classificação Final.'); enviar(); telaFotos();
       });
@@ -581,27 +597,55 @@
   async function telaAvaliador() {
     var n = (await fila.todos()).length, p = E.pacote || {}, hoje = hojeISO(), tb = p.tablet || {};
     var tur = (p.turmas || []).filter(function (t) { return (t.dias || []).some(function (d) { return d.data === hoje; }); });
-    app.innerHTML = topo('Modo avaliador', (tb.nome || '') + ' · versão ' + VERSAO_APP) + '<div class="miolo"><div class="av-l">' +
+    app.innerHTML = topo('Modo avaliador', (tb.nome || '')) + '<div class="miolo"><div class="av-l">' +
       '<div class="lin" style="--c:' + (online() ? '#3FA66B' : '#e0a100') + '"><b>Internet</b>' + (online() ? 'conectado' : 'sem internet') + '</div>' +
       '<div class="lin" style="--c:' + (n ? '#e0a100' : '#3FA66B') + '"><b>Resultados aguardando envio</b>' + n + '</div>' +
       '<div class="lin" style="--c:' + (bateriaBaixa() ? '#c0392b' : '#3FA66B') + '"><b>Bateria</b>' + bateriaTxt() + '</div>' +
       '<div class="lin" style="--c:#2f6fd0"><b>Testes no tablet</b>' + (p.testes || []).length + '</div>' +
       '<div class="lin" style="--c:#2f6fd0"><b>Turmas de hoje</b>' + (tur.length ? tur.map(function (t) { return esc(t.nome + ' · ' + t.empresa); }).join('<br>') : 'nenhuma') + '</div>' +
-      '<div class="lin" style="--c:#8a8486"><b>Última atualização</b>' + (E.ultimaSinc ? new Date(E.ultimaSinc).toLocaleString('pt-BR') : '—') + '</div>' +
+      '<div class="lin" style="--c:#8a8486"><b>Última atualização dos dados</b>' + (E.ultimaSinc ? new Date(E.ultimaSinc).toLocaleString('pt-BR') : '—') + '</div>' +
+      '<div class="lin" style="--c:#8b6fd6"><b>Versão do app</b>v' + VERSAO_APP + (E.verificadoEm ? ' · procurado às ' + hora(E.verificadoEm) : '') + '</div>' +
       '<div class="envs"><b>Envios deste tablet</b>' + listaEnvios(await fila.todos()) + '</div>' +
-      '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bpri" id="fotos">📷 Fotos dos jovens</button><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
+      '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bpri" id="fotos">📷 Fotos dos jovens</button><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="atu-app">⬆ Atualizar o app agora</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
       '<p style="text-align:center;color:var(--texto-3);font-size:12.5px">' + (E.avaliador ? 'Você entrou como ' + esc(E.avaliador.nome) + '.' : '') + ' Liberar refazer: na lista de testes do jovem, em "🔒 Liberar refazer".</p></div></div>';
     atualizarStatus();
     var volta = setTimeout(telaEntrada, 120000);
     document.getElementById('fotos').addEventListener('click', function () { clearTimeout(volta); telaFotos(); });
     document.getElementById('atu').addEventListener('click', async function () { await baixar(false); clearTimeout(volta); telaAvaliador(); });
+    document.getElementById('atu-app').addEventListener('click', async function () { clearTimeout(volta); if (!online()) { aviso('Sem internet agora.', 'erro'); return; } aviso('Procurando versão nova…'); var nova = await procurarAtualizacao(true); if (!nova) { aviso('O app já está na versão mais recente (v' + VERSAO_APP + ').'); telaAvaliador(); } });
     document.getElementById('env').addEventListener('click', async function () { if (!online()) { aviso('Sem internet agora.', 'erro'); return; } await enviar(); clearTimeout(volta); telaAvaliador(); aviso('Envio concluído.'); });
     document.getElementById('sairav').addEventListener('click', function () { clearTimeout(volta); telaEntrada(); });
   }
 
+  /* ---------- Atualização rápida do app ---------- */
+  var REG = null, ATUALIZAR = false;
+  function aplicarAtualizacao() {   // nunca no meio de um teste nem com um jovem na tela: espera voltar ao crachá
+    if (emTeste || E.jovem) { ATUALIZAR = true; return; }
+    try { sessionStorage.setItem('golt_atualizado', VERSAO_APP); } catch (e) {}
+    location.reload();
+  }
+  async function procurarAtualizacao(forcar) {
+    if (!REG || !online()) return false;
+    E.verificadoEm = new Date().toISOString();
+    try { await REG.update(); } catch (e) { return false; }
+    if (REG.waiting) { REG.waiting.postMessage('ativar'); return true; }
+    if (REG.installing) return true;
+    return false;
+  }
+  function iniciarAtualizacao() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (r) { REG = r; procurarAtualizacao(); }).catch(function () {});
+    var recarregou = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () { if (recarregou) return; recarregou = true; aplicarAtualizacao(); });
+    setInterval(function () { procurarAtualizacao(); if (ATUALIZAR && !emTeste && !E.jovem) aplicarAtualizacao(); }, 5 * 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) procurarAtualizacao(); });
+    try { var v = sessionStorage.getItem('golt_atualizado'); if (v && v !== VERSAO_APP) setTimeout(function () { aviso('App atualizado para a versão ' + VERSAO_APP + '.'); }, 1500); sessionStorage.removeItem('golt_atualizado'); } catch (e) {}
+  }
+
   /* ---------- Início ---------- */
   (async function () {
-    if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch (e) {} }
+    iniciarAtualizacao();
+    await carregarFilas();
     try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
     if (/[?&]teste\b/.test(location.search)) {
       var lig = false; try { lig = await rpc('tablet_modo_testes_ler', {}); } catch (e) {}

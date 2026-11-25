@@ -388,3 +388,4 @@ button { font-family: inherit; }
 .cam { position: relative; background: #0e0c0c; border-radius: 18px; overflow: hidden; aspect-ratio: 4 / 5; max-height: 56vh; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; }
 .cam video, .cam img { width: 100%; height: 100%; object-fit: cover; } .cam-o { position: absolute; inset: 12% 20%; border: 3px dashed rgba(255,178,127,.85); border-radius: 50% 50% 45% 45%; pointer-events: none; }
 .cam-b { display: flex; gap: 10px; justify-content: center; } .cam-b button { padding: 13px 18px; }
+.topo .ver { opacity: .7; font-weight: 700; letter-spacing: .02em; }

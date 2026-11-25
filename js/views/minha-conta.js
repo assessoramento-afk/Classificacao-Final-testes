@@ -29,13 +29,13 @@
           '<div class="segmentos" role="group" aria-label="Tema">' +
             ['auto', 'escuro', 'claro'].map(function (k) { return '<button type="button" data-opcao-tema="' + k + '">' + esc(window.CF.tema.NOMES[k]) + '</button>'; }).join('') +
           '</div><span class="dica">O modo Automático segue o tema do seu celular ou computador.</span></section>' +
-        '<section class="card bloco"><h2>Idioma</h2><span class="icone-card" aria-hidden="true" style="font-size:34px">🌐</span>' +
+        '<section class="card bloco"><h2>Idioma</h2><span class="icone-card" aria-hidden="true" style="font-size:34px">' + ui.icone('globo', 34) + '</span>' +
           '<div class="segmentos" role="group" aria-label="Idioma">' + ['pt', 'en'].map(function (k) { return '<button type="button" data-opcao-idioma="' + k + '" translate="no" aria-pressed="' + (window.CF.idioma.atual() === k) + '"' + (window.CF.idioma.atual() === k ? ' class="ativo"' : '') + '>' + esc(window.CF.idioma.NOMES[k]) + '</button>'; }).join('') +
           '</div><span class="dica">O idioma vale para as telas, os PDFs e as planilhas gerados neste aparelho.</span></section>' +
         '<section class="card bloco"><h2>Senha</h2><span class="icone-card" aria-hidden="true">' + ui.icone('cadeado', 40) + '</span>' +
           '<p>Para trocar a senha, informe a nova senha duas vezes.</p>' +
           '<button type="button" class="btn" id="b-senha">Trocar senha</button></section>' +
-        (p.perfil !== 'empresa' ? '<section class="card bloco"><h2>PIN do tablet</h2><span class="icone-card" aria-hidden="true" style="font-size:34px">📱</span>' +
+        (p.perfil !== 'empresa' ? '<section class="card bloco"><h2>PIN do tablet</h2><span class="icone-card" aria-hidden="true" style="font-size:34px">' + ui.icone('tablet', 34) + '</span>' +
           '<p>Seu PIN pessoal para o modo avaliador do Projeto Gol Testes (liberar refazer, tirar foto). 6 números. Ele é protegido no seu aparelho antes de ser enviado: ninguém vê o PIN, nem o sistema.</p>' +
           '<form class="form" id="f-pin" novalidate><label class="campo"><span>Novo PIN (6 números)</span><input class="entrada" id="m-pin1" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></label>' +
           '<label class="campo"><span>Repita o PIN</span><input class="entrada" id="m-pin2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></label>' +

@@ -10,6 +10,7 @@
   var TEXTO_PADRAO = 'A Kolping Estadual de São Paulo agradece à {empresa} pela confiança e pela parceria neste processo seletivo para a vaga de {vaga}.\n\n' +
     'Juntos, abrimos portas para que jovens deem o primeiro passo no mundo do trabalho, com oportunidade, preparo e dignidade.';
   var ICONES = {
+    'qualidade': '<path d="M9 11l2 2 4-4"/><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/>',
     'escolas-cks': '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
     feriados: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/>',
     'email-acomp': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
@@ -92,7 +93,7 @@
     area.querySelector('#cfg-cards').innerHTML =
       '<section class="grupo"><h2>Cadastros</h2><p class="dica">Empresas, Comunidades Kolping e Escolas e Avaliadores agora ficam em <a href="#/cadastros">Cadastros</a>.' + (pend ? ' <b>' + pend + (pend === 1 ? ' pessoa aguardando' : ' pessoas aguardando') + ' aprovação.</b>' : '') + '</p></section>' +
       '<section class="grupo"><h2>Banco de testes</h2><div class="cards-cfg">' +
-        card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + card('qualidade', 'ok', 'Qualidade', 'Checklists, aprovação e publicação dos testes') + '</div></section>' +
+        card('areas', 'area', 'Áreas', resumoBanco.areas) + card('testes', 'teste', 'Testes', resumoBanco.testes) + card('competencias', 'comp', 'Competências', resumoBanco.competencias) + card('materiais', 'mat', 'Materiais', resumoBanco.materiais) + card('qualidade', 'nota', 'Qualidade', 'Checklists, aprovação e publicação dos testes') + '</div></section>' +
       '<section class="grupo"><h2>Padrões do sistema</h2><div class="cards-cfg">' +
         card('notas', 'nota', 'Notas de corte', cfg ? 'Aprovado ' + fmt(cfg.corte_aprovado) + ' · Backup ' + fmt(cfg.corte_backup) : '') +
         '</div></section>' +
@@ -100,7 +101,7 @@
         card('agradecimento', 'agr', 'Texto do agradecimento', 'Página 2 do PDF do processo') + card('email-acomp', 'mail', 'E-mail do acompanhamento', 'Texto do botão "Preparar e-mail"') + card('termo', 'termo', 'Termo de consentimento', 'Texto do jovem e do responsável') + card('modelos', 'modelo', 'Modelos de documentos', 'Padrão de cada documento impresso') + '</div></section>' +
       '<section class="grupo"><h2>Sistema</h2><div class="cards-cfg">' +
         (window.CF.perm && window.CF.perm.dono() ? card('permissoes', 'perm', 'Permissões', 'O que cada pessoa da equipe e as empresas podem fazer' + (pend ? ' · ' + pend + ' aguardando liberação' : ''), pend || '') : '') +
-        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', 'Google Drive e Google Agenda', '') : '') +
+        (window.CF.perm && window.CF.perm.dono() ? card('integracoes', 'integ', 'Integrações', (window.CF_CONFIG || {}).agendaAtiva ? 'Google Drive e Google Agenda' : 'Google Drive', '') : '') +
         card('feriados', 'fer', 'Feriados e eventos', 'Feriados, pontos facultativos e Calendário Estadual') +
         '' +
         card('saude', 'saude', 'Saúde do sistema', 'Uso do Supabase, erros, envios e manutenção') + '</div></section>';
@@ -530,7 +531,8 @@
       var st;
       try { var r = await window.CF.sb.rpc('integracao_drive_status'); if (r.error) throw r.error; st = r.data; }
       catch (e) { box.innerHTML = '<div class="aviso aviso-erro">' + ui.icone('alerta', 18) + '<span>' + esc(api.traduzErro(e)) + '</span></div>'; return; }
-      box.innerHTML = '<section class="card drv-card" style="--c:' + (st.conectado ? '#3FA66B' : '#8a8486') + '"><span class="drv-ic">📁</span><div style="flex:1;min-width:0">' +
+      st = st || { conectado: false };
+      box.innerHTML = '<section class="card drv-card" style="--c:' + (st.conectado ? '#3FA66B' : '#8a8486') + '"><span class="drv-ic">' + ui.icone('pasta', 22) + '</span><div style="flex:1;min-width:0">' +
         (st.conectado
           ? '<b>Google Drive · conectado</b><small>como ' + esc(st.email || '?') + ' · Drive compartilhado "' + esc(st.drive_nome || '') + '" · desde ' + new Date(st.conectado_em).toLocaleDateString('pt-BR') + '</small>' +
             '<small>' + (st.arquivos ? 'Último envio: ' + new Date(st.ultimo_envio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' · ' + st.arquivos + ' arquivo(s) salvos' : 'Nenhum arquivo enviado ainda') + '</small>'

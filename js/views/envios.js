@@ -8,7 +8,7 @@
   'use strict';
   var ui = window.CF.ui, esc = ui.esc, OFF = window.CF.offline;
   var EST = {
-    salvo: ['💾', 'Salvo no aparelho', 'est-salvo'], aguardando: ['⏳', 'Aguardando', 'est-aguard'], enviado: ['↗', 'Enviado', 'est-env'],
+    salvo: ['●', 'Salvo no aparelho', 'est-salvo'], aguardando: ['⏳', 'Aguardando', 'est-aguard'], enviado: ['↗', 'Enviado', 'est-env'],
     confirmado: ['✓', 'Confirmado', 'est-ok'], rejeitado: ['⚠', 'Rejeitado', 'est-erro'], conflito: ['⚠', 'Conflito', 'est-erro'], descartado: ['✕', 'Descartado', 'est-desc']
   };
   function hora(iso) { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }

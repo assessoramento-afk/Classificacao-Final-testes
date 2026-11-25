@@ -1961,3 +1961,10 @@ html[data-tema="escuro"] .jov-cpf { color: #ffd27a !important; }
 .ql-bt { display: flex; gap: 4px; } .ql-bt button { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--borda); background: var(--cartao); font: 700 12px Poppins, sans-serif; color: var(--texto-2); cursor: pointer; }
 .ql-ok .ql-bt [data-s="ok"].on { background: #3FA66B; color: #fff; border-color: transparent; } .ql-falha .ql-bt [data-s="falha"].on { background: #D9534F; color: #fff; border-color: transparent; }
 @media (max-width: 760px) { .ql-l { grid-template-columns: 1fr; } .ql-st { justify-self: start; } }
+/* 4.25.1 · versão do app nos cartões de Tablets */
+.tb-st.tb-app { background: color-mix(in srgb, #8b6fd6 16%, transparent); color: #6b52c4; }
+html[data-tema="escuro"] .tb-st.tb-app { color: #c9bff5; }
+.tb-k-app { grid-column: 1 / -1; cursor: default; }
+/* 4.25.1 · filtros e abas com 4 opções em duas linhas no celular (Acompanhamento e Profiling) */
+@media (max-width: 560px) { .seg-g:has(> :nth-child(4)) { flex-wrap: wrap; } .seg-g:has(> :nth-child(4)) > * { flex: 1 1 45%; white-space: nowrap; } }
+.pt-chip svg, .btn svg { vertical-align: -3px; }

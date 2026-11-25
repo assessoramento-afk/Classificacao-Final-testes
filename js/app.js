@@ -173,7 +173,11 @@
           var alerta = pb >= 0.8 || pa >= 0.8 || sd.erros_novos > 0 || (sd.aparelhos_parados || []).length > 0;
           window.CF.saudeAlerta = alerta;
           var link = document.querySelector('.menu a[data-rota="config"]');
-          if (link) { var b = link.querySelector('.alerta-saude'); if (alerta && !b) { b = document.createElement('span'); b.className = 'alerta-saude'; b.title = 'Saúde do sistema pede atenção'; b.textContent = '⚠'; link.appendChild(b); } else if (!alerta && b) b.remove(); }
+          if (link) { var b = link.querySelector('.alerta-saude'); var motivo = [sd.erros_novos > 0 ? sd.erros_novos + ' erro(s) novo(s)' : '', (sd.aparelhos_parados || []).length ? (sd.aparelhos_parados || []).length + ' aparelho(s) com envio parado' : '', pb >= 0.8 ? 'banco quase cheio' : '', pa >= 0.8 ? 'arquivos quase cheios' : ''].filter(Boolean).join(' · ');
+            if (alerta && !b) { b = document.createElement('span'); b.className = 'alerta-saude'; b.textContent = '⚠'; b.setAttribute('role', 'button'); link.appendChild(b);
+              b.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); location.hash = '#/config/saude'; }); }
+            if (b) { b.title = 'Saúde do sistema: ' + (motivo || 'pede atenção') + ' · toque para abrir'; b.setAttribute('aria-label', b.title); }
+            if (!alerta && b) b.remove(); }
         } catch (e) { /* sem script 24 ainda */ }
       }
     }

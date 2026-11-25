@@ -289,7 +289,7 @@
      ================================================================ */
   async function abaAvaliadores(alvo, botaoNovo, ctx) {
     var r = await Promise.all([dados.pessoas.listar(), dados.empresas.listar()]);
-    var lista = r[0], empresasLista = r[1];
+    var lista = r[0] || [], empresasLista = r[1] || [];
     var eu = ctx.perfil.id;
     botaoNovo.addEventListener('click', async function () {
       var link = api.enderecoDoSite() + '#cadastro';

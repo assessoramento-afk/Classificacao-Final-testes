@@ -22,7 +22,10 @@
 
   // Número no item "Cadastros" do menu
   function atualizarBadge() {
-    var link = document.querySelector('.menu a[data-rota="config"]');
+    var velho = document.querySelector('.menu a[data-rota="config"] .badge-menu'); if (velho) velho.remove();
+    var link = document.querySelector('.menu a[data-rota="cadastros"]');
+    var cart = document.querySelector('[data-card="avaliadores"]');
+    if (cart) { var cb = cart.querySelector('.badge'); if (!estado.pendentes.length) { if (cb) cb.remove(); } else { if (!cb) { cb = document.createElement('span'); cb.className = 'badge'; cart.insertBefore(cb, cart.firstChild); } cb.textContent = estado.pendentes.length; cb.setAttribute('aria-label', estado.pendentes.length + ' aguardando aprovação'); } }
     if (!link) return;
     var b = link.querySelector('.badge-menu');
     var n = estado.pendentes.length;

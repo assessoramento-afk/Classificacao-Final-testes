@@ -54,9 +54,9 @@
     var fix = function () { var v = area.querySelector('a.voltar'); if (v) { v.setAttribute('href', '#/cadastros'); v.textContent = '← Cadastros'; } };
     fix(); setTimeout(fix, 0); setTimeout(fix, 400);
   }
-  window.CF.telas.cadastros = function (area) {
+  window.CF.telas.cadastros = function (area, ctx) {
     var m = (window.location.hash || '').match(/^#\/cadastros\/([a-z]+)/);
-    if (m && (m[1] === 'empresas' || m[1] === 'avaliadores')) { window.CF.configPaginas.render(area, m[1], {}); voltarCadastros(area); return; }
+    if (m && (m[1] === 'empresas' || m[1] === 'avaliadores')) { window.CF.configPaginas.render(area, m[1], ctx || {}); voltarCadastros(area); return; }
     if (m && m[1] === 'escolas') { window.CF.paginaEscolas(area); voltarCadastros(area); return; }
     if (m && ['areas', 'testes', 'competencias'].indexOf(m[1]) >= 0) { window.location.replace('#/config/' + m[1]); return; }
     if (m && m[1] === 'jovens') { window.CF.telas.jovensTodos(area); return; }
@@ -69,5 +69,6 @@
         '<a class="cfg" href="#/cadastros/turmas" style="--cor:var(--c-area)" data-card="turmas"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div><b>Turmas</b><small>Turmas, datas e testes</small></div><span class="vai"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a>' +
         '<a class="cfg" href="#/cadastros/avaliadores" style="--cor:var(--c-comp)" data-card="avaliadores"><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg></span><div><b>Avaliadores</b><small>Equipe que avalia e quem tem acesso ao sistema</small></div><span class="vai"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a>' +
       '</div>';
+    if (window.CF.avisos && window.CF.avisos.atualizarBadge) window.CF.avisos.atualizarBadge();
   };
 })();

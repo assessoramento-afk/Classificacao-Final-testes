@@ -395,7 +395,7 @@
       '<div class="barra barra-banco"><label class="busca">' + ui.icone('busca', 17) + '<span class="sr">Buscar</span><input type="search" id="busca-b" placeholder="Buscar teste, código ou competência"></label>' +
         '<button type="button" class="btn btn-p" id="b-abrir">Abrir todas</button><button type="button" class="btn btn-p" id="b-fechar">Fechar todas</button>' +
         '<label class="marcar-linha"><input type="checkbox" id="b-inat"> Mostrar inativos</label></div>' +
-      '<div class="pt-chips bt-onde" role="group" aria-label="Onde é aplicado"><button type="button" class="pt-chip on" data-onde="todos">Todos</button><button type="button" class="pt-chip" data-onde="tablet">📱 No tablet</button><button type="button" class="pt-chip" data-onde="papel">📝 No papel</button></div>' +
+      '<div class="pt-chips bt-onde" role="group" aria-label="Onde é aplicado"><button type="button" class="pt-chip on" data-onde="todos">Todos</button><button type="button" class="pt-chip" data-onde="tablet">' + ui.icone('tablet', 16) + 'No tablet</button><button type="button" class="pt-chip" data-onde="papel">' + ui.icone('papel', 16) + 'No papel</button></div>' +
       '<div id="areas" class="areas"><div class="girando" style="margin:30px auto"></div></div>';
 
     if (admin) {
@@ -455,6 +455,7 @@
     var GRUPOS_PEND = [['teste', 'testes sem competências'], ['sem_area', 'testes sem área'], ['competencia', 'competências sem testes'], ['nao_conta', 'testes com critérios que não contam na nota']];
 
     function desenhar() {
+      if (!b || !b.testes || !b.areas) return;   // dados ainda carregando
       var pend = pendencias();
       var bp = area.querySelector('#pend');
       bp.innerHTML = !pend.length ? '' : '<section class="card pendencias faixa">' + ui.icone('alerta', 18) + '<span style="flex:1;min-width:220px">' + pend.length + ' pendência(s) no banco: ' +
@@ -488,7 +489,7 @@
       var usaPont = cs.some(function (c) { return c.entrada === 'pontuacao'; });
       var selos = [t.padrao ? 'Padrão' : null, t.tem_nivel ? 'Com nível' : null, null].filter(Boolean);
       return '<article class="teste-card" id="teste-' + t.id + '"><div class="teste-cab"><div class="teste-tit"><b>' + esc(t.nome) + '</b>' + (t.codigo ? '<span class="cod cod-teste" title="Código de referência do teste">' + esc(t.codigo) + '</span>' : '') +
-          '<div class="selos">' + (function () { var tt = (b.tablet || []).filter(function (x) { return x.teste_id === t.id; })[0]; return t.tablet ? '<span class="selo-tab">📱 No tablet' + (tt && tt.versao_publicada ? ' · v' + tt.versao_publicada : ' · rascunho') + '</span>' : ''; })() + '<span class="selo-mod">' + (t.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual') + '</span>' + selos.map(function (s) { return ui.pill(s, 'neu'); }).join('') + (!t.ativo ? ui.pill('Inativo', 'nao') : '') + '</div>' + '</div>' +
+          '<div class="selos">' + (function () { var tt = (b.tablet || []).filter(function (x) { return x.teste_id === t.id; })[0]; return t.tablet ? '<span class="selo-tab">' + ui.icone('tablet', 14) + ' No tablet' + (tt && tt.versao_publicada ? ' · v' + tt.versao_publicada : ' · rascunho') + '</span>' : ''; })() + '<span class="selo-mod">' + (t.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual') + '</span>' + selos.map(function (s) { return ui.pill(s, 'neu'); }).join('') + (!t.ativo ? ui.pill('Inativo', 'nao') : '') + '</div>' + '</div>' +
           (admin ? '<div class="mini-acoes"><button type="button" class="ico" data-ed-teste="' + t.id + '" title="Editar teste" aria-label="Editar teste ' + esc(t.nome) + '">' + icone('lapis') + '</button>' +
             '<button type="button" class="ico perigo" data-ex-teste="' + t.id + '" title="Excluir teste" aria-label="Excluir teste ' + esc(t.nome) + '">' + icone('lixo') + '</button></div>' : '') + '</div>' +
         (t.descricao ? '<p class="teste-desc">' + esc(t.descricao) + '</p>' : '') +
@@ -504,7 +505,7 @@
         }).join('') : '<span class="dica">Sem competências</span>') + '</div>' +
         caixaMateriais(t) +
         '<div class="teste-pe">' + (admin ? '<button type="button" class="btn btn-p btn-comp-leve" data-add-comp="' + t.id + '">' + ui.icone('mais', 15) + 'Competência</button>' : '') +
-          (admin ? '<a class="btn btn-p" href="#/banco/tablet/' + t.id + '">📱 ' + (t.tablet ? 'Teste no tablet' : 'Aplicar no tablet') + '</a>' : '') +
+          (admin ? '<a class="btn btn-p" href="#/banco/tablet/' + t.id + '">' + ui.icone('tablet', 16) + ' ' + (t.tablet ? 'Teste no tablet' : 'Aplicar no tablet') + '</a>' : '') +
           (usaPont ? '<button type="button" class="btn btn-p" data-conv="' + t.id + '">Tabela de conversão</button>' : '') + '</div>' +
         '</article>';
     }
