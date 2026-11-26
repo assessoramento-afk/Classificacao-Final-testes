@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.11.1';
+  var VERSAO_APP = '1.12.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -120,8 +120,9 @@
   var emTeste = false;
   // modo avaliador: segurar o logo por 3 segundos
   document.addEventListener('pointerdown', function (e) {
-    if (!e.target.closest('#logo') || emTeste) return;
-    var t = setTimeout(function () { pedirPIN(); }, 3000);
+    if (!e.target.closest('#logo')) return;
+    if (emTeste && !E.adicionarTempo) return;
+    var t = setTimeout(function () { if (emTeste) E.adicionarTempo(); else pedirPIN(); }, 3000);
     function solta() { clearTimeout(t); document.removeEventListener('pointerup', solta); document.removeEventListener('pointercancel', solta); }
     document.addEventListener('pointerup', solta); document.addEventListener('pointercancel', solta);
   });
@@ -306,17 +307,30 @@
     var j = E.jovem, tu = ((E.pacote && E.pacote.turmas) || []).filter(function (t) { return t.id === j.turma_id; })[0] || {};
     var ids = tu.testes || [], f = await feitos(j.participacao_id);
     var ts = ids.map(function (id) { return ((E.pacote && E.pacote.testes) || []).filter(function (x) { return x.id === id; })[0]; }).filter(Boolean);
+    var outros = {};
+    if (!E.demo && E.chave && online()) { try { ((await rpc('tablet_rascunhos_do_jovem', { p_chave: E.chave, p_participacao: j.participacao_id })) || []).forEach(function (r) { outros[r.teste_id] = r; }); } catch (e) {} }
     avisarEstado({ fase: 'lista', participacao_id: j.participacao_id, total: ts.length, feitos: ts.filter(function (t) { return f && (f[t.id] || (Array.isArray(f) && f.indexOf(t.id) >= 0)); }).length });
     app.innerHTML = topo('Projeto Gol Testes', j.nome + ' · ' + (tu.nome || ''), '<button type="button" class="bsec" id="sair" style="padding:7px 14px">Sair</button>') +
       '<div class="miolo"><div class="lista"><h1>' + saudacao() + ', ' + esc(primeiroNome(j.nome)) + '!</h1><p class="sub">Escolha o teste que o avaliador indicar.</p><div class="tsts">' +
       (ts.length ? ts.map(function (t, i) {
         var est = t.estrutura || {}, ft = f[t.id];
         return '<div class="tst' + (ft ? ' feito' : '') + '" style="--c:' + (ft ? '#3FA66B' : '#ee7330') + '"><b>' + esc(t.nome) + '</b><small>⏱ ' + (est.tempo_min || '?') + ' minutos' + (est.orientacao === 'paisagem' ? ' · tela deitada' : '') + '</small>' +
-          (ft ? '<small>' + (ft.fim ? 'feito às ' + hora(ft.fim) : 'feito') + (ft.tablet ? ' · ' + esc(ft.tablet) : '') + '</small><span class="ja">✓ JÁ PREENCHIDO</span><button type="button" class="bsec bref" data-ref="' + t.id + '">🔒 Liberar refazer</button>' : '<button type="button" class="bpri" data-t="' + t.id + '">Abrir</button>') + '</div>';
+          (!ft && outros[t.id] ? '<small class="em-outro">📱 em andamento no ' + esc(outros[t.id].tablet) + ' · faltam ' + mmss(Math.max(0, Math.round((new Date(outros[t.id].fim_previsto) - Date.now()) / 1000))) + (outros[t.id].total ? ' · ' + (outros[t.id].feitas || 0) + ' de ' + outros[t.id].total : '') + '</small><button type="button" class="bpri" data-troca="' + t.id + '">Continuar aqui (avaliador)</button>' :
+          ft ? '<small>' + (ft.fim ? 'feito às ' + hora(ft.fim) : 'feito') + (ft.tablet ? ' · ' + esc(ft.tablet) : '') + '</small><span class="ja">✓ JÁ PREENCHIDO</span><button type="button" class="bsec bref" data-ref="' + t.id + '">🔒 Liberar refazer</button>' : '<button type="button" class="bpri" data-t="' + t.id + '">Abrir</button>') + '</div>';
       }).join('') : '<div class="bx">Nenhum teste no tablet para esta turma. Chame o avaliador.</div>') + '</div></div></div>';
     atualizarStatus();
     document.getElementById('sair').addEventListener('click', telaEntrada);
     app.querySelectorAll('[data-t]').forEach(function (b) { b.addEventListener('click', function () { telaExplicacao(ts.filter(function (x) { return x.id === b.getAttribute('data-t'); })[0]); }); });
+    app.querySelectorAll('[data-troca]').forEach(function (b) { b.addEventListener('click', function () {
+      var t = ts.filter(function (x) { return x.id === b.getAttribute('data-troca'); })[0];
+      identificar('Continuar neste tablet', telaTestes, async function () {
+        try {
+          var r = await rpc('tablet_rascunho_assumir', { p_chave: E.chave, p_participacao: j.participacao_id, p_teste: t.id, p_avaliador: E.avaliador ? E.avaliador.id : null });
+          evento('teste_transferido', t.nome + ' · ' + j.nome);
+          telaTeste(t, { inicio: r.inicio, fimTs: new Date(r.fim_previsto).getTime(), resp: r.respostas || {}, saidas: [] });
+        } catch (e) { aviso('Não foi possível continuar aqui: ' + ((e && e.message) || 'sem internet'), 'erro'); telaTestes(); }
+      });
+    }); });
     app.querySelectorAll('[data-ref]').forEach(function (b) { b.addEventListener('click', function () { liberarRefazer(ts.filter(function (x) { return x.id === b.getAttribute('data-ref'); })[0]); }); });
   }
   // Refazer só com o PIN do avaliador e justificativa; o resultado anterior fica guardado como "substituído"
@@ -378,7 +392,24 @@
     if (!a || !!a.demo !== !!E.demo) return false;
     var t = ((E.pacote && E.pacote.testes) || []).filter(function (x) { return x.id === a.teste_id; })[0];
     if (!t || !a.jovem) { await kv.apagar('andamento'); return false; }
-    E.jovem = a.jovem; telaTeste(t, a); return true;
+    E.jovem = a.jovem;
+    var temPin = ((E.pacote && E.pacote.avaliadores) || []).some(function (x) { return x.hash; }) || (E.pacote && E.pacote.pin_hash);
+    if (E.demo || !temPin || a.fimTs <= Date.now()) { telaTeste(t, a); return true; }   // sem PIN cadastrado ou tempo já acabou: segue como antes
+    var falta = Math.max(0, Math.round((a.fimTs - Date.now()) / 1000));
+    app.innerHTML = topo('Projeto Gol Testes', a.jovem.nome) + '<div class="cdados"><h1>Este teste foi interrompido</h1><p class="sub">' + esc(a.jovem.nome) + ' · ' + esc(t.nome) + '</p>' +
+      '<div class="aviso-i">⏸ O app fechou às <b>' + hora(a.salvoEm) + '</b> com <b>' + mmss(falta) + '</b> restantes.</div>' +
+      '<button type="button" class="esc-b" id="int-cont"><b>Continuar de onde parou</b><small>Volta com as respostas e com o tempo que faltava.</small></button>' +
+      '<button type="button" class="esc-b" id="int-rec"><b>Recomeçar do zero</b><small>Apaga as respostas e começa com o tempo inteiro. Fica registrado.</small></button>' +
+      '<p class="sub" style="text-align:center">Para escolher, o avaliador digita o PIN.</p></div>';
+    function escolher(rec) {
+      identificar(rec ? 'Recomeçar o teste' : 'Continuar o teste', function () { retomarAndamento(); }, async function () {
+        evento(rec ? 'teste_recomecado' : 'teste_retomado', t.nome + ' · ' + a.jovem.nome);
+        if (rec) { await kv.apagar('andamento'); telaTeste(t); } else telaTeste(t, a);
+      });
+    }
+    document.getElementById('int-cont').addEventListener('click', function () { escolher(false); });
+    document.getElementById('int-rec').addEventListener('click', function () { escolher(true); });
+    return true;
   }
 
   // 5) Teste com tempo
@@ -395,7 +426,37 @@
     var ctl = M.desenhar(document.getElementById('mi'), est); atualizarStatus();
     if (est.calculadora) calculadora();
     if (ret) { ctl.restaurar(ret.resp); aviso('Teste retomado de onde parou. O tempo continuou contando.'); }
-    function guardar() { if (acabou) return; kv.gravar('andamento', { demo: E.demo, jovem: E.jovem, teste_id: t.id, versao: t.versao, inicio: inicio.toISOString(), fimTs: fimTs, saidas: saidas, resp: ctl.respostas(), salvoEm: new Date().toISOString() }).catch(function () {}); }
+    var ultCopia = 0;
+    function copiaServidor(encerrar) {   // trocar de tablet: cópia das respostas a cada 30 s (só com internet)
+      if (E.demo || !E.chave || !online() || !E.jovem) return;
+      if (!encerrar && Date.now() - ultCopia < 30000) return; ultCopia = Date.now();
+      rpc('tablet_rascunho_salvar', { p_chave: E.chave, p_participacao: E.jovem.participacao_id, p_teste: t.id, p_encerrar: !!encerrar,
+        p_dados: { respostas: ctl.respostas(), inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString(), feitas: itens ? respondidas() : 0, total: itens ? itens.length : 0 } })
+        .then(function (r) { if (r && r.dono === false && !acabou) continuadoEmOutro(); }).catch(function () {});
+    }
+    function continuadoEmOutro() {
+      acabou = true; clearInterval(guarda); protecoes.desligar(); emTeste = false; E.adicionarTempo = null; kv.apagar('andamento');
+      app.innerHTML = topo('Projeto Gol Testes', E.jovem.nome) + '<div class="concl"><h1>Teste continuado em outro tablet</h1><p class="sub">O avaliador passou este teste para outro tablet. Nada se perdeu.</p></div>';
+      setTimeout(telaEntrada, 6000);
+    }
+    E.adicionarTempo = function () {   // avaliador (PIN): +1, +2, +5 ou outro
+      var cam = document.createElement('div'); cam.className = 'ov-av'; document.body.appendChild(cam);
+      function fecha() { cam.remove(); }
+      identificar('Adicionar tempo', fecha, function () {
+        cam.innerHTML = '<div class="ov-sh"><h2>Adicionar tempo</h2><p class="sub">' + esc(E.avaliador ? 'Avaliador: ' + E.avaliador.nome : 'Avaliador') + ' · o tempo é somado na hora.</p>' +
+          '<div class="ov-op">' + [1, 2, 5].map(function (m) { return '<button type="button" data-min="' + m + '">+' + m + '</button>'; }).join('') + '<button type="button" data-min="x">outro</button></div>' +
+          '<input class="ov-in" id="ov-mot" placeholder="Motivo (opcional)" maxlength="80"><p class="sub" style="font-size:12px">Fica no registro interno. Não aparece na Classificação Final.</p><button type="button" class="bsec" id="ov-canc">Cancelar</button></div>';
+        cam.querySelector('#ov-canc').addEventListener('click', fecha);
+        cam.querySelectorAll('[data-min]').forEach(function (b) { b.addEventListener('click', function () {
+          var m = b.getAttribute('data-min'); if (m === 'x') { m = parseInt(prompt('Quantos minutos a mais?', '3'), 10); if (!(m > 0 && m <= 30)) return; } else m = +m;
+          fimTs += m * 60000; ultCopia = 0; guardar();
+          avisarEstado({ fase: 'teste', participacao_id: E.jovem.participacao_id, teste_id: t.id, inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString() });
+          evento('tempo_adicionado', '+' + m + ' min · ' + t.nome + ' · ' + E.jovem.nome + (cam.querySelector('#ov-mot').value ? ' · ' + cam.querySelector('#ov-mot').value : ''));
+          fecha(); aviso('O avaliador adicionou ' + m + (m === 1 ? ' minuto.' : ' minutos.'));
+        }); });
+      }, cam);
+    };
+    function guardar() { copiaServidor(false); if (acabou) return; kv.gravar('andamento', { demo: E.demo, jovem: E.jovem, teste_id: t.id, versao: t.versao, inicio: inicio.toISOString(), fimTs: fimTs, saidas: saidas, resp: ctl.respostas(), salvoEm: new Date().toISOString() }).catch(function () {}); }
     guardar(); var guarda = setInterval(guardar, 15000);
     var itens = [].slice.call(app.querySelectorAll('#mi tr[data-l], #mi .tm-bloco, #mi [data-item]'));
     function respondidas() {
@@ -447,7 +508,7 @@
         var fl = (await kv.ler('feitosLocal')) || []; fl.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'este tablet' }); await kv.gravar('feitosLocal', fl.slice(-500));
         enviar();
       }
-      await kv.apagar('andamento');
+      await kv.apagar('andamento'); E.adicionarTempo = null; try { copiaServidor(true); } catch (e2) {}
       setTimeout(function () { tr.remove(); document.body.classList.remove('pede-paisagem', 'grande'); try { screen.orientation.unlock(); } catch (e) {} telaConclusao(t, res, respondidas(), itens.length); }, porTempo ? 1600 : 400);
     }
   }
@@ -525,20 +586,21 @@
   }
   function evento(acao, detalhe) { var l = confLer('golt_eventos'); l.push({ uid: 'ev-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), acao: acao, detalhe: detalhe || '', avaliador: E.avaliador ? E.avaliador.id : null, em: new Date().toISOString() }); confGravar('golt_eventos', l.slice(-200)); }
   // Q4 · Quem está usando? + PIN próprio (6 números). 5 erros = bloqueado 15 min neste tablet.
-  function identificar(titulo, voltar, aoOk) {
+  function identificar(titulo, voltar, aoOk, alvo) {
+    var app = alvo || document.getElementById('app');
     var p = E.pacote || {}, avs = (p.avaliadores || []), comPin = avs.filter(function (a) { return a.hash; });
     if (!comPin.length) {   // transição: enquanto ninguém criou o PIN próprio, vale o PIN geral
       var h = p.pin_geral_valido === false ? null : p.pin_hash;
       if (!h) { aviso('Nenhum avaliador criou o PIN ainda (Classificação Final › Minha conta › PIN do tablet).', 'erro'); return; }
       var c0 = cofre({ tam: 4, numeros: true, rotulo: 'DIGITE O PIN', aoCompletar: async function (cod, ui) { ui.lendo(); if ((await sha('cfpin:' + cod)) === h) { E.avaliador = null; ui.ok('AUTORIZADO'); setTimeout(aoOk, 600); } else ui.erro('PIN INCORRETO'); } });
       app.innerHTML = '<div class="entrada"><h1>' + esc(titulo) + '</h1><p class="sub">Digite o PIN do avaliador.</p>' + c0.html + '<p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
-      c0.ligar(); document.getElementById('canc').addEventListener('click', voltar); return;
+      c0.ligar(); app.querySelector('#canc').addEventListener('click', voltar); return;
     }
     function falhas() { try { return JSON.parse(localStorage.getItem('golt_pin_falhas') || '{}'); } catch (e) { return {}; } }
     app.innerHTML = '<div class="entrada"><h1>' + esc(titulo) + '</h1><p class="sub">Quem está usando? Toque no seu nome.</p><div class="avs">' +
       avs.map(function (a) { var ini = String(a.nome || '?').split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join(''); return '<button type="button" class="av-b"' + (a.hash ? ' data-av="' + a.id + '"' : ' disabled') + '><i>' + esc(ini) + '</i><span>' + esc(a.nome) + '<small>' + (a.hash ? 'PIN cadastrado' : 'sem PIN ainda') + '</small></span></button>'; }).join('') +
       '</div><p><button type="button" class="bsec" id="canc">Cancelar</button></p></div>';
-    document.getElementById('canc').addEventListener('click', voltar);
+    app.querySelector('#canc').addEventListener('click', voltar);
     app.querySelectorAll('[data-av]').forEach(function (b) { b.addEventListener('click', function () {
       var a = avs.filter(function (x) { return x.id === b.getAttribute('data-av'); })[0], f = falhas()[a.id] || { n: 0, ate: 0 };
       if (f.ate > Date.now()) { aviso('PIN bloqueado neste tablet até ' + hora(new Date(f.ate).toISOString()) + ' (5 tentativas erradas).', 'erro'); return; }
@@ -552,11 +614,35 @@
         if (x.ate > Date.now()) setTimeout(voltar, 1500);
       } });
       app.innerHTML = '<div class="entrada"><h1>' + esc(titulo) + '</h1><p class="sub">' + esc(a.nome) + ' · digite o seu PIN de 6 números.</p>' + c.html + '<p><button type="button" class="bsec" id="canc">Voltar</button></p></div>';
-      c.ligar(); document.getElementById('canc').addEventListener('click', function () { identificar(titulo, voltar, aoOk); });
+      c.ligar(); app.querySelector('#canc').addEventListener('click', function () { identificar(titulo, voltar, aoOk); });
     }); });
   }
   function pedirPIN() { identificar('Modo avaliador', telaEntrada, function () { evento('modo_avaliador', 'entrou no modo avaliador'); telaAvaliador(); }); }
   // Q4 · Foto do jovem (vai para aprovação na Classificação Final)
+  function telaSemCadastro() {
+    var p = E.pacote || {}, hoje = hojeISO(), tur = (p.turmas || []).filter(function (t) { return (t.dias || []).some(function (d) { return d.data === hoje; }); });
+    if (!tur.length) tur = p.turmas || [];
+    app.innerHTML = topo('Jovem sem cadastro', E.avaliador ? E.avaliador.nome : '') + '<div class="cdados"><h1>Jovem sem cadastro</h1><p class="sub">Para quem chegou e não está na lista. O cadastro completo é feito depois na Classificação Final.</p>' +
+      '<label class="cd-l">Nome completo<input class="ov-in" id="sc-n" autocomplete="off" style="text-transform:uppercase"></label>' +
+      '<label class="cd-l">Data de nascimento<input class="ov-in" id="sc-d" type="date"></label>' +
+      '<label class="cd-l">Turma<select class="ov-in" id="sc-t">' + tur.map(function (t) { return '<option value="' + t.id + '">' + esc(t.nome + ' · ' + (t.empresa || '')) + '</option>'; }).join('') + '</select></label>' +
+      '<div class="ini" style="gap:10px"><button type="button" class="bsec" id="sc-v">Voltar</button><button type="button" class="bpri" id="sc-ok">Cadastrar e entrar</button></div>' +
+      '<p class="sub" style="font-size:12px">Precisa de internet. Fica marcado como provisório até a equipe completar o cadastro.</p></div>';
+    document.getElementById('sc-v').addEventListener('click', telaAvaliador);
+    document.getElementById('sc-ok').addEventListener('click', async function () {
+      var n = document.getElementById('sc-n').value.trim(), d = document.getElementById('sc-d').value, tu = document.getElementById('sc-t').value;
+      if (n.split(/\s+/).length < 2) { aviso('Digite o nome completo.', 'erro'); return; } if (!d) { aviso('Informe a data de nascimento.', 'erro'); return; }
+      if (!online()) { aviso('Sem internet agora. O cadastro provisório precisa de internet.', 'erro'); return; }
+      try {
+        var r = await rpc('tablet_jovem_provisorio', { p_chave: E.chave, p_turma: tu, p_nome: n, p_nascimento: d, p_avaliador: E.avaliador ? E.avaliador.id : null });
+        var j = { codigo: r.codigo, participacao_id: r.participacao_id, nome: r.nome, turma_id: r.turma_id, conferido: true, provisorio: true };
+        (E.pacote.jovens = E.pacote.jovens || []).push(j); try { await kv.gravar('pacote', E.pacote); } catch (e) {}
+        app.innerHTML = topo('Jovem sem cadastro', r.nome) + '<div class="cdados" style="text-align:center"><h1>Cadastro provisório pronto</h1><p class="sub">Anote o código no crachá do jovem:</p><div class="cod-prov">' + esc(r.codigo) + '</div>' +
+          '<button type="button" class="bpri" id="sc-in">Entrar com ' + esc(primeiroNome(r.nome)) + '</button></div>';
+        document.getElementById('sc-in').addEventListener('click', function () { E.jovem = j; telaTestes(); });
+      } catch (e) { aviso('Não foi possível cadastrar: ' + ((e && e.message) || 'erro'), 'erro'); }
+    });
+  }
   function telaFotos() {
     var p = E.pacote || {}, hoje = hojeISO(), tur = (p.turmas || []).filter(function (t) { return (t.dias || []).some(function (d) { return d.data === hoje; }); }).map(function (t) { return t.id; });
     var js = (p.jovens || []).filter(function (j) { return tur.indexOf(j.turma_id) >= 0; }), tiradas = confLer('golt_fotos_feitas');
@@ -609,11 +695,12 @@
       '<div class="lin" style="--c:#8a8486"><b>Última atualização dos dados</b>' + (E.ultimaSinc ? new Date(E.ultimaSinc).toLocaleString('pt-BR') : '—') + '</div>' +
       '<div class="lin" style="--c:#8b6fd6"><b>Versão do app</b>v' + VERSAO_APP + (E.verificadoEm ? ' · procurado às ' + hora(E.verificadoEm) : '') + '</div>' +
       '<div class="envs"><b>Envios deste tablet</b>' + listaEnvios(await fila.todos()) + '</div>' +
-      '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bpri" id="fotos">📷 Fotos dos jovens</button><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="atu-app">⬆ Atualizar o app agora</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
+      '<div class="ini" style="gap:10px;flex-wrap:wrap"><button type="button" class="bpri" id="fotos">📷 Fotos dos jovens</button><button type="button" class="bpri" id="semcad">➕ Jovem sem cadastro</button><button type="button" class="bsec" id="atu">⟳ Atualizar testes e turmas</button><button type="button" class="bsec" id="atu-app">⬆ Atualizar o app agora</button><button type="button" class="bsec" id="env">⬆ Enviar agora</button><button type="button" class="bpri" id="sairav">Voltar ao modo jovem</button></div>' +
       '<p style="text-align:center;color:var(--texto-3);font-size:12.5px">' + (E.avaliador ? 'Você entrou como ' + esc(E.avaliador.nome) + '.' : '') + ' Liberar refazer: na lista de testes do jovem, em "🔒 Liberar refazer".</p></div></div>';
     atualizarStatus();
     var volta = setTimeout(telaEntrada, 120000);
     document.getElementById('fotos').addEventListener('click', function () { clearTimeout(volta); telaFotos(); });
+    document.getElementById('semcad').addEventListener('click', telaSemCadastro);
     document.getElementById('atu').addEventListener('click', async function () { await baixar(false); clearTimeout(volta); telaAvaliador(); });
     document.getElementById('atu-app').addEventListener('click', async function () { clearTimeout(volta); if (!online()) { aviso('Sem internet agora.', 'erro'); return; } aviso('Procurando versão nova…'); var nova = await procurarAtualizacao(true); if (!nova) { aviso('O app já está na versão mais recente (v' + VERSAO_APP + ').'); telaAvaliador(); } });
     document.getElementById('env').addEventListener('click', async function () { if (!online()) { aviso('Sem internet agora.', 'erro'); return; } await enviar(); clearTimeout(volta); telaAvaliador(); aviso('Envio concluído.'); });

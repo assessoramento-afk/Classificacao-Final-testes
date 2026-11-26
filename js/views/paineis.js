@@ -46,10 +46,11 @@
       talvez(q(sb.from('jovem_correcoes').select('id').is('resolvido_por', null))),
       talvez(q(sb.from('tablets').select('id, nome, etiqueta, ativo, ligado_em, estado, estado_em, versao_app').order('nome'))),
       talvez(q(sb.rpc('painel_notas_faltando'))),
-      talvez(q(sb.from('participacoes').select('id, turma_id, processo_id')))
+      talvez(q(sb.from('participacoes').select('id, turma_id, processo_id'))),
+      talvez(q(sb.from('jovens').select('id').eq('provisorio', true)))
     ]);
     var ag = r[0] || { dias: [], turmas: [], processos: [], empresas: [] }, ga = r[1] || [], eq = r[2] || [], ac = r[3] || [], conf = r[4] || [], fotos = r[5] || [], corr = r[6] || [];
-    var tabs = r[7], falt = r[8] || [], parts = r[9] || [];
+    var tabs = r[7], falt = r[8] || [], parts = r[9] || [], prov = r[10] || [];
     var nomesUso = {};
     var ids = (tabs || []).map(function (x) { return x.estado && x.estado.participacao_id; }).filter(Boolean);
     if (ids.length) { var pj = await talvez(q(sb.from('participacoes').select('id, jovens(nome)').in('id', ids))); (pj || []).forEach(function (x) { nomesUso[x.id] = (x.jovens || {}).nome || ''; }); }
@@ -82,6 +83,7 @@
         pend.push({ n: f.jovens, cor: '#e0a100', t: 'Notas faltando', s: (t.nome || 'Turma') + ' · ' + emp(proc(f.processo_id).empresa_id) + ' · ' + f.jovens + ' jovem(ns) · ' + f.faltam + ' nota(s)', h: '#/avaliar/' + f.turma_id, b: 'Avaliar' });
       });
       if (fotos.length) pend.push({ n: fotos.length, cor: '#e0a100', t: 'Fotos para aprovar', s: 'Tiradas pelos tablets', h: '#/tablets', b: 'Ver' });
+      if (prov.length) pend.push({ n: prov.length, cor: '#8b6fd6', t: 'Cadastros provisórios para completar', s: 'Jovens cadastrados no tablet pelo avaliador (sem cadastro)', h: '#/cadastros/jovens', b: 'Completar' });
       if (corr.length) pend.push({ n: corr.length, cor: '#8b6fd6', t: 'Pedidos de correção de cadastro', s: 'Jovens marcaram algo errado no tablet', h: '#/cadastros/jovens', b: 'Corrigir' });
       var urg = pend.filter(function (x) { return x.cor === '#D9534F'; }).length, nPend = pend.length;
       // acompanhamentos

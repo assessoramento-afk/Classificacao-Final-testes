@@ -1,5 +1,5 @@
 /* Projeto Gol Testes · funciona sem internet: guarda o app no tablet */
-var VERSAO = 'golt-1.11.1';
+var VERSAO = 'golt-1.12.0';
 var ARQS = ['./', 'index.html', 'app.css', 'app.js', 'motor.js', 'qrcode.js', 'manifest.webmanifest', 'img/gol_dark.png', 'img/gol_light.png', 'img/icone-192.png', 'img/icone-512.png',
   'fonts/poppins-regular.woff2', 'fonts/poppins-bold.woff2', 'fonts/codigo-cracha.woff'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(VERSAO).then(function (c) { return c.addAll(ARQS.map(function (u) { return new Request(u, { cache: 'reload' }); })); }).then(function () { return self.skipWaiting(); })); });

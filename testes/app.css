@@ -460,3 +460,18 @@ button { font-family: inherit; }
 /* aviso do modo de testes legível no topo claro */
 .topo .pil.av { background: #fff1c7; color: #7a5200; border-color: #f0d68a; }
 .topo .pil.ok { background: #e8f5ec; color: #2f7a4c; border-color: #cfe9d8; } .topo .pil.er { background: #fde9e8; color: #a83a36; border-color: #f4cfcc; }
+/* T4.1 · avaliador por cima do teste, jovem sem cadastro, teste interrompido e troca de tablet */
+.ov-av { position: fixed; inset: 0; z-index: 80; background: #f4f1ee; overflow: auto; }
+.ov-av .entrada { min-height: 100%; }
+.ov-sh { max-width: 520px; margin: 40px auto; background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 14px 34px rgba(60,40,30,.15); display: flex; flex-direction: column; gap: 12px; }
+.ov-sh h2 { margin: 0; font-size: 22px; }
+.ov-op { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; } .ov-op button { padding: 18px 0; border-radius: 14px; border: 1.5px solid #e3dcd8; background: #faf8f6; font: 800 20px Poppins, sans-serif; color: #231f1f; }
+.ov-op button:active { background: #fdeee3; border-color: #ee7330; }
+.ov-in { width: 100%; border: 1.5px solid #e3dcd8; border-radius: 12px; padding: 12px; font: 600 15px Poppins, sans-serif; background: #faf8f6; color: #231f1f; box-sizing: border-box; }
+.cd-l { display: block; font-size: 12px; font-weight: 800; color: #6a605c; margin: 10px 0 4px; letter-spacing: .03em; }
+.aviso-i { background: #fff4dc; color: #7a5200; border-radius: 14px; padding: 12px 14px; margin: 10px 0; }
+.esc-b { display: block; width: 100%; text-align: left; background: #fff; border: 1.5px solid #e3dcd8; border-radius: 16px; padding: 14px 16px; margin: 8px 0; font-family: Poppins, sans-serif; color: #231f1f; box-shadow: 0 6px 14px rgba(60,40,30,.06); }
+.esc-b b { display: block; font-size: 16px; } .esc-b small { color: #6a605c; font-size: 13px; } .esc-b:active { border-color: #ee7330; }
+.cod-prov { display: inline-block; margin: 14px auto; padding: 16px 26px; border-radius: 16px; background: linear-gradient(160deg, #231f1f, #3a2a20); color: #ffb27f; font: 800 36px ui-monospace, Menlo, monospace; letter-spacing: .08em; }
+.em-outro { color: #8a6200 !important; font-weight: 700; }
+.cod-prov { display: block; width: max-content; margin: 14px auto 18px; }

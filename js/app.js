@@ -83,12 +83,13 @@
     window.CF.avisos.iniciar(p);
     if (window.CF.acomp) window.CF.acomp.atualizarBadge(p);   // pendências do acompanhamento no menu
     if (window.CF.instalar) window.CF.instalar.colocar(p);
-    iniciarMonitores(p);
+    try { iniciarMonitores(p); } catch (e) { console.warn('monitores', e); }
     if (p.perfil === 'empresa') {   // atividade da empresa: só o administrador enxerga
       var registrar = function () { if (document.hidden || !navigator.onLine) return; try { window.CF.dados.pessoas.registrarAtividade().catch(function () {}); } catch (e) { /* sem registro */ } };
       registrar(); clearInterval(window.__cfAtividade); window.__cfAtividade = setInterval(registrar, 60000);
     }
-    window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 1 hora sem uso. Entre novamente.' } : null); });
+    if (!window.CF.inatividade) { console.warn('inatividade.js não carregou'); if (window.CF.ui && window.CF.ui.toast) window.CF.ui.toast('Parte do sistema não carregou. Recarregue a página (Ctrl + Shift + R).', 'erro'); }
+    else window.CF.inatividade.iniciar(function (porTempo) { sair(porTempo ? { tipo: 'info', texto: 'Por segurança, você saiu do sistema após 1 hora sem uso. Entre novamente.' } : null); });
 
     var lateral = raiz.querySelector('#lateral'), bMenu = raiz.querySelector('#b-menu');
     function fecharMenu() {
