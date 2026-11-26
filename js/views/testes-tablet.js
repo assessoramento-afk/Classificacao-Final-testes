@@ -762,7 +762,7 @@
           var u = usoDe(x), cor = u.cor || s[2], chip = u.chip || (s[0] === 'Envio pendente' && x.pendentes ? x.pendentes + ' a enviar' : s[0] === 'Pronto' ? 'Livre' : s[0]);
           var faixa = u.tipo === 'uso' ? '<div class="tb-uso"><span class="tb-av">' + esc(iniciais(u.nome)) + '</span><div><b>' + esc(u.nome) + '</b><small>' + esc(u.linha) + '</small></div>' + (u.fim ? '<em data-fim="' + esc(u.fim) + '">' + falta(u.fim) + '</em>' : '') + '</div>'
             : u.tipo === 'sinal' ? '<div class="tb-sinal">⚠ ' + (u.nome ? '<b>' + esc(u.nome) + '</b> · ' : '') + esc(u.linha) + '</div>'
-            : (x.ativo && x.ligado_em && s[0] === 'Pronto') ? '<div class="tb-livre">✓ Aguardando um crachá</div>' : '';
+            : (x.ativo && x.ligado_em && s[0] === 'Pronto') ? (x.estado ? '<div class="tb-livre">✓ Aguardando um crachá</div>' : '<div class="tb-sinal">Ainda sem informação de uso · abra o app (v1.11 ou mais nova) para atualizar</div>') : '';
           var velho = appAntigo(x);
           return '<article class="tb-c2" style="--c:' + cor + '"><div class="tb-top"><span class="tb-sel"><small>TABLET</small>' + esc(num) + '</span><div class="tb-mod"><b>' + esc(modeloLegivel(x)) + '</b></div><span class="tb-pill">● ' + esc(chip) + '</span></div>' + faixa +
             '<div class="tb-bl"><div class="tb-t"><small>ÚLTIMA CONEXÃO</small><b>' + quando(x.ultima_conexao) + '</b></div><div class="tb-t' + (velho ? ' tb-velho' : '') + '"><small>APP</small><b>' + (x.versao_app ? (velho ? '↑ v' : 'v') + esc(x.versao_app) + (velho ? ' · atualizar' : '') : '—') + '</b></div>' +

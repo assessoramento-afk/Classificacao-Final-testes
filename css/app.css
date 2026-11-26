@@ -2016,3 +2016,4 @@ html[data-tema="escuro"] .tb-st.tb-app { color: #c9bff5; }
 @media (max-width: 600px) { .pc-kp { grid-template-columns: 1fr 1fr; } .pc-k b { font-size: 24px; } }
 #pn-c > .cabecalho, #pn-c > div > .cabecalho:first-child { display: none; }
 #pn-c .gf-topo h1, #pn-c .gf-topo h1 + p { display: none; }
+.pc-tb.pc-tb-sem { color: #5a514d; background: #efe9e5; } .pc-tb.pc-tb-sem small { opacity: .85; }

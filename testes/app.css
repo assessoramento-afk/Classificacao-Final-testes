@@ -457,3 +457,6 @@ button { font-family: inherit; }
   .entrada .lt svg { width: 260px; height: 260px; }
 }
 .topo .ver { margin-left: 5px; }
+/* aviso do modo de testes legível no topo claro */
+.topo .pil.av { background: #fff1c7; color: #7a5200; border-color: #f0d68a; }
+.topo .pil.ok { background: #e8f5ec; color: #2f7a4c; border-color: #cfe9d8; } .topo .pil.er { background: #fde9e8; color: #a83a36; border-color: #f4cfcc; }

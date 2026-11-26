@@ -328,7 +328,9 @@
     if (document.querySelector('.faixa-atualizar')) return;
     var f = document.createElement('div');
     f.className = 'faixa-atualizar card';
-    f.innerHTML = '<span>Há uma nova versão do sistema.</span><button type="button" class="btn btn-pri">Atualizar agora</button>';
+    f.innerHTML = '<span>Versão nova disponível. Ela entra sozinha na próxima troca de tela.</span><button type="button" class="btn btn-pri">Atualizar agora</button>';
+    // aplica sozinha na próxima troca de tela (nunca no meio de um formulário aberto)
+    window.addEventListener('hashchange', function aplicar() { if (document.querySelector('.janela')) return; window.removeEventListener('hashchange', aplicar); if (registro.waiting) registro.waiting.postMessage('ATUALIZAR'); });
     f.querySelector('button').addEventListener('click', function () {
       if (registro.waiting) registro.waiting.postMessage('ATUALIZAR');
     });
@@ -336,8 +338,10 @@
   }
   if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').then(function (reg) {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
         if (reg.waiting && navigator.serviceWorker.controller) avisarAtualizacao(reg);
+        setInterval(function () { if (navigator.onLine) reg.update().catch(function () {}); }, 5 * 60000);   // procura versão nova a cada 5 minutos
+        document.addEventListener('visibilitychange', function () { if (!document.hidden && navigator.onLine) reg.update().catch(function () {}); });
         reg.addEventListener('updatefound', function () {
           var novo = reg.installing;
           if (!novo) return;
@@ -348,10 +352,11 @@
       }).catch(function (e) { console.warn('Service worker não registrado:', e); });
       var recarregou = false;
       navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (recarregou) return; recarregou = true; window.location.reload();
+        if (recarregou) return; recarregou = true; try { sessionStorage.setItem('cf_atualizado', '1'); } catch (e) {} window.location.reload();
       });
     });
   }
 
+  try { if (sessionStorage.getItem('cf_atualizado')) { sessionStorage.removeItem('cf_atualizado'); setTimeout(function () { if (window.CF.ui && window.CF.ui.toast) window.CF.ui.toast('Sistema atualizado para a versão ' + C.versao + '.', 'ok'); }, 2500); } } catch (e) {}
   telaCarregando('Abrindo o sistema…');
 })();

@@ -79,11 +79,11 @@
       });
       falt.filter(function (f) { return okEmp(f.processo_id); }).forEach(function (f) {
         var t = (ag.turmas || []).filter(function (x) { return x.id === f.turma_id; })[0] || {};
-        pend.push({ n: f.faltam, cor: '#e0a100', t: 'Notas faltando', s: (t.nome || 'Turma') + ' · ' + emp(proc(f.processo_id).empresa_id) + ' · ' + f.jovens + ' jovem(ns)', h: '#/avaliar/' + f.turma_id, b: 'Avaliar' });
+        pend.push({ n: f.jovens, cor: '#e0a100', t: 'Notas faltando', s: (t.nome || 'Turma') + ' · ' + emp(proc(f.processo_id).empresa_id) + ' · ' + f.jovens + ' jovem(ns) · ' + f.faltam + ' nota(s)', h: '#/avaliar/' + f.turma_id, b: 'Avaliar' });
       });
       if (fotos.length) pend.push({ n: fotos.length, cor: '#e0a100', t: 'Fotos para aprovar', s: 'Tiradas pelos tablets', h: '#/tablets', b: 'Ver' });
       if (corr.length) pend.push({ n: corr.length, cor: '#8b6fd6', t: 'Pedidos de correção de cadastro', s: 'Jovens marcaram algo errado no tablet', h: '#/cadastros/jovens', b: 'Corrigir' });
-      var urg = pend.filter(function (x) { return x.cor === '#D9534F'; }).length, nPend = pend.reduce(function (a, x) { return a + (x.un ? 1 : x.n); }, 0);
+      var urg = pend.filter(function (x) { return x.cor === '#D9534F'; }).length, nPend = pend.length;
       // acompanhamentos
       var atr = {}, ven = {};
       ac.forEach(function (a) {
@@ -125,11 +125,11 @@
               (av.length ? '<span class="pc-tg ok">' + esc(av.join(', ')) + '</span>' : '<span class="pc-tg al">sem avaliador</span>') + '</div></a>'; }).join('') : '<p class="pc-ok">Nenhuma turma no período.</p>') + '</section>' +
           (tabs ? '<section class="pc-card"><h3>Tablets agora <span>atualiza sozinho</span></h3><div class="pc-tbs">' + tabs.filter(function (x) { return x.ativo && x.ligado_em; }).map(function (x) {
             var e = x.estado || {}, velho = (Date.now() - new Date(x.estado_em || 0)) >= 3 * 60000, uso = e.fase && e.fase !== 'livre';
-            var cor = uso ? (velho ? '#8a8486' : '#ee7330') : '#2f9a5b', nome = (nomesUso[e.participacao_id] || '').split(' ')[0];
-            var txt = uso ? (velho ? 'Sem sinal' : (nome ? nome.charAt(0) + nome.slice(1).toLowerCase() : 'Em uso') + (e.fase === 'teste' && e.fim_previsto ? ' · <span data-fim="' + esc(e.fim_previsto) + '"></span>' : '')) : 'Livre';
+            var cor = !e.fase ? '#c9c0bb' : uso ? (velho ? '#8a8486' : '#ee7330') : '#2f9a5b', nome = (nomesUso[e.participacao_id] || '').split(' ')[0];
+            var txt = !e.fase ? 'sem informação' : uso ? (velho ? 'Sem sinal' : (nome ? nome.charAt(0) + nome.slice(1).toLowerCase() : 'Em uso') + (e.fase === 'teste' && e.fim_previsto ? ' · <span data-fim="' + esc(e.fim_previsto) + '"></span>' : '')) : 'Livre';
             var num = String(x.etiqueta || x.nome.replace(/\D/g, '') || '?').replace(/[^0-9A-Za-z]/g, '').slice(0, 3);
-            return '<a class="pc-tb" href="#/tablets" style="--c:' + cor + '"><b>' + esc(num) + '</b><small>' + txt + '</small></a>'; }).join('') + '</div>' +
-            '<div class="pc-leg"><span><i style="background:#ee7330"></i>em uso</span><span><i style="background:#2f9a5b"></i>livre</span><span><i style="background:#8a8486"></i>sem sinal</span></div></section>' : '') +
+            return '<a class="pc-tb' + (!e.fase ? ' pc-tb-sem' : '') + '" href="#/tablets" style="--c:' + cor + '"' + (!e.fase ? ' title="Este tablet ainda não informou como está. Abra o app (versão 1.11 ou mais nova) para atualizar."' : '') + '><b>' + esc(num) + '</b><small>' + txt + '</small></a>'; }).join('') + '</div>' +
+            '<div class="pc-leg"><span><i style="background:#ee7330"></i>em uso</span><span><i style="background:#2f9a5b"></i>livre</span><span><i style="background:#8a8486"></i>sem sinal</span><span><i style="background:#c9c0bb"></i>sem informação (abra o app para atualizar)</span></div></section>' : '') +
         '</div></div>';
       contar();
       box.querySelectorAll('[data-per]').forEach(function (b) { b.addEventListener('click', function () { st.per = b.getAttribute('data-per'); try { localStorage.setItem('cf_pc_per', st.per); } catch (e) {} desenhar(); }); });
