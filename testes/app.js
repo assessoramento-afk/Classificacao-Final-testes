@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.10.0';
+  var VERSAO_APP = '1.11.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -234,6 +234,7 @@
   function telaEntrada() {
     emTeste = false; E.jovem = null; document.body.classList.remove('pede-paisagem', 'grande'); pararQR();
     if (ATUALIZAR) { ATUALIZAR = false; setTimeout(aplicarAtualizacao, 400); }
+    avisarEstado({ fase: 'livre' });
     var tb = (E.pacote && E.pacote.tablet) || {};
     var c = cofre({ tam: 6, formato: true, aoCompletar: function (cod, ui) {
       ui.lendo();
@@ -305,6 +306,7 @@
     var j = E.jovem, tu = ((E.pacote && E.pacote.turmas) || []).filter(function (t) { return t.id === j.turma_id; })[0] || {};
     var ids = tu.testes || [], f = await feitos(j.participacao_id);
     var ts = ids.map(function (id) { return ((E.pacote && E.pacote.testes) || []).filter(function (x) { return x.id === id; })[0]; }).filter(Boolean);
+    avisarEstado({ fase: 'lista', participacao_id: j.participacao_id, total: ts.length, feitos: ts.filter(function (t) { return f && (f[t.id] || (Array.isArray(f) && f.indexOf(t.id) >= 0)); }).length });
     app.innerHTML = topo('Projeto Gol Testes', j.nome + ' · ' + (tu.nome || ''), '<button type="button" class="bsec" id="sair" style="padding:7px 14px">Sair</button>') +
       '<div class="miolo"><div class="lista"><h1>' + saudacao() + ', ' + esc(primeiroNome(j.nome)) + '!</h1><p class="sub">Escolha o teste que o avaliador indicar.</p><div class="tsts">' +
       (ts.length ? ts.map(function (t, i) {
@@ -384,6 +386,7 @@
     var est = t.estrutura || {}, tempo = (est.tempo_min || 10) * 60, inicio = ret ? new Date(ret.inicio) : new Date(), fimTs = ret ? ret.fimTs : inicio.getTime() + tempo * 1000, acabou = false, saidas = ret ? (ret.saidas || []) : [], saiuEm = null;
     if (ret && ret.salvoEm) saidas.push({ de: ret.salvoEm, ate: new Date().toISOString(), motivo: 'app fechado' });
     protecoes.ligar();
+    avisarEstado({ fase: 'teste', participacao_id: E.jovem && E.jovem.participacao_id, teste_id: t.id, inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString() });
     emTeste = true; if (paisagem(est)) { document.body.classList.add('pede-paisagem'); try { screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} }
     app.innerHTML = topo(t.nome, E.jovem.nome, '<div class="relo" id="relo"><span class="anel" id="anel"></span><span class="tempo" id="tempo">' + mmss(tempo) + '</span></div>') + '<div class="prog"><i id="barra"></i></div>' +
       '<div class="instr"><span class="tx">' + esc(est.instrucoes || 'Responda e toque em "Finalizar teste" quando terminar.') + '</span><button type="button" class="ib" id="ouvir">🔊 Ouvir</button><button type="button" class="ib" id="maior">A+ Letra maior</button></div>' +
@@ -616,6 +619,16 @@
     document.getElementById('env').addEventListener('click', async function () { if (!online()) { aviso('Sem internet agora.', 'erro'); return; } await enviar(); clearTimeout(volta); telaAvaliador(); aviso('Envio concluído.'); });
     document.getElementById('sairav').addEventListener('click', function () { clearTimeout(volta); telaEntrada(); });
   }
+
+  /* ---------- Quem está no tablet agora (aparece em Tablets na Classificação Final) ---------- */
+  var ESTADO = { fase: 'livre' };
+  function avisarEstado(novo) {
+    if (novo) ESTADO = novo;
+    if (!E.chave || E.demo || !online()) return;
+    rpc('tablet_estado', { p_chave: E.chave, p_estado: ESTADO }).catch(function () {});   // só código do jovem e do teste, nunca dados pessoais
+  }
+  setInterval(function () { if (!document.hidden) avisarEstado(); }, 60000);
+  window.addEventListener('online', function () { avisarEstado(); });
 
   /* ---------- Atualização rápida do app ---------- */
   var REG = null, ATUALIZAR = false;

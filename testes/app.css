@@ -389,3 +389,71 @@ button { font-family: inherit; }
 .cam video, .cam img { width: 100%; height: 100%; object-fit: cover; } .cam-o { position: absolute; inset: 12% 20%; border: 3px dashed rgba(255,178,127,.85); border-radius: 50% 50% 45% 45%; pointer-events: none; }
 .cam-b { display: flex; gap: 10px; justify-content: center; } .cam-b button { padding: 13px 18px; }
 .topo .ver { opacity: .7; font-weight: 700; letter-spacing: .02em; }
+
+/* =====================================================================
+   4.26 · App claro (cofre escuro em destaque), teclas maiores e tela do crachá aproveitada
+   ===================================================================== */
+.topo { background: #ffffff; color: #231f1f; border-bottom: 1px solid #ebe5e1; box-shadow: 0 2px 10px rgba(60,40,30,.06); }
+.topo small { color: #6a605c; background: #f4efeb; border-color: #e6ded9; }
+.topo .ver { opacity: 1; color: #d9631f; margin-left: 2px; }
+.entrada { justify-content: flex-start; padding: 10px 12px 12px; gap: 0; }
+.entrada h1 { font-size: clamp(18px, 2.6vw, 24px); margin: 2px 0 2px; }
+.entrada .sub { font-size: 13px; margin: 0 0 10px; }
+.entrada .cofre { flex: 1 1 auto; display: flex; flex-direction: column; width: 100%; max-width: 760px; min-height: 0; }
+.entrada .lt { padding: 10px 10px 4px; }
+.entrada .lt svg { width: min(26vw, 118px); height: min(26vw, 118px); }
+.entrada .painel { flex: 1 1 auto; display: flex; flex-direction: column; padding: 12px 10px 12px; min-height: 0; }
+.entrada .cod { margin-bottom: 10px; }
+.entrada .kb.qw { flex: 1 1 auto; gap: 7px; }
+.entrada .kb.qw .kr { flex: 1 1 0; gap: 6px; min-height: 52px; max-height: 92px; }
+.entrada .kb.qw .kr button { height: auto; flex: 1 1 0; font-size: clamp(20px, 3.4vw, 30px); border-radius: 14px; }
+.entrada .kb.qw .kr button.ap { flex: 2 1 0; }
+.entrada .kb.qw .kr:nth-child(3) { padding: 0 4.5%; } .entrada .kb.qw .kr:nth-child(4) { padding: 0 0 0 9%; }
+/* tablet deitado: leitor e código à esquerda, teclado grande à direita */
+@media (orientation: landscape) and (min-width: 700px) {
+  .entrada .cofre { max-width: 1200px; display: grid; grid-template-columns: minmax(240px, 32%) 1fr; }
+  .entrada .lt { justify-content: center; padding: 18px 14px; }
+  .entrada .lt svg { width: min(18vw, 180px); height: min(18vw, 180px); }
+  .entrada .painel { justify-content: center; }
+  .entrada .kb.qw .kr { max-height: 104px; }
+}
+.entrada .kb.qw { justify-content: center; }
+.entrada .kb.qw .kr { max-height: 128px; }
+.entrada .kb.qw .kr button.ap { font-size: clamp(14px, 1.8vw, 20px); white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; }
+@media (orientation: portrait) and (min-width: 600px) { .entrada .kb.qw .kr button { font-size: clamp(26px, 4vw, 38px); } .entrada .cod span { width: 64px; height: 78px; font-size: 40px; } .entrada .lt svg { width: 150px; height: 150px; } }
+@media (max-width: 520px) { .entrada .kb.qw .kr { max-height: 110px; } .entrada .kb.qw .kr button.ap { font-size: 0; } .entrada .kb.qw .kr button.ap::before { content: "⌫"; font-size: 22px; } }
+@media (orientation: portrait) and (min-width: 600px) { .entrada .kb.qw .kr { max-height: 170px; } .entrada .kb.qw .kr button { font-size: clamp(28px, 4.6vw, 42px); } }
+/* letras das teclas menores (as teclas continuam grandes) */
+.entrada .kb.qw .kr button { font-size: clamp(16px, 2.4vw, 22px); font-weight: 700; }
+@media (orientation: portrait) and (min-width: 600px) { .entrada .kb.qw .kr button { font-size: clamp(20px, 3vw, 26px); } }
+@media (orientation: landscape) and (min-width: 700px) { .entrada .kb.qw .kr button { font-size: clamp(18px, 1.8vw, 24px); } }
+.entrada .kb.qw .kr button.ap { font-size: clamp(13px, 1.4vw, 16px); }
+@media (max-width: 520px) { .entrada .kb.qw .kr button { font-size: 18px; } .entrada .kb.qw .kr button.ap { font-size: 0; } }
+/* logo que gira maior */
+.entrada .lt svg { width: min(40vw, 150px); height: min(40vw, 150px); }
+@media (orientation: portrait) and (min-width: 600px) { .entrada .lt svg { width: 210px; height: 210px; } }
+@media (orientation: landscape) and (min-width: 700px) { .entrada .lt svg { width: min(26vw, 270px); height: min(26vw, 270px); } }
+/* em pé (celular e tablet): teclas na proporção da letra, sem esticar na altura */
+@media (orientation: portrait) {
+  .entrada .kb.qw { justify-content: center; gap: 8px; }
+  .entrada .kb.qw .kr { flex: 0 0 auto; min-height: 0; max-height: none; }
+  .entrada .kb.qw .kr button { aspect-ratio: 4 / 5; height: auto; max-height: 110px; }
+  .entrada .kb.qw .kr button.ap { aspect-ratio: auto; }
+}
+@media (orientation: portrait) and (max-width: 520px) { .entrada .kb.qw .kr button { font-size: 19px; } }
+@media (orientation: portrait) and (min-width: 600px) { .entrada .kb.qw .kr button { font-size: clamp(24px, 3.6vw, 32px); } .entrada .kb.qw .kr button.ap { font-size: 16px; } }
+/* em pé: altura fixa e equilibrada das teclas; o espaço que sobra vai para o logo */
+@media (orientation: portrait) {
+  .entrada .kb.qw .kr button { aspect-ratio: auto; }
+  .entrada .painel { justify-content: center; }
+  .entrada .lt { flex: 1 1 auto; justify-content: center; }
+}
+@media (orientation: portrait) and (max-width: 520px) {
+  .entrada .kb.qw .kr { height: 58px; } .entrada .kb.qw .kr button { font-size: 21px; }
+  .entrada .lt svg { width: 170px; height: 170px; }
+}
+@media (orientation: portrait) and (min-width: 600px) {
+  .entrada .kb.qw .kr { height: 96px; } .entrada .kb.qw .kr button { font-size: 30px; }
+  .entrada .lt svg { width: 260px; height: 260px; }
+}
+.topo .ver { margin-left: 5px; }

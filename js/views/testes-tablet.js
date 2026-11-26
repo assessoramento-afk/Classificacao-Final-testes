@@ -556,7 +556,7 @@
           '<p class="dica">Fica registrado: quem decidiu, quando, aparelho e navegador.</p>',
         botoes: [{ texto: 'Rejeitar', aoClicar: async function () { try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: false }); if (r.error) throw r.error; ui.toast('Pedido rejeitado.', 'ok'); carregar(); pedidos(); historico(); if (window.CF.avisoPedidos) window.CF.avisoPedidos(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } },
           { texto: 'Liberar tablet', principal: true, aoClicar: async function (f) {
-            try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: true, p_nome: f.querySelector('#pd-nome').value, p_etiqueta: f.querySelector('#pd-et').value, p_imei: lerId(f).imei, p_serie: lerId(f).serie, p_email: lerId(f).email }); if (r.error) throw r.error;
+            try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: true, p_nome: f.querySelector('#pd-nome').value, p_etiqueta: f.querySelector('#pd-et').value.replace(/[^0-9A-Za-z]/g, '').toUpperCase(), p_imei: lerId(f).imei, p_serie: lerId(f).serie, p_email: lerId(f).email }); if (r.error) throw r.error;
               ui.toast('Tablet liberado. Ele entra sozinho em alguns segundos.', 'ok'); carregar(); pedidos(); historico(); if (window.CF.avisoPedidos) window.CF.avisoPedidos(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } }] });
     }
     function lerQR() {
@@ -694,8 +694,14 @@
         ui.janela({ titulo: 'Respostas do tablet', largura: 760, corpo: h, botoes: [{ texto: 'Fechar', acao: 'fechar' }] });
       }); });
     }
-    async function carregar() { try { lista = await q(sb.from('tablets').select('*').order('nome')); desenhar(); resultados(); historico(); } catch (e) { area.querySelector('#tb-lista').innerHTML = '<div class="aviso aviso-erro">' + esc(api.traduzErro(e)) + '</div>'; } }
+    async function carregar(soLista) { try { lista = await q(sb.from('tablets').select('*').order('nome')); await carregarUso(); desenhar(); if (soLista) return; resultados(); historico(); } catch (e) { area.querySelector('#tb-lista').innerHTML = '<div class="aviso aviso-erro">' + esc(api.traduzErro(e)) + '</div>'; } }
     var buscaTb = '';
+    // atualiza sozinho: lista a cada 30 s e o tempo que falta a cada segundo (só com a tela aberta)
+    var tAtu = setInterval(function () {
+      if (!document.body.contains(area.querySelector('#tb-lista'))) { clearInterval(tAtu); clearInterval(tSeg); return; }
+      if (!document.hidden && abaTb === 'lista' && !document.querySelector('.janela')) carregar(true);
+    }, 30000);
+    var tSeg = setInterval(function () { area.querySelectorAll('[data-fim]').forEach(function (e) { e.textContent = falta(e.getAttribute('data-fim')); }); }, 1000);
     function situacao(x) {
       if (!x.ativo) return ['Desativado', 'nao', '#8a8486'];
       if (!x.ligado_em) return ['Aguardando ligar', 'neu', '#e0a100'];
@@ -706,6 +712,30 @@
     var filtroTb = 'todos'; try { filtroTb = localStorage.getItem('cf_tb_filtro') || 'todos'; } catch (e) {}
     function verMenor(a, b) { a = String(a || '0').split('.').map(Number); b = String(b || '0').split('.').map(Number); for (var i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) < (b[i] || 0); } return false; }
     function appAntigo(x) { var atual = (window.CF_CONFIG || {}).versaoAppTablet; return x.ativo && atual && x.versao_app && verMenor(x.versao_app, atual); }
+    function modeloLegivel(x) {
+      var m = String(x.modelo || ''), sys = String(x.sistema || '');
+      if (!/mozilla|applewebkit/i.test(m)) return m || 'modelo não informado';
+      var t = m + ' ' + sys, dev = (t.match(/;\s*(SM-[A-Z0-9]+|Lenovo[^;)]*|Redmi[^;)]*|moto[^;)]*)/i) || [])[1], and = (t.match(/Android\s+([\d.]+)/i) || [])[1];
+      if (/iPhone/i.test(t)) return 'iPhone'; if (/iPad|Macintosh.*Mobile/i.test(t)) return 'iPad';
+      return [dev ? dev.trim() : '', and ? 'Android ' + and.split('.')[0] : 'Android', /Chrome\//.test(t) && !dev ? 'Chrome' : ''].filter(Boolean).join(' · ');
+    }
+    function iniciais(n) { return String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join(''); }
+    function falta(fim) { var s2 = Math.max(0, Math.round((new Date(fim) - Date.now()) / 1000)); return Math.floor(s2 / 60) + ':' + ('0' + s2 % 60).slice(-2); }
+    var nomesUso = {}, testesUso = {};
+    function usoDe(x) {   // quem está usando o tablet agora (o tablet avisa a cada minuto)
+      var e = x.estado || null; if (!x.ativo || !e || !e.fase) return {};
+      var idade = Date.now() - new Date(x.estado_em || 0), nome = nomesUso[e.participacao_id] || '', teste = testesUso[e.teste_id] || 'teste';
+      if (e.fase === 'livre') return idade > 15 * 60000 ? {} : { chip: 'Livre', cor: '#3FA66B' };
+      if (idade > 3 * 60000) return { tipo: 'sinal', chip: 'Sem sinal', cor: '#8a8486', nome: nome, linha: (e.fase === 'teste' ? teste + ' · ' : '') + 'último sinal às ' + new Date(x.estado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) };
+      if (e.fase === 'teste') return { tipo: 'uso', chip: 'Em uso', cor: '#ee7330', nome: nome || 'Jovem', linha: teste + (e.inicio ? ' · começou ' + new Date(e.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''), fim: e.fim_previsto };
+      return { tipo: 'uso', chip: 'Em uso', cor: '#ee7330', nome: nome || 'Jovem', linha: 'escolhendo o teste' + (e.total ? ' · ' + (e.feitos || 0) + ' de ' + e.total + ' feitos' : '') };
+    }
+    async function carregarUso() {
+      var ps = [], ts = [];
+      lista.forEach(function (x) { var e = x.estado; if (e && e.participacao_id && !nomesUso[e.participacao_id]) ps.push(e.participacao_id); if (e && e.teste_id && !testesUso[e.teste_id]) ts.push(e.teste_id); });
+      try { if (ps.length) (await q(sb.from('participacoes').select('id, jovens(nome)').in('id', ps))).forEach(function (r) { nomesUso[r.id] = (r.jovens || {}).nome || ''; }); } catch (e) {}
+      try { if (ts.length) (await q(sb.from('testes').select('id, nome').in('id', ts))).forEach(function (r) { testesUso[r.id] = r.nome; }); } catch (e) {}
+    }
     function grupo(x) { var s = situacao(x)[0]; return s === 'Pronto' ? 'prontos' : s === 'Desativado' ? 'desativados' : s === 'Desatualizado' ? 'desatualizados' : 'pendentes'; }
     function quando(d) { if (!d) return '—'; var t = new Date(d), h = new Date(); var ontem = new Date(h); ontem.setDate(h.getDate() - 1);
       var hm = t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -727,14 +757,17 @@
       var NF = [['todos', 'Todos'], ['prontos', 'Prontos'], ['pendentes', 'Pendentes'], ['desatualizados', 'Desatualizados'], ['desativados', 'Desativados']];
       box.innerHTML = '<div class="pt-filtros tb-fl"><input class="entrada" type="search" id="tb-busca" placeholder="Buscar por nome, IMEI, série ou e-mail" value="' + esc(buscaTb || '') + '">' +
         NF.map(function (f) { return '<button type="button" class="pt-chip' + (filtroTb === f[0] ? ' on' : '') + '" data-tbf="' + f[0] + '">' + f[1] + ' <span class="pt-n">' + cont[f[0]] + '</span></button>'; }).join('') + '</div>' +
-        (vis.length ? '<div class="tb-gr">' + vis.map(function (x) {
-          var s = situacao(x), num = String(x.etiqueta || x.nome.replace(/\D/g, '') || '?').slice(0, 3);
-          var st2 = s[0] === 'Envio pendente' && x.pendentes ? x.pendentes + ' a enviar' : s[0];
-          return '<article class="tb-c" style="--c:' + s[2] + '"><div class="tb-h"><span class="tb-num">' + esc(num) + '</span><div><b>' + esc(x.nome) + '</b><small>' + esc(x.modelo || 'modelo não informado') + '</small></div></div>' +
-            '<span class="tb-st" style="background:color-mix(in srgb,' + s[2] + ' 14%,transparent);color:' + s[2] + '">● ' + esc(st2) + '</span>' +
-            (appAntigo(x) ? '<span class="tb-st tb-app">⬆ app desatualizado</span>' : '') +
-            '<div class="tb-li"><i>ÚLTIMA CONEXÃO</i>' + quando(x.ultima_conexao) + '<br><i>APP</i>' + (x.versao_app ? 'v' + esc(x.versao_app) : '—') + '<br><i>IMEI</i>' + esc(x.imei || '—') + '<br><i>CONTA</i>' + esc(x.email_conta || '—') + (x.liberado_por_email ? '<br><i>LIBERADO POR</i>' + esc(x.liberado_por_email) : '') + '</div>' +
-            '<div class="tb-ac"><button type="button" class="btn btn-p" data-ed="' + x.id + '">Editar</button><button type="button" class="btn btn-p" data-cod="' + x.id + '">Novo código</button><button type="button" class="btn btn-p tb-mais" data-mais="' + x.id + '" aria-label="Mais opções de ' + esc(x.nome) + '">⋯</button></div></article>';
+        (vis.length ? '<div class="tb-gr2">' + vis.map(function (x) {
+          var s = situacao(x), num = String(x.etiqueta || x.nome.replace(/\D/g, '') || '?').replace(/[^0-9A-Za-z]/g, '').slice(0, 3) || '?';
+          var u = usoDe(x), cor = u.cor || s[2], chip = u.chip || (s[0] === 'Envio pendente' && x.pendentes ? x.pendentes + ' a enviar' : s[0] === 'Pronto' ? 'Livre' : s[0]);
+          var faixa = u.tipo === 'uso' ? '<div class="tb-uso"><span class="tb-av">' + esc(iniciais(u.nome)) + '</span><div><b>' + esc(u.nome) + '</b><small>' + esc(u.linha) + '</small></div>' + (u.fim ? '<em data-fim="' + esc(u.fim) + '">' + falta(u.fim) + '</em>' : '') + '</div>'
+            : u.tipo === 'sinal' ? '<div class="tb-sinal">⚠ ' + (u.nome ? '<b>' + esc(u.nome) + '</b> · ' : '') + esc(u.linha) + '</div>'
+            : (x.ativo && x.ligado_em && s[0] === 'Pronto') ? '<div class="tb-livre">✓ Aguardando um crachá</div>' : '';
+          var velho = appAntigo(x);
+          return '<article class="tb-c2" style="--c:' + cor + '"><div class="tb-top"><span class="tb-sel"><small>TABLET</small>' + esc(num) + '</span><div class="tb-mod"><b>' + esc(modeloLegivel(x)) + '</b></div><span class="tb-pill">● ' + esc(chip) + '</span></div>' + faixa +
+            '<div class="tb-bl"><div class="tb-t"><small>ÚLTIMA CONEXÃO</small><b>' + quando(x.ultima_conexao) + '</b></div><div class="tb-t' + (velho ? ' tb-velho' : '') + '"><small>APP</small><b>' + (x.versao_app ? (velho ? '↑ v' : 'v') + esc(x.versao_app) + (velho ? ' · atualizar' : '') : '—') + '</b></div>' +
+            (x.imei ? '<div class="tb-t"><small>IMEI</small><b>' + esc(x.imei) + '</b></div>' : '') + (x.email_conta ? '<div class="tb-t"><small>CONTA</small><b>' + esc(x.email_conta) + '</b></div>' : '') + '</div>' +
+            '<div class="tb-ft"><button type="button" data-ed="' + x.id + '">Editar</button><button type="button" data-cod="' + x.id + '">Novo código</button><button type="button" class="tb-mais" data-mais="' + x.id + '" aria-label="Mais opções de ' + esc(x.nome) + '">⋯</button></div></article>';
         }).join('') + '</div>' : '<p class="dica">Nenhum tablet nesse filtro ou busca.</p>');
       box.querySelectorAll('[data-tbf]').forEach(function (b) { b.addEventListener('click', function () { filtroTb = b.getAttribute('data-tbf'); try { localStorage.setItem('cf_tb_filtro', filtroTb); } catch (e) {} desenhar(); }); });
       box.querySelectorAll('[data-cod]').forEach(function (b) { b.addEventListener('click', async function () { try { mostrarCodigo(await q(sb.rpc('tablet_novo_codigo', { p_tablet: b.getAttribute('data-cod') }))); carregar(); } catch (e) { erro(e); } }); });
@@ -762,7 +795,7 @@
           '<label class="campo"><span>Etiqueta</span><input class="entrada" id="tb-e" value="' + esc(x ? x.etiqueta || '' : String(lista.length + 1).padStart(2, '0')) + '"></label>' +
           '<label class="campo"><span>Modelo (opcional)</span><input class="entrada" id="tb-m" value="' + esc(x ? x.modelo || '' : '') + '" placeholder="ex.: Samsung Tab A8"></label>' + camposId(x),
         botoes: [{ texto: 'Cancelar', acao: 'fechar' }, { texto: x ? 'Salvar' : 'Cadastrar e gerar código', principal: true, aoClicar: async function (f) {
-          var n = f.querySelector('#tb-n').value, e = f.querySelector('#tb-e').value, m = f.querySelector('#tb-m').value;
+          var n = f.querySelector('#tb-n').value, e = f.querySelector('#tb-e').value.replace(/[^0-9A-Za-z]/g, '').toUpperCase(), m = f.querySelector('#tb-m').value;
           try {
             var d = lerId(f);
             if (x) { await q(sb.rpc('tablet_salvar', { p_tablet: x.id, p_nome: n, p_etiqueta: e, p_modelo: m })); await q(sb.rpc('tablet_dados_salvar', { p_tablet: x.id, p_imei: d.imei, p_serie: d.serie, p_email: d.email })); }

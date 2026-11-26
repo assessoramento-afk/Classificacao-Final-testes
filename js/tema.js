@@ -9,10 +9,8 @@
   var midia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
   var NOMES = { auto: 'Automático', escuro: 'Escuro', claro: 'Claro' };
 
-  function escolha() {
-    try { var v = localStorage.getItem(CHAVE); return (v === 'escuro' || v === 'claro') ? v : 'auto'; }
-    catch (e) { return 'auto'; }
-  }
+  // 4.26: o sistema é sempre claro (decisão da coordenação). A escolha antiga guardada no aparelho é ignorada.
+  function escolha() { try { localStorage.removeItem(CHAVE); } catch (e) {} return 'claro'; }
   function efetivo(e) {
     e = e || escolha();
     if (e === 'auto') return (midia && midia.matches) ? 'claro' : 'escuro';
@@ -25,10 +23,7 @@
     if (meta) meta.setAttribute('content', t === 'claro' ? '#f5f2f1' : '#141111');
     document.dispatchEvent(new CustomEvent('cf-tema', { detail: { escolha: escolha(), tema: t } }));
   }
-  function definir(e) {
-    try { if (e === 'auto') localStorage.removeItem(CHAVE); else localStorage.setItem(CHAVE, e); } catch (x) { /* navegador sem armazenamento */ }
-    aplicar();
-  }
+  function definir() { aplicar(); }   // não há mais troca de tema
   if (midia) {
     var aoMudar = function () { if (escolha() === 'auto') aplicar(); };
     if (midia.addEventListener) midia.addEventListener('change', aoMudar); else if (midia.addListener) midia.addListener(aoMudar);
