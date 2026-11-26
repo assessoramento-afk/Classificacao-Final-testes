@@ -475,3 +475,16 @@ button { font-family: inherit; }
 .cod-prov { display: inline-block; margin: 14px auto; padding: 16px 26px; border-radius: 16px; background: linear-gradient(160deg, #231f1f, #3a2a20); color: #ffb27f; font: 800 36px ui-monospace, Menlo, monospace; letter-spacing: .08em; }
 .em-outro { color: #8a6200 !important; font-weight: 700; }
 .cod-prov { display: block; width: max-content; margin: 14px auto 18px; }
+/* 4.28.1 · Opção A: topo claro com o logo num selo escuro e o relógio legível */
+.topo #logo { background: radial-gradient(circle at 35% 30%, #3a3232, #141010); border-radius: 50%; padding: 3px; box-shadow: 0 0 0 2px #ee7330, 0 4px 10px rgba(0,0,0,.25); }
+.topo .relo { background: #faf7f5; border: 1px solid #e6ded9; box-shadow: 0 2px 8px rgba(60,40,30,.06); }
+.topo .relo .tempo { color: #231f1f; }
+.topo .anel { background: conic-gradient(var(--cr, #2f9a5b) calc(var(--p, 1) * 360deg), #ece5e0 0); }
+.topo .anel::after { background: #fff; }
+.topo .relo.fim { background: #fde9e8; border-color: #f4b8b2; } .topo .relo.fim .tempo { color: #a83a36; }
+/* T4.2 · sala pausada e etapas bloqueadas */
+.pausa-ov { position: fixed; inset: 0; z-index: 90; background: rgba(20,16,16,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.pausa-ov > div { background: linear-gradient(160deg, #231f1f, #3a2a20); color: #fff; border-radius: 22px; padding: 26px 30px; text-align: center; max-width: 460px; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+.pausa-ov b { display: block; font-size: 22px; color: #ffb27f; margin-bottom: 6px; } .pausa-ov small { display: block; color: #cfc7c7; font-size: 13px; }
+.pausa-ov span { display: block; font: 800 40px ui-monospace, Menlo, monospace; margin: 14px 0 4px; }
+.tst.trava-et { opacity: .75; }

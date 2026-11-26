@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.12.0';
+  var VERSAO_APP = '1.13.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -307,13 +307,15 @@
     var j = E.jovem, tu = ((E.pacote && E.pacote.turmas) || []).filter(function (t) { return t.id === j.turma_id; })[0] || {};
     var ids = tu.testes || [], f = await feitos(j.participacao_id);
     var ts = ids.map(function (id) { return ((E.pacote && E.pacote.testes) || []).filter(function (x) { return x.id === id; })[0]; }).filter(Boolean);
+    var sala = salaDoJovem(), etapa = sala && sala.etapa != null ? sala.etapa : null;
     var outros = {};
     if (!E.demo && E.chave && online()) { try { ((await rpc('tablet_rascunhos_do_jovem', { p_chave: E.chave, p_participacao: j.participacao_id })) || []).forEach(function (r) { outros[r.teste_id] = r; }); } catch (e) {} }
     avisarEstado({ fase: 'lista', participacao_id: j.participacao_id, total: ts.length, feitos: ts.filter(function (t) { return f && (f[t.id] || (Array.isArray(f) && f.indexOf(t.id) >= 0)); }).length });
     app.innerHTML = topo('Projeto Gol Testes', j.nome + ' · ' + (tu.nome || ''), '<button type="button" class="bsec" id="sair" style="padding:7px 14px">Sair</button>') +
       '<div class="miolo"><div class="lista"><h1>' + saudacao() + ', ' + esc(primeiroNome(j.nome)) + '!</h1><p class="sub">Escolha o teste que o avaliador indicar.</p><div class="tsts">' +
       (ts.length ? ts.map(function (t, i) {
-        var est = t.estrutura || {}, ft = f[t.id];
+        var est = t.estrutura || {}, ft = f[t.id], trava = etapa != null && i >= etapa && !ft;
+        if (trava) return '<div class="tst trava-et" style="--c:#c9c0bb"><b>' + esc(t.nome) + '</b><small>⏱ ' + (est.tempo_min || '?') + ' minutos</small><span class="ja" style="color:#8a7f7a">🔒 aguardando liberação do avaliador</span></div>';
         return '<div class="tst' + (ft ? ' feito' : '') + '" style="--c:' + (ft ? '#3FA66B' : '#ee7330') + '"><b>' + esc(t.nome) + '</b><small>⏱ ' + (est.tempo_min || '?') + ' minutos' + (est.orientacao === 'paisagem' ? ' · tela deitada' : '') + '</small>' +
           (!ft && outros[t.id] ? '<small class="em-outro">📱 em andamento no ' + esc(outros[t.id].tablet) + ' · faltam ' + mmss(Math.max(0, Math.round((new Date(outros[t.id].fim_previsto) - Date.now()) / 1000))) + (outros[t.id].total ? ' · ' + (outros[t.id].feitas || 0) + ' de ' + outros[t.id].total : '') + '</small><button type="button" class="bpri" data-troca="' + t.id + '">Continuar aqui (avaliador)</button>' :
           ft ? '<small>' + (ft.fim ? 'feito às ' + hora(ft.fim) : 'feito') + (ft.tablet ? ' · ' + esc(ft.tablet) : '') + '</small><span class="ja">✓ JÁ PREENCHIDO</span><button type="button" class="bsec bref" data-ref="' + t.id + '">🔒 Liberar refazer</button>' : '<button type="button" class="bpri" data-t="' + t.id + '">Abrir</button>') + '</div>';
@@ -431,7 +433,7 @@
       if (E.demo || !E.chave || !online() || !E.jovem) return;
       if (!encerrar && Date.now() - ultCopia < 30000) return; ultCopia = Date.now();
       rpc('tablet_rascunho_salvar', { p_chave: E.chave, p_participacao: E.jovem.participacao_id, p_teste: t.id, p_encerrar: !!encerrar,
-        p_dados: { respostas: ctl.respostas(), inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString(), feitas: itens ? respondidas() : 0, total: itens ? itens.length : 0 } })
+        p_dados: { respostas: ctl.respostas(), inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString(), feitas: itens ? respondidas() : 0, total: itens ? itens.length : 0, saidas: saidas.length } })
         .then(function (r) { if (r && r.dono === false && !acabou) continuadoEmOutro(); }).catch(function () {});
     }
     function continuadoEmOutro() {
@@ -479,8 +481,15 @@
     document.getElementById('ouvir').addEventListener('click', function () { try { speechSynthesis.cancel(); var qe = document.querySelector('#mi .tm-q.atual') || document.querySelector('#mi .tm-q:not(.feito)'); var txt = qe ? qe.innerText.replace(/\n+/g, '. ') : (est.instrucoes || t.nome); var u = new SpeechSynthesisUtterance(txt); u.lang = 'pt-BR'; speechSynthesis.speak(u); } catch (e) {} });
     contar();
     // tempo: relógio (não pausa ao fechar o app)
+    var pausaIni = null;
+    E.somarTempo = function (m, origem) { fimTs += m * 60000; ultCopia = 0; guardar(); avisarEstado({ fase: 'teste', participacao_id: E.jovem.participacao_id, teste_id: t.id, inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString() }); evento('tempo_adicionado', '+' + m + ' min · ' + t.nome + ' · ' + E.jovem.nome + (origem ? ' · ' + origem : '')); aviso('O avaliador adicionou ' + m + (m === 1 ? ' minuto.' : ' minutos.')); };
+    E.encerrarTeste = function (motivo) { evento('teste_encerrado', t.nome + ' · ' + E.jovem.nome + ' · ' + motivo); aviso('O avaliador encerrou este teste.'); terminar(false); };
     var tick = setInterval(function () {
-      var resta = (fimTs - Date.now()) / 1000, p = Math.max(0, resta / tempo);
+      var sl = salaDoJovem();
+      if (sl && sl.pausada && !pausaIni) { pausaIni = Date.now(); var ov = document.createElement('div'); ov.className = 'pausa-ov'; ov.id = 'pausa-ov'; ov.innerHTML = '<div><b>⏸ Sala pausada pelo avaliador</b><small>O tempo de todos os testes parou. Aguarde a orientação.</small><span id="pausa-t"></span><small>tempo restante guardado</small></div>'; document.body.appendChild(ov); evento('sala_pausada', t.nome + ' · ' + E.jovem.nome); }
+      if (pausaIni && !(sl && sl.pausada)) { fimTs += Date.now() - pausaIni; pausaIni = null; var o = document.getElementById('pausa-ov'); if (o) o.remove(); guardar(); avisarEstado({ fase: 'teste', participacao_id: E.jovem.participacao_id, teste_id: t.id, inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString() }); aviso('A sala foi retomada. Pode continuar.'); }
+      var resta = (fimTs - (pausaIni || Date.now())) / 1000, p = Math.max(0, resta / tempo);
+      if (pausaIni) { var pt = document.getElementById('pausa-t'); if (pt) pt.textContent = mmss(resta); }
       var el = document.getElementById('tempo'); if (!el) { clearInterval(tick); return; }
       el.textContent = mmss(resta); var an = document.getElementById('anel'); an.style.setProperty('--p', p); an.style.setProperty('--cr', resta <= 60 ? '#ff7a6e' : resta <= tempo * 0.25 ? '#ffc861' : '#7fe0a2');
       document.getElementById('relo').classList.toggle('fim', resta <= 60);
@@ -508,7 +517,7 @@
         var fl = (await kv.ler('feitosLocal')) || []; fl.push({ participacao_id: res.participacao_id, teste_id: res.teste_id, fim: res.fim, tablet: 'este tablet' }); await kv.gravar('feitosLocal', fl.slice(-500));
         enviar();
       }
-      await kv.apagar('andamento'); E.adicionarTempo = null; try { copiaServidor(true); } catch (e2) {}
+      await kv.apagar('andamento'); E.adicionarTempo = null; E.somarTempo = null; E.encerrarTeste = null; var po = document.getElementById('pausa-ov'); if (po) po.remove(); try { copiaServidor(true); } catch (e2) {}
       setTimeout(function () { tr.remove(); document.body.classList.remove('pede-paisagem', 'grande'); try { screen.orientation.unlock(); } catch (e) {} telaConclusao(t, res, respondidas(), itens.length); }, porTempo ? 1600 : 400);
     }
   }
@@ -716,6 +725,24 @@
   }
   setInterval(function () { if (!document.hidden) avisarEstado(); }, 60000);
   window.addEventListener('online', function () { avisarEstado(); });
+
+  /* ---------- Ao vivo: comandos do avaliador e situação da sala (a cada 15 s) ---------- */
+  E.salas = {};
+  async function lerComandos() {
+    if (!E.chave || E.demo || !online()) return;
+    var r; try { r = await rpc('tablet_comandos_ler', { p_chave: E.chave }); } catch (e) { return; }
+    var antes = JSON.stringify(E.salas), novo = {};
+    ((r && r.salas) || []).forEach(function (x) { novo[x.turma_id] = x; }); E.salas = novo;
+    ((r && r.comandos) || []).forEach(function (c) {
+      if (!E.jovem || c.participacao_id !== E.jovem.participacao_id) return;
+      if (c.tipo === 'chamar') aviso('O avaliador vai até você. Aguarde no lugar.');
+      if (c.tipo === 'tempo' && emTeste && E.somarTempo) E.somarTempo((c.valor && c.valor.min) || 1, 'Ao vivo');
+      if (c.tipo === 'encerrar' && emTeste && E.encerrarTeste) E.encerrarTeste(c.motivo || 'encerrado pelo avaliador');
+    });
+    if (antes !== JSON.stringify(E.salas) && E.jovem && !emTeste && document.querySelector('.tsts')) telaTestes();   // etapa liberada: atualiza a lista
+  }
+  setInterval(function () { if (!document.hidden) lerComandos(); }, 15000); setTimeout(lerComandos, 4000);
+  function salaDoJovem() { return E.jovem ? E.salas[E.jovem.turma_id] : null; }
 
   /* ---------- Atualização rápida do app ---------- */
   var REG = null, ATUALIZAR = false;

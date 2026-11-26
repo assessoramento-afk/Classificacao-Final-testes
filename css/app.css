@@ -2018,3 +2018,22 @@ html[data-tema="escuro"] .tb-st.tb-app { color: #c9bff5; }
 #pn-c .gf-topo h1, #pn-c .gf-topo h1 + p { display: none; }
 .pc-tb.pc-tb-sem { color: #5a514d; background: #efe9e5; } .pc-tb.pc-tb-sem small { opacity: .85; }
 .jov-prov { background: #efeafc !important; color: #5b44b5 !important; }
+/* 4.29 · Ao vivo */
+.avv-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 10px; }
+.avv-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #c0392b; background: #fde9e8; padding: 3px 9px; border-radius: 99px; } .avv-live i { width: 7px; height: 7px; border-radius: 50%; background: #e2483c; animation: pulsa 1.2s ease-in-out infinite; }
+.avv-res { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; } .avv-res div { background: var(--entrada); border-radius: 12px; padding: 8px; text-align: center; box-shadow: inset 0 -3px 0 var(--c); } .avv-res b { display: block; font-size: 20px; } .avv-res span { font-size: 11px; color: var(--texto-2); }
+.avv-ctrl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.avv-et { background: var(--entrada); border-radius: 12px; padding: 9px 11px; margin-bottom: 10px; font-size: 12.5px; } .avv-et > div { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.avv-et span { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; } .avv-et span.on { background: #e8f5ec; color: #2f7a4c; } .avv-et span.lk { background: #f1ece8; color: #9a8f8a; }
+.avv-tudo { background: none; border: 0; color: #d9631f; font: 700 11.5px Poppins, sans-serif; cursor: pointer; }
+.avv-al { display: flex; width: 100%; justify-content: space-between; gap: 8px; text-align: left; border: 0; cursor: pointer; background: #fff4dc; color: #7a5200; border-radius: 12px; padding: 8px 11px; font: 600 12.5px Poppins, sans-serif; margin-bottom: 7px; } .avv-al.r { background: #fde9e8; color: #a83a36; } .avv-al u { text-decoration: none; font-weight: 800; }
+.avv-lst { display: flex; flex-direction: column; gap: 7px; }
+.avv-j { display: flex; align-items: flex-start; gap: 9px; text-align: left; background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; padding: 9px 10px; box-shadow: inset 4px 0 0 var(--c); cursor: pointer; font-family: Poppins, sans-serif; color: var(--texto); }
+.avv-j > div { flex: 1; min-width: 0; } .avv-j b { font-size: 13px; } .avv-j b em { font-style: normal; font-size: 10px; background: #efeafc; color: #5b44b5; padding: 1px 6px; border-radius: 99px; } .avv-j small { display: block; font-size: 11.5px; color: var(--texto-2); }
+.avv-av { width: 30px; height: 30px; border-radius: 50%; background: #efe8e3; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: none; }
+.avv-tb { font: 800 12px ui-monospace, Menlo, monospace; color: var(--texto-2); }
+.avv-tg { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; } .avv-tg span { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 99px; } .avv-tg .ok { background: #e8f5ec; color: #2f7a4c; } .avv-tg .fz { background: #fdeee3; color: #b8561c; } .avv-tg .no { background: #f1ece8; color: #7a706c; }
+.avv-ac { display: flex; flex-direction: column; gap: 8px; } .avv-op { display: flex; gap: 6px; } .avv-op .btn { flex: 1; justify-content: center; }
+.pc-tg.vivo { background: #fde9e8; color: #c0392b; cursor: pointer; margin-left: 4px; }
+@media (max-width: 600px) { .avv-res { grid-template-columns: 1fr 1fr; } }
+@keyframes pulsa { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }

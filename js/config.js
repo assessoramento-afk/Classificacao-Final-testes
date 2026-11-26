@@ -5,9 +5,9 @@
    Nunca coloque aqui a chave secreta (secret / service_role).
    ===================================================================== */
 window.CF_CONFIG = Object.freeze({
-  versao: '4.28.0',
+  versao: '4.29.0',
   // versão atual do app dos tablets (Projeto Gol Testes): tablets com versão menor aparecem como "app desatualizado"
-  versaoAppTablet: '1.12.0',
+  versaoAppTablet: '1.13.0',
   agendaAtiva: false,   // Agenda desativada temporariamente (menu, tela e sincronização com o Google). Para reativar: true.
   supabaseUrl: 'https://nctyfeoifbuloihidabg.supabase.co',
   supabaseKey: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh',

@@ -124,7 +124,7 @@
             var nj = parts.filter(function (p) { return p.turma_id === x.t.id; }).length;
             var hor = x.d.hora_inicio ? hm(x.d.hora_inicio) + ' – ' + hm(x.d.hora_fim) : (window.CF.datas && window.CF.datas.horario ? window.CF.datas.horario() : '');
             return '<a class="pc-tu" href="#/avaliar/' + x.t.id + '"><span class="pc-dt"><small>' + DS[d.getDay()] + '</small><b>' + ('0' + d.getDate()).slice(-2) + '</b></span><div><b>' + esc(x.t.nome) + ' · ' + esc(emp(x.p.empresa_id) || 'Escola') + '</b><small>' + esc(x.p.vaga || '') + (hor ? ' · ' + esc(hor) : '') + ' · ' + nj + ' jovem(ns)</small>' +
-              (av.length ? '<span class="pc-tg ok">' + esc(av.join(', ')) + '</span>' : '<span class="pc-tg al">sem avaliador</span>') + '</div></a>'; }).join('') : '<p class="pc-ok">Nenhuma turma no período.</p>') + '</section>' +
+              (av.length ? '<span class="pc-tg ok">' + esc(av.join(', ')) + '</span>' : '<span class="pc-tg al">sem avaliador</span>') + (String(x.d.data).slice(0, 10) === h ? '<span class="pc-tg vivo" data-aovivo="' + x.t.id + '">● Ao vivo</span>' : '') + '</div></a>'; }).join('') : '<p class="pc-ok">Nenhuma turma no período.</p>') + '</section>' +
           (tabs ? '<section class="pc-card"><h3>Tablets agora <span>atualiza sozinho</span></h3><div class="pc-tbs">' + tabs.filter(function (x) { return x.ativo && x.ligado_em; }).map(function (x) {
             var e = x.estado || {}, velho = (Date.now() - new Date(x.estado_em || 0)) >= 3 * 60000, uso = e.fase && e.fase !== 'livre';
             var cor = !e.fase ? '#c9c0bb' : uso ? (velho ? '#8a8486' : '#ee7330') : '#2f9a5b', nome = (nomesUso[e.participacao_id] || '').split(' ')[0];
