@@ -6,7 +6,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var VERSAO_APP = '1.13.0';
+  var VERSAO_APP = '1.14.0';
   var SB = { url: 'https://nctyfeoifbuloihidabg.supabase.co', chave: 'sb_publishable_PPZ9u2KDQa9UjnWjVBa8fA_oexm1iHh' };
   var app = document.getElementById('app'), M = window.CF.testesMotor, esc = window.CF.ui.esc;
   var LOGO = 'img/gol_dark.png';
@@ -185,8 +185,10 @@
     var seg = await kv.ler('pedidoSegredo');
     if (!seg) { var b = new Uint8Array(24); crypto.getRandomValues(b); seg = [].map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); await kv.gravar('pedidoSegredo', seg); }
     app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Ligar este tablet</h1><p class="sub">' + esc(msg || '') + '</p><div id="ped" class="bx" style="text-align:center;min-width:min(420px,100%)"><div class="girando"></div><p>Preparando o pedido…</p></div>' +
-      '<p style="margin-top:14px;color:var(--texto-3);font-size:13px">Sem celular por perto? <button type="button" class="bsec" id="usar-cod" style="padding:7px 12px;margin-left:6px">Usar o código de 6 números</button></p></div>';
+      '<p style="margin-top:14px;color:var(--texto-3);font-size:13px">Sem celular por perto? <button type="button" class="bsec" id="usar-cod" style="padding:7px 12px;margin-left:6px">Usar o código de 6 números</button></p>' +
+      ('BarcodeDetector' in window && navigator.mediaDevices ? '<p style="margin-top:6px"><button type="button" class="bpri" id="usar-etq">🏷 Ler a etiqueta deste tablet</button></p>' : '') + '</div>';
     document.getElementById('usar-cod').addEventListener('click', function () { clearInterval(pollPedido); telaCodigo(); });
+    var be = document.getElementById('usar-etq'); if (be) be.addEventListener('click', function () { clearInterval(pollPedido); telaEtiqueta(); });
     var box = document.getElementById('ped');
     if (!online()) { box.innerHTML = '<p><b>Sem internet.</b><br>Para ligar o tablet é preciso internet (Wi-Fi, roteador 4G ou o celular).</p><button type="button" class="bpri" id="tenta">Tentar de novo</button>'; document.getElementById('tenta').addEventListener('click', function () { telaLigar(msg); }); return; }
     try {
@@ -213,6 +215,58 @@
       }, 4000);
     } catch (e) { box.innerHTML = '<p><b>Não foi possível criar o pedido.</b><br>' + esc(e.message) + '</p><button type="button" class="bpri" id="tenta">Tentar de novo</button>'; document.getElementById('tenta').addEventListener('click', function () { telaLigar(msg); }); }
   }
+  /* Ligar pela etiqueta: lê o QR colado no tablet; pede liberação ou libera na hora com o PIN */
+  async function telaEtiqueta() {
+    app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Ler a etiqueta deste tablet</h1><p class="sub">Aponte a câmera para o QR Code da etiqueta colada no tablet.</p><video class="qr-vid" id="qv" playsinline muted style="max-width:min(420px,90vw);border-radius:16px"></video><p><button type="button" class="bsec" id="etq-v">Voltar</button></p></div>';
+    document.getElementById('etq-v').addEventListener('click', function () { pararQR(); telaLigar(); });
+    try {
+      var v = document.getElementById('qv'); qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); v.srcObject = qrStream; await v.play();
+      var det = new window.BarcodeDetector({ formats: ['qr_code'] }), fim = Date.now() + 60000;
+      (async function ler() {
+        if (!qrStream) return;
+        try { var r = await det.detect(v); if (r && r[0]) { var m = (r[0].rawValue || '').match(/tablets\?t=([0-9a-f-]{36})/i); pararQR(); if (m) etiquetaLida(m[1]); else { aviso('Este QR Code não é de uma etiqueta de tablet.', 'erro'); telaLigar(); } return; } } catch (e) {}
+        if (Date.now() > fim) { pararQR(); telaLigar('Não consegui ler a etiqueta. Tente de novo.'); return; }
+        setTimeout(ler, 250);
+      })();
+    } catch (e) { aviso('Não foi possível abrir a câmera.', 'erro'); telaLigar(); }
+  }
+  async function etiquetaLida(id) {
+    var info; try { info = await rpc('tablet_etiqueta_info', { p_tablet: id }); } catch (e) { aviso('Sem internet ou etiqueta não reconhecida.', 'erro'); telaLigar(); return; }
+    if (!info) { aviso('Etiqueta não reconhecida.', 'erro'); telaLigar(); return; }
+    app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Etiqueta do ' + esc(info.nome) + '</h1><p class="sub">Escolha como ligar este aparelho como ' + esc(info.nome) + '.</p><div class="cdados" style="max-width:520px">' +
+      '<button type="button" class="esc-b" id="etq-ped"><b>Pedir liberação para a equipe</b><small>O pedido aparece em Tablets › Pedidos já como ' + esc(info.nome) + '. Alguém da equipe libera num toque.</small></button>' +
+      '<button type="button" class="esc-b" id="etq-pin"><b>Liberar agora com o PIN</b><small>Um avaliador ou administrador digita o PIN aqui. Fica registrado quem liberou.</small></button>' +
+      '<p class="sub" style="font-size:12.5px">O aparelho que estava como ' + esc(info.nome) + ' deixa de funcionar.</p><button type="button" class="bsec" id="etq-v">Voltar</button></div></div>';
+    document.getElementById('etq-v').addEventListener('click', function () { telaLigar(); });
+    document.getElementById('etq-ped').addEventListener('click', async function () {
+      var seg = await kv.ler('pedidoSegredo');
+      if (!seg) { var b = new Uint8Array(24); crypto.getRandomValues(b); seg = [].map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); await kv.gravar('pedidoSegredo', seg); }
+      try { var inf = await infoAparelho(); await rpc('tablet_pedir_etiqueta', { p_segredo: seg, p_tablet: id, p_aparelho: inf.aparelho, p_sistema: inf.sistema, p_navegador: inf.navegador }); telaLigar('Pedido para ligar como ' + info.nome + '. Aguarde a liberação.'); }
+      catch (e) { aviso('Não foi possível fazer o pedido: ' + e.message, 'erro'); }
+    });
+    document.getElementById('etq-pin').addEventListener('click', async function () {
+      var avs; try { avs = await rpc('tablet_etiqueta_avaliadores', {}); } catch (e) { aviso('Sem internet agora.', 'erro'); return; }
+      if (!avs || !avs.length) { aviso('Nenhum avaliador com PIN cadastrado. Use o pedido de liberação.', 'erro'); return; }
+      app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Quem vai liberar?</h1><p class="sub">Escolha o seu nome e digite o PIN.</p><div class="av-l" style="max-width:560px;margin:0 auto">' +
+        avs.map(function (a) { return '<button type="button" class="bsec" data-lav="' + a.id + '" style="display:block;width:100%;margin:6px 0;text-align:left">' + esc(a.nome) + '</button>'; }).join('') + '</div><p><button type="button" class="bsec" id="etq-v">Voltar</button></p></div>';
+      document.getElementById('etq-v').addEventListener('click', function () { etiquetaLida(id); });
+      app.querySelectorAll('[data-lav]').forEach(function (b) { b.addEventListener('click', function () {
+        var a = avs.filter(function (x) { return x.id === b.getAttribute('data-lav'); })[0];
+        var c = cofre({ tam: 6, numeros: true, rotulo: 'PIN DE ' + String(a.nome).split(' ')[0].toUpperCase(), aoCompletar: async function (pin, ui) {
+          ui.lendo();
+          try {
+            var h = await pbkdf2(pin, a.salt, a.iter || 150000), inf = await infoAparelho();
+            var r = await rpc('tablet_ligar_etiqueta', { p_tablet: id, p_avaliador: a.id, p_hash: h, p_aparelho: inf.aparelho + ' · ' + inf.sistema });
+            if (r.erro) { ui.erro('PIN INCORRETO'); aviso(r.erro + (r.restantes != null ? ' Restam ' + r.restantes + ' tentativa(s).' : ''), 'erro'); return; }
+            E.chave = r.chave; await kv.gravar('chave', r.chave); await kv.gravar('tablet', r.tablet); await kv.apagar('pedidoSegredo');
+            ui.ok('TABLET LIGADO'); await baixar(true); setTimeout(telaEntrada, 900);
+          } catch (e) { ui.erro('NÃO FOI POSSÍVEL'); aviso(e.message, 'erro'); }
+        } });
+        app.innerHTML = '<div class="entrada" style="background:var(--fundo)"><h1>Liberar como ' + esc(info.nome) + '</h1><p class="sub">' + esc(a.nome) + ', digite o seu PIN.</p>' + c.html + '<p><button type="button" class="bsec" id="etq-v">Voltar</button></p></div>';
+        c.ligar(); document.getElementById('etq-v').addEventListener('click', function () { etiquetaLida(id); });
+      }); });
+    });
+  }
   function telaCodigo(msg) {
     var c = cofre({ tam: 6, numeros: true, aoCompletar: async function (cod, ui) {
       ui.lendo();
@@ -233,7 +287,7 @@
   var qrStream = null;
   function pararQR() { if (qrStream) { qrStream.getTracks().forEach(function (t) { t.stop(); }); qrStream = null; } }
   function telaEntrada() {
-    emTeste = false; E.jovem = null; document.body.classList.remove('pede-paisagem', 'grande'); pararQR();
+    emTeste = false; E.jovem = null; document.body.classList.remove('pede-paisagem', 'pede-retrato', 'grande'); pararQR();
     if (ATUALIZAR) { ATUALIZAR = false; setTimeout(aplicarAtualizacao, 400); }
     avisarEstado({ fase: 'livre' });
     var tb = (E.pacote && E.pacote.tablet) || {};
@@ -421,10 +475,12 @@
     protecoes.ligar();
     avisarEstado({ fase: 'teste', participacao_id: E.jovem && E.jovem.participacao_id, teste_id: t.id, inicio: inicio.toISOString(), fim_previsto: new Date(fimTs).toISOString() });
     emTeste = true; if (paisagem(est)) { document.body.classList.add('pede-paisagem'); try { screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} }
+    else if (est.orientacao === 'retrato') { document.body.classList.add('pede-retrato'); try { screen.orientation.lock('portrait').catch(function () {}); } catch (e) {} }
     app.innerHTML = topo(t.nome, E.jovem.nome, '<div class="relo" id="relo"><span class="anel" id="anel"></span><span class="tempo" id="tempo">' + mmss(tempo) + '</span></div>') + '<div class="prog"><i id="barra"></i></div>' +
       '<div class="instr"><span class="tx">' + esc(est.instrucoes || 'Responda e toque em "Finalizar teste" quando terminar.') + '</span><button type="button" class="ib" id="ouvir">🔊 Ouvir</button><button type="button" class="ib" id="maior">A+ Letra maior</button></div>' +
       '<div class="miolo" id="mi"></div><div class="rodape"><span class="cont" id="cont"></span><div class="nav" id="nav"></div><button type="button" class="bpri" id="fin">✓ Finalizar teste</button></div>' +
-      '<div class="girar"><svg viewBox="0 0 64 64"><rect x="18" y="8" width="28" height="48" rx="5"/><path d="M28 50h8"/></svg><b style="font-size:20px">Gire o tablet para a horizontal</b><span style="color:#cfc7c7">Este teste é feito com a tela deitada. O tempo continua contando.</span></div>';
+      '<div class="girar"><svg viewBox="0 0 64 64"><rect x="18" y="8" width="28" height="48" rx="5"/><path d="M28 50h8"/></svg><b style="font-size:20px">Gire o tablet para a horizontal</b><span style="color:#cfc7c7">Este teste é feito com a tela deitada. O tempo continua contando.</span></div>' +
+      '<div class="girar girar-ret"><svg viewBox="0 0 64 64"><rect x="8" y="18" width="48" height="28" rx="5"/><path d="M50 28v8"/></svg><b style="font-size:20px">Gire o tablet para a vertical</b><span style="color:#cfc7c7">Este teste é feito com o tablet em pé. O tempo continua contando.</span></div>';
     var ctl = M.desenhar(document.getElementById('mi'), est); atualizarStatus();
     if (est.calculadora) calculadora();
     if (ret) { ctl.restaurar(ret.resp); aviso('Teste retomado de onde parou. O tempo continuou contando.'); }
@@ -518,7 +574,7 @@
         enviar();
       }
       await kv.apagar('andamento'); E.adicionarTempo = null; E.somarTempo = null; E.encerrarTeste = null; var po = document.getElementById('pausa-ov'); if (po) po.remove(); try { copiaServidor(true); } catch (e2) {}
-      setTimeout(function () { tr.remove(); document.body.classList.remove('pede-paisagem', 'grande'); try { screen.orientation.unlock(); } catch (e) {} telaConclusao(t, res, respondidas(), itens.length); }, porTempo ? 1600 : 400);
+      setTimeout(function () { tr.remove(); document.body.classList.remove('pede-paisagem', 'pede-retrato', 'grande'); try { screen.orientation.unlock(); } catch (e) {} telaConclusao(t, res, respondidas(), itens.length); }, porTempo ? 1600 : 400);
     }
   }
 

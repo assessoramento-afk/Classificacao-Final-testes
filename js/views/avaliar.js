@@ -134,7 +134,7 @@
     }
     area.innerHTML = '<a class="voltar" href="#/processos">← Profiling Empresas</a>' +
       '<header class="cabecalho"><div><h1>' + esc(snap.turma.nome) + ' · dia ' + (di + 1) + ' de ' + snap.dias.length + '</h1><p>' + esc(snap.empresa.nome + ' · ' + snap.processo.vaga + ' · ' + D.longa(dia)) + '</p></div>' +
-        '<div class="tp-acoes"><button type="button" class="btn btn-p" data-aovivo="' + snap.turma.id + '">● Ao vivo</button>' + (snap.dias.length > 1 ? '<div class="segmentos" role="group" aria-label="Dia">' + snap.dias.map(function (d, i) { return '<button type="button" data-tdia="' + d + '" aria-pressed="' + (d === dia) + '">Dia ' + (i + 1) + ' · ' + esc(D.curta(d)) + '</button>'; }).join('') + '</div>' : '') +
+        '<div class="tp-acoes"><button type="button" class="btn btn-p" data-aovivo="' + snap.turma.id + '">● Ao vivo</button><button type="button" class="btn btn-p" data-resumo-dia="' + snap.turma.id + '">⬇ Resumo do dia</button>' + (snap.dias.length > 1 ? '<div class="segmentos" role="group" aria-label="Dia">' + snap.dias.map(function (d, i) { return '<button type="button" data-tdia="' + d + '" aria-pressed="' + (d === dia) + '">Dia ' + (i + 1) + ' · ' + esc(D.curta(d)) + '</button>'; }).join('') + '</div>' : '') +
         (navigator.onLine ? '<button type="button" class="btn btn-p" id="tp-atual">⟳ Atualizar</button>' : '') + '</div></header>' +
       '<span class="baixado">✓ Disponível sem internet · atualizado às ' + hora(snap.baixado_em) + '</span>' +
       '<div class="passos-d">' +

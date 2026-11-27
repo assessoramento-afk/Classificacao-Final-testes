@@ -2037,3 +2037,11 @@ html[data-tema="escuro"] .tb-st.tb-app { color: #c9bff5; }
 .pc-tg.vivo { background: #fde9e8; color: #c0392b; cursor: pointer; margin-left: 4px; }
 @media (max-width: 600px) { .avv-res { grid-template-columns: 1fr 1fr; } }
 @keyframes pulsa { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+/* 4.30 · respostas abertas para pontuar */
+.ra-c { border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; margin-top: 10px; background: var(--cartao); display: flex; flex-direction: column; gap: 8px; }
+.ra-h { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; flex-wrap: wrap; } .ra-h span { color: var(--texto-2); font-size: 12px; }
+.ra-q { margin: 0; font-weight: 700; font-size: 13px; } .ra-r { margin: 0; background: var(--entrada); border-left: 3px solid var(--laranja); border-radius: 8px; padding: 8px 10px; font-style: italic; }
+.ra-p { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+.ra-n { min-width: 40px; padding: 8px 10px; border-radius: 10px; border: 1.5px solid var(--borda); background: var(--cartao); font: 800 14px Poppins, sans-serif; cursor: pointer; color: var(--texto); } .ra-n.on { border-color: var(--laranja); background: #fdeee3; }
+.ra-prev { margin: 0; } .ra-c .btn { align-self: flex-start; }
+.et-alvo { margin-top: 12px; background: #fdeee3; color: #7a3d14; border-radius: 12px; padding: 10px 12px; font-size: 13px; }

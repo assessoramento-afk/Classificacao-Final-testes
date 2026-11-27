@@ -488,3 +488,11 @@ button { font-family: inherit; }
 .pausa-ov b { display: block; font-size: 22px; color: #ffb27f; margin-bottom: 6px; } .pausa-ov small { display: block; color: #cfc7c7; font-size: 13px; }
 .pausa-ov span { display: block; font: 800 40px ui-monospace, Menlo, monospace; margin: 14px 0 4px; }
 .tst.trava-et { opacity: .75; }
+/* testes em retrato (tablet em pé) e tabela com texto de apoio em pé */
+.girar-ret { display: none !important; }
+@media (orientation: landscape) { body.pede-retrato .girar-ret { display: flex !important; } }
+@media (orientation: portrait) { .tm-2col { grid-template-columns: 1fr !important; } .tm-2col .tm-apoio { max-width: none; } .tm-lado { min-width: 0 !important; } }
+@media (orientation: portrait) { .tm-port { grid-template-columns: 1fr !important; } .tm-port .tm-apoio { position: static !important; max-width: none !important; } }
+.tm-tabela th:nth-child(3) { text-align: center; }
+.tm-setor header small { display: block; font-size: .85em; opacity: .9; font-weight: 600; }
+.tm-setor header:has(small) { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; } .tm-setor header small { flex-basis: auto; }

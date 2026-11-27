@@ -492,7 +492,7 @@
       '<nav class="tb-abas" role="tablist">' + ABAS.map(function (a) { return '<button type="button" role="tab" data-tbaba="' + a[0] + '">' + a[1] + '<em id="tb-n-' + a[0] + '" hidden></em></button>'; }).join('') + '</nav>' +
       '<div class="tb-pn" data-pn="lista"><div id="tb-lista"><div class="girando" style="margin:30px auto"></div></div><p class="dica">Se um tablet sumir, use "⋯ › Desativar": a chave dele para de funcionar na hora. Os resultados que ele já enviou continuam valendo.</p></div>' +
       '<div class="tb-pn" data-pn="ped"><section class="card pt-tab" id="tb-ped"></section></div>' +
-      '<div class="tb-pn" data-pn="res"><section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section></div>' +
+      '<div class="tb-pn" data-pn="res"><section class="card bloco" id="tb-abertas"></section><section class="card pt-tab" id="tb-res"><h2>Resultados recebidos dos tablets</h2><div class="girando" style="margin:20px auto"></div></section></div>' +
       '<div class="tb-pn" data-pn="fotos"><section class="card pt-tab" id="tb-fotos"></section></div>' +
       '<div class="tb-pn" data-pn="hist"><section class="card pt-tab" id="tb-hist"></section></div>' +
       '<div class="tb-pn" data-pn="conf"><div class="tb-duas"><section class="card bloco" id="tb-inst"></section><div style="display:flex;flex-direction:column;gap:16px"><section class="card bloco" id="tb-pin"></section><section class="card bloco" id="tb-modo"></section></div></div></div>';
@@ -500,6 +500,7 @@
       abaTb = a; try { localStorage.setItem('cf_tb_aba', a); } catch (e) {}
       area.querySelectorAll('[data-tbaba]').forEach(function (b) { var on = b.getAttribute('data-tbaba') === a; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
       area.querySelectorAll('.tb-pn').forEach(function (p) { p.hidden = p.getAttribute('data-pn') !== a; });
+      if (a === 'res' && window.CF.t43) window.CF.t43.abertas(area.querySelector('#tb-abertas'));
     }
     area.querySelectorAll('[data-tbaba]').forEach(function (b) { b.addEventListener('click', function () { irAba(b.getAttribute('data-tbaba')); }); });
     irAba(abaTb);
@@ -508,7 +509,7 @@
     // Instalação no tablet: link e QR Code do app (mesma publicação, pasta testes/)
     var urlApp = location.origin + location.pathname.replace(/[^/]*$/, '') + 'testes/';
     function qrSVG(t) { if (typeof window.qrcode !== 'function') return ''; var qq = window.qrcode(0, 'M'); qq.addData(t); qq.make(); return qq.createSvgTag({ cellSize: 5, margin: 2, scalable: true }); }
-    area.querySelector('#tb-inst').innerHTML = '<h2 style="margin:0 0 8px">Instalar o app nos tablets</h2><div class="tb-qr"><div class="tb-qrimg">' + qrSVG(urlApp) + '</div><ol>' +
+    area.querySelector('#tb-inst').innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h2 style="margin:0">Instalar o app nos tablets</h2><button type="button" class="btn btn-p" data-guia-avaliador>🖨 Imprimir guia do avaliador</button></div><div class="tb-qr"><div class="tb-qrimg">' + qrSVG(urlApp) + '</div><ol>' +
       '<li>No tablet, abra o <b>Chrome</b> e leia este QR Code com a câmera, ou digite o endereço: <code>' + esc(urlApp) + '</code></li>' +
       '<li>Toque em <b>⋮ › Instalar app</b>. O ícone <b>Gol Testes</b> aparece na tela inicial.</li>' +
       '<li>Abra o app e digite o <b>código de 6 números</b> do tablet (botão "Novo código" no cartão dele).</li>' +
@@ -546,13 +547,14 @@
     }
     async function abrirPedido(codigo) {
       codigo = String(codigo || '').toUpperCase().replace(/^GOLT-PEDIDO:/, '').replace(/[^A-Z0-9]/g, '');
-      var p = null; try { p = (await q(sb.from('tablet_pedidos').select('id,codigo,aparelho,sistema,navegador,situacao,criado_em').eq('codigo', codigo)))[0]; } catch (e) {}
+      var p = null; try { p = (await q(sb.from('tablet_pedidos').select('*').eq('codigo', codigo)))[0]; } catch (e) {}
       if (!p) { ui.toast('Pedido não encontrado. Confira o QR Code do tablet.', 'erro'); return; }
       if (p.situacao !== 'pendente') { ui.toast('Este pedido já foi ' + p.situacao + '.', 'erro'); return; }
-      var prox = 'TABLET ' + ('0' + (lista.length + 1)).slice(-2);
+      var prox = 'TABLET ' + ('0' + (lista.length + 1)).slice(-2), alvo = p.alvo_tablet ? lista.filter(function (x) { return x.id === p.alvo_tablet; })[0] || { nome: 'tablet da etiqueta' } : null;
       ui.janela({ titulo: '📱 Pedido de liberação de tablet', largura: 480,
         corpo: '<div class="et-res"><div><span>Pedido</span><p><b>' + esc(p.codigo.slice(0, 3) + '-' + p.codigo.slice(3)) + '</b></p></div><div><span>Aparelho</span><p>' + esc(p.aparelho || '—') + (p.sistema ? ' · ' + esc(p.sistema) : '') + '</p></div><div><span>Navegador</span><p>' + esc(p.navegador || '—') + '</p></div><div><span>Pedido feito</span><p>' + new Date(p.criado_em).toLocaleString('pt-BR') + '</p></div></div>' +
-          '<label class="campo" style="margin-top:12px"><span>Nome do tablet</span><input class="entrada" id="pd-nome" value="' + esc(prox) + '"></label><label class="campo"><span>Etiqueta</span><input class="entrada" id="pd-et" value="' + esc(prox.replace(/\D/g, '')) + '"></label>' + camposId(null) +
+          (alvo ? '<div class="et-alvo">🏷 Pedido feito pela <b>etiqueta</b> do <b>' + esc(alvo.nome) + '</b>. Ao liberar, este aparelho passa a ser o ' + esc(alvo.nome) + ' e o aparelho anterior deixa de funcionar.</div><input type="hidden" id="pd-nome" value="' + esc(alvo.nome) + '"><input type="hidden" id="pd-et" value="' + esc(alvo.etiqueta || '') + '">' :
+          '<label class="campo" style="margin-top:12px"><span>Nome do tablet</span><input class="entrada" id="pd-nome" value="' + esc(prox) + '"></label><label class="campo"><span>Etiqueta</span><input class="entrada" id="pd-et" value="' + esc(prox.replace(/\D/g, '')) + '"></label>' + camposId(null)) +
           '<p class="dica">Fica registrado: quem decidiu, quando, aparelho e navegador.</p>',
         botoes: [{ texto: 'Rejeitar', aoClicar: async function () { try { var r = await sb.rpc('tablet_pedido_decidir', { p_codigo: p.codigo, p_liberar: false }); if (r.error) throw r.error; ui.toast('Pedido rejeitado.', 'ok'); carregar(); pedidos(); historico(); if (window.CF.avisoPedidos) window.CF.avisoPedidos(); return true; } catch (e) { ui.toast(api.traduzErro(e), 'erro'); return false; } } },
           { texto: 'Liberar tablet', principal: true, aoClicar: async function (f) {
@@ -810,7 +812,7 @@
         '<label class="campo"><span>Nº de série</span><input class="entrada" id="tb-serie" value="' + esc(x ? x.numero_serie || '' : '') + '" style="text-transform:uppercase"></label>' +
         '<label class="campo"><span>E-mail da conta do aparelho</span><input class="entrada" id="tb-email" type="email" value="' + esc(x ? x.email_conta || '' : '') + '" placeholder="ex.: tablet07@kolpingsp.org"></label></fieldset>';
     }
-    function lerId(f) { return { imei: f.querySelector('#tb-imei').value.trim(), serie: f.querySelector('#tb-serie').value.trim(), email: f.querySelector('#tb-email').value.trim() }; }
+    function lerId(f) { function v(id) { var e = f.querySelector(id); return e ? e.value.trim() : ''; } return { imei: v('#tb-imei'), serie: v('#tb-serie'), email: v('#tb-email') }; }
     /* ---------- Etiquetas (modelo A2 · 75 × 38 mm, folha A4) ---------- */
     function etiquetas() {
       if (!lista.length) { ui.toast('Nenhum tablet cadastrado.', 'erro'); return; }
@@ -830,7 +832,7 @@
       var ic = { imei: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/>', serie: '<path d="M4 7h16M4 12h16M4 17h10"/>', email: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>' };
       function lin(i, rot, v) { return v ? '<li><svg viewBox="0 0 24 24">' + ic[i] + '</svg><div><em>' + rot + '</em><b>' + esc(v) + '</b></div></li>' : ''; }
       var cards = ts.map(function (x) {
-        var num = String(x.etiqueta || x.nome.replace(/\D/g, '') || '').slice(0, 4);
+        var num = String(x.etiqueta || x.nome.replace(/\D/g, '') || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 4);
         return '<div class="y"><div class="cab"><img src="' + base + 'assets/img/gol_dark.png"><div><b>Projeto Gol Testes</b><small>Patrimônio · Kolping Estadual de São Paulo</small></div></div>' +
           '<div class="selo"><small>TABLET</small><i>' + esc(num) + '</i></div><div class="cor"><ul>' + lin('imei', 'IMEI', x.imei) + lin('serie', 'Nº DE SÉRIE', x.numero_serie) + lin('email', 'CONTA DO APARELHO', x.email_conta) +
           (!x.imei && !x.numero_serie && !x.email_conta ? '<li><div><em>TABLET</em><b>' + esc(x.nome) + '</b></div></li>' : '') + '</ul><div class="qr">' + qr(urlBase + '#/tablets?t=' + x.id) + '</div></div>' +
@@ -841,8 +843,8 @@
         '.folha{display:grid;grid-template-columns:repeat(2,75mm);grid-auto-rows:38mm;gap:2mm 6mm;justify-content:center}' +
         '.y{width:75mm;height:38mm;border-radius:3.5mm;overflow:hidden;background:#fff;border:.2mm solid #ddd;display:grid;grid-template-rows:11.5mm 1fr 5mm;position:relative;break-inside:avoid}' +
         '.cab{background:linear-gradient(110deg,#1d1919,#2d2626 55%,#4a2c1b);display:flex;align-items:center;gap:2.2mm;padding:0 20mm 0 3mm;color:#f4f1ef}.cab img{width:7.5mm;height:7.5mm;border-radius:50%;box-shadow:0 0 0 .5mm rgba(238,115,48,.7)}.cab b{font-size:3.1mm;display:block}.cab small{font-size:1.9mm;color:#cfc7c7;display:block}' +
-        '.selo{position:absolute;right:3mm;top:2.2mm;width:15mm;height:13.5mm;border-radius:4mm;background:linear-gradient(135deg,#f08a4b,#e0631f);box-shadow:0 0 0 1mm #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#1b1111}.selo small{font-size:1.6mm;font-weight:800;letter-spacing:.2em}.selo i{font:700 7mm/1 CC,monospace;font-style:normal}' +
-        '.cor{display:flex;gap:2.5mm;align-items:flex-end;padding:2mm 3mm 1mm 3.5mm}ul{list-style:none;margin:0;padding:0;flex:1;min-width:0}li{display:flex;gap:1.5mm;margin-bottom:1.2mm}li svg{width:2.3mm;height:2.3mm;stroke:#ee7330;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:.3mm}li em{display:block;font-style:normal;font-size:1.7mm;font-weight:800;letter-spacing:.1em;color:#8a8486}li b{display:block;color:#272323;font-size:2.3mm;white-space:nowrap}' +
+        '.selo{position:absolute;right:3mm;top:1.3mm;width:15mm;height:8.9mm;border-radius:2.8mm;background:linear-gradient(135deg,#f08a4b,#e0631f);box-shadow:0 .4mm 1.2mm rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#1b1111}.selo small{font-size:1.4mm;font-weight:800;letter-spacing:.2em;margin-bottom:.2mm}.selo i{font:700 5.6mm/1 CC,monospace;font-style:normal}' +
+        '.cor{display:flex;gap:2.5mm;align-items:center;padding:1.4mm 3mm .8mm 3.5mm;min-height:0;overflow:hidden}ul{list-style:none;margin:0;padding:0;flex:1;min-width:0}li{display:flex;gap:1.5mm;margin-bottom:1.2mm}li svg{width:2.3mm;height:2.3mm;stroke:#ee7330;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:.3mm}li em{display:block;font-style:normal;font-size:1.7mm;font-weight:800;letter-spacing:.1em;color:#8a8486}li b{display:block;color:#272323;font-size:2.3mm;white-space:nowrap}' +
         '.qr{background:#fff;border-radius:2.5mm;padding:1mm;box-shadow:0 0 0 .4mm #f1e6df;margin-bottom:.5mm}.qr svg{width:14.5mm;height:14.5mm;display:block}' +
         '.pe{background:#f7f3f1;display:flex;align-items:center;justify-content:space-between;padding:0 3mm;border-top:.2mm solid #efe9e7}.pe img{height:2.6mm}.pe span{font-size:1.7mm;color:#8a8486;letter-spacing:.06em}';
       var w = window.open('', '_blank');

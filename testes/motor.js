@@ -160,7 +160,7 @@
   function agruparHTML(p) {
     var v = p.vagas || 6;
     return '<div class="tm-prat"><h4><span>🗄️ Prateleira</span><span class="tm-rest"></span></h4><div class="tm-chips"></div></div><div class="tm-setores">' +
-      (p.grupos || []).map(function (g, gi) { return '<div class="tm-setor" data-g="' + gi + '" style="--c:' + esc(g.cor || '#8a8486') + '"><header>' + esc(g.nome) + '</header><div class="tm-slots">' +
+      (p.grupos || []).map(function (g, gi) { return '<div class="tm-setor" data-g="' + gi + '" style="--c:' + esc(g.cor || '#8a8486') + '"><header>' + esc(g.nome).replace(/ \(/, '<br><small>(').replace(/\)$/, ')</small>') + '</header><div class="tm-slots">' +
         Array.apply(null, { length: v }).map(function (x, k) { return '<div class="tm-slot" data-item="' + gi + '-' + k + '" data-g="' + gi + '" data-k="' + k + '"><i>' + (k + 1) + '</i><span></span></div>'; }).join('') + '</div></div>'; }).join('') + '</div>';
   }
 
@@ -192,7 +192,7 @@
   function campoHTML(c, k) {
     if (c.tipo === 'lista') return '<select class="tm-in" data-lin="' + k + '" data-col="' + esc(c.chave) + '"><option value="">—</option>' + (c.opcoes || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
     return '<input class="tm-in' + (c.tipo === 'codigo' || c.tipo === 'numero' || c.tipo === 'valor' || c.tipo === 'data' ? ' tm-mono' : '') + '" data-lin="' + k + '" data-col="' + esc(c.chave) + '" inputmode="' + (MODO[c.tipo] || 'text') + '"' +
-      (c.max ? ' maxlength="' + c.max + '"' : '') + (c.tipo === 'codigo' ? ' autocapitalize="characters" style="text-transform:uppercase"' : '') + ' autocomplete="off" spellcheck="false" placeholder="' + esc(c.tipo === 'data' ? 'DD/MM/AAAA' : c.tipo === 'valor' ? '0,00' : '') + '">';
+      (c.max ? ' maxlength="' + c.max + '"' : '') + (c.tipo === 'codigo' ? ' autocapitalize="characters" style="text-transform:uppercase;text-align:center;letter-spacing:.08em"' : '') + ' autocomplete="off" spellcheck="false" placeholder="' + esc(c.tipo === 'data' ? 'DD/MM/AAAA' : c.tipo === 'valor' ? '0,00' : '') + '">';
   }
   function tabelaHTML(p) {
     var cols = p.colunas || [], h = '';
